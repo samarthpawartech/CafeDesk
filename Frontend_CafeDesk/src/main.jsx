@@ -1,20 +1,11 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import App from "./app/App";
-import "./styles/index.css"; // Tailwind + global styles
+import App from "./app/App.jsx";
+import "./styles/index.css";
 
-// Get the root element (renamed to rootElement to avoid conflicts)
 const rootElement = document.getElementById("root");
 
-if (!rootElement) {
-  throw new Error("Root element not found");
-}
-
-// Create React root
-const root = createRoot(rootElement);
-
-// Render the App
-root.render(
+createRoot(rootElement).render(
   <React.StrictMode>
     <App />
   </React.StrictMode>,

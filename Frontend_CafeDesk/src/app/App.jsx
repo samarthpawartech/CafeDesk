@@ -12,31 +12,28 @@ function AppContent() {
   const { user } = useAuth();
   const [selectedRole, setSelectedRole] = useState(null);
 
-  // If user is logged in, render their dashboard
+  // If user is logged in, show appropriate dashboard
   if (user) {
-    switch (user.role) {
-      case "customer":
-        return <CustomerDashboard />;
-      case "employee":
-        return <EmployeeDashboard />;
-      case "admin":
-        return <AdminDashboard />;
-      default:
-        return null; // fallback if role is unknown
+    if (user.role === "customer") {
+      return <CustomerDashboard />;
+    } else if (user.role === "employee") {
+      return <EmployeeDashboard />;
+    } else if (user.role === "admin") {
+      return <AdminDashboard />;
     }
   }
 
-  // If a role is selected but user is not logged in, show login page
-  switch (selectedRole) {
-    case "customer":
-      return <CustomerLogin />;
-    case "employee":
-      return <EmployeeLogin />;
-    case "admin":
-      return <AdminLogin />;
-    default:
-      return <RoleSelector onSelectRole={setSelectedRole} />;
+  // If role is selected but not logged in, show login page
+  if (selectedRole === "customer") {
+    return <CustomerLogin />;
+  } else if (selectedRole === "employee") {
+    return <EmployeeLogin />;
+  } else if (selectedRole === "admin") {
+    return <AdminLogin />;
   }
+
+  // Default: Show role selector
+  return <RoleSelector onSelectRole={setSelectedRole} />;
 }
 
 export default function App() {

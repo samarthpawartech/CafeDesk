@@ -1,47 +1,36 @@
-import { useState } from "react";
-import { Plus, Edit, Trash2, Search } from "lucide-react";
-import { menuItems as initialMenuItems } from "@/app/utils/mockData";
-import { Card } from "@/app/components/ui/card";
-import { Button } from "@/app/components/ui/button";
-import { Badge } from "@/app/components/ui/badge";
-import { Input } from "@/app/components/ui/input";
-import { Label } from "@/app/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/app/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/app/components/ui/select";
+import { useState } from 'react';
+import { Plus, Edit, Trash2, Search } from 'lucide-react';
+import { menuItems as initialMenuItems } from '@/app/utils/mockData';
+import { Card } from '@/app/components/ui/card';
+import { Button } from '@/app/components/ui/button';
+import { Badge } from '@/app/components/ui/badge';
+import { Input } from '@/app/components/ui/input';
+import { Label } from '@/app/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/app/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
+import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
 
 export const MenuManagement = () => {
   const [menuItems, setMenuItems] = useState(initialMenuItems);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
-
+  const [searchTerm, setSearchTerm] = useState('');
+  
   const [formData, setFormData] = useState({
-    name: "",
-    category: "Drinks",
-    price: "",
-    description: "",
+    name: '',
+    category: 'Drinks',
+    price: '',
+    description: '',
     available: true,
   });
 
   const openAddDialog = () => {
     setEditingItem(null);
     setFormData({
-      name: "",
-      category: "Drinks",
-      price: "",
-      description: "",
+      name: '',
+      category: 'Drinks',
+      price: '',
+      description: '',
       available: true,
     });
     setIsDialogOpen(true);
@@ -61,16 +50,14 @@ export const MenuManagement = () => {
 
   const handleSave = () => {
     if (editingItem) {
-      setMenuItems(
-        menuItems.map((item) =>
-          item.id === editingItem.id
-            ? { ...item, ...formData, price: parseFloat(formData.price) }
-            : item,
-        ),
-      );
+      setMenuItems(menuItems.map(item => 
+        item.id === editingItem.id 
+          ? { ...item, ...formData, price: parseFloat(formData.price) }
+          : item
+      ));
     } else {
       const newItem = {
-        id: Math.max(...menuItems.map((i) => i.id)) + 1,
+        id: Math.max(...menuItems.map(i => i.id)) + 1,
         ...formData,
         price: parseFloat(formData.price),
         image: `${formData.category.toLowerCase()} food`,
@@ -81,21 +68,20 @@ export const MenuManagement = () => {
   };
 
   const handleDelete = (itemId) => {
-    if (confirm("Are you sure you want to delete this item?")) {
-      setMenuItems(menuItems.filter((item) => item.id !== itemId));
+    if (confirm('Are you sure you want to delete this item?')) {
+      setMenuItems(menuItems.filter(item => item.id !== itemId));
     }
   };
 
-  const filteredItems = menuItems.filter(
-    (item) =>
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.category.toLowerCase().includes(searchTerm.toLowerCase()),
+  const filteredItems = menuItems.filter(item =>
+    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const categoryCount = {
-    Drinks: menuItems.filter((i) => i.category === "Drinks").length,
-    Snacks: menuItems.filter((i) => i.category === "Snacks").length,
-    Meals: menuItems.filter((i) => i.category === "Meals").length,
+    Drinks: menuItems.filter(i => i.category === 'Drinks').length,
+    Snacks: menuItems.filter(i => i.category === 'Snacks').length,
+    Meals: menuItems.filter(i => i.category === 'Meals').length,
   };
 
   return (
@@ -111,10 +97,7 @@ export const MenuManagement = () => {
             className="pl-10"
           />
         </div>
-        <Button
-          onClick={openAddDialog}
-          className="bg-[#6B4423] hover:bg-[#4A2C1A] text-white"
-        >
+        <Button onClick={openAddDialog} className="bg-[#6B4423] hover:bg-[#4A2C1A] text-white">
           <Plus className="w-4 h-4 mr-2" />
           Add Menu Item
         </Button>
@@ -132,11 +115,8 @@ export const MenuManagement = () => {
 
       {/* Menu Items Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredItems.map((item) => (
-          <Card
-            key={item.id}
-            className="overflow-hidden border-[#E8D5BF] hover:shadow-lg transition-shadow"
-          >
+        {filteredItems.map(item => (
+          <Card key={item.id} className="overflow-hidden border-[#E8D5BF] hover:shadow-lg transition-shadow">
             <div className="aspect-video bg-[#F5E6D3] relative overflow-hidden">
               <ImageWithFallback
                 src={`https://source.unsplash.com/400x300/?${item.image}`}
@@ -153,19 +133,13 @@ export const MenuManagement = () => {
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="font-semibold text-[#2C1810]">{item.name}</h3>
-                  <p className="text-sm text-[#8B6F47] mt-1">
-                    {item.description}
-                  </p>
+                  <p className="text-sm text-[#8B6F47] mt-1">{item.description}</p>
                 </div>
-                <Badge className="bg-[#2D5A3D] text-white">
-                  {item.category}
-                </Badge>
+                <Badge className="bg-[#2D5A3D] text-white">{item.category}</Badge>
               </div>
-
+              
               <div className="flex justify-between items-center pt-3 border-t border-[#E8D5BF]">
-                <span className="text-xl font-bold text-[#6B4423]">
-                  ${item.price.toFixed(2)}
-                </span>
+                <span className="text-xl font-bold text-[#6B4423]">${item.price.toFixed(2)}</span>
                 <div className="flex gap-2">
                   <Button
                     onClick={() => openEditDialog(item)}
@@ -194,19 +168,15 @@ export const MenuManagement = () => {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>
-              {editingItem ? "Edit Menu Item" : "Add Menu Item"}
-            </DialogTitle>
+            <DialogTitle>{editingItem ? 'Edit Menu Item' : 'Add Menu Item'}</DialogTitle>
           </DialogHeader>
-
+          
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Item Name</Label>
               <Input
                 value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Enter item name"
               />
             </div>
@@ -215,9 +185,7 @@ export const MenuManagement = () => {
               <Label>Category</Label>
               <Select
                 value={formData.category}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, category: value })
-                }
+                onValueChange={(value) => setFormData({ ...formData, category: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -236,9 +204,7 @@ export const MenuManagement = () => {
                 type="number"
                 step="0.01"
                 value={formData.price}
-                onChange={(e) =>
-                  setFormData({ ...formData, price: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                 placeholder="0.00"
               />
             </div>
@@ -247,9 +213,7 @@ export const MenuManagement = () => {
               <Label>Description</Label>
               <Input
                 value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Brief description"
               />
             </div>
@@ -259,26 +223,17 @@ export const MenuManagement = () => {
                 type="checkbox"
                 id="available"
                 checked={formData.available}
-                onChange={(e) =>
-                  setFormData({ ...formData, available: e.target.checked })
-                }
+                onChange={(e) => setFormData({ ...formData, available: e.target.checked })}
                 className="w-4 h-4 rounded border-[#E8D5BF]"
               />
-              <Label htmlFor="available" className="cursor-pointer">
-                Available for order
-              </Label>
+              <Label htmlFor="available" className="cursor-pointer">Available for order</Label>
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSave}
-              className="bg-[#6B4423] hover:bg-[#4A2C1A] text-white"
-            >
-              {editingItem ? "Update" : "Add"} Item
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSave} className="bg-[#6B4423] hover:bg-[#4A2C1A] text-white">
+              {editingItem ? 'Update' : 'Add'} Item
             </Button>
           </DialogFooter>
         </DialogContent>
