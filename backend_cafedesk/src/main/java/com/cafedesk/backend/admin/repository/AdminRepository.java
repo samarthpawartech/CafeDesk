@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.cafedesk.backend.admin.entity.Admin;
 
 public interface AdminRepository extends JpaRepository<Admin, Long> {
-    Optional<Admin> findByUsername(String username);
 
-    Optional<Object> findByUsernameAndPassword(String username, String password);
+    Optional<Admin> findByUsernameAndPassword(String username, String password);
 }

@@ -2,16 +2,20 @@ package com.cafedesk.backend.admin.service;
 
 import org.springframework.stereotype.Service;
 
+import com.cafedesk.backend.admin.repository.AdminRepository;
+
 @Service
 public class AdminService {
 
+    private final AdminRepository adminRepository;
+
+    public AdminService(AdminRepository adminRepository) {
+        this.adminRepository = adminRepository;
+    }
+
     public boolean authenticate(String username, String password) {
-
-        // Example hardcoded validation
-        if ("admin".equals(username) && "admin123".equals(password)) {
-            return true;
-        }
-
-        return false;
+        return adminRepository
+                .findByUsernameAndPassword(username, password)
+                .isPresent();
     }
 }
