@@ -9,7 +9,6 @@ import com.cafedesk.backend.admin.service.AdminService;
 
 @RestController
 @RequestMapping("/api/admin")
-@CrossOrigin(origins = "http://localhost:3000")
 public class AdminAuthController {
 
     private final AdminService adminService;
@@ -19,21 +18,22 @@ public class AdminAuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody AdminLoginRequest request) {
+    public ResponseEntity<AdminLoginResponse> login(
+            @RequestBody AdminLoginRequest request) {
 
-        boolean isValid = adminService.authenticate(
+        String token = adminService.authenticate(
                 request.getUsername(),
                 request.getPassword()
         );
 
-        if (isValid) {
-            return ResponseEntity.ok(
-                    new AdminLoginResponse("Login successful", null)
-            );
+        if (token == null) {
+            return ResponseEntity
+                    .status(401)
+                    .body(new AdminLoginResponse("Invalid username or password", null));
         }
 
-        return ResponseEntity
-                .status(401)
-                .body(new AdminLoginResponse("Invalid username or password", null));
+        return ResponseEntity.ok(
+                new AdminLoginResponse("Login successful", token)
+        );
     }
 }

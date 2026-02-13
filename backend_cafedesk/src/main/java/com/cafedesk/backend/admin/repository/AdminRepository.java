@@ -8,5 +8,6 @@ import com.cafedesk.backend.admin.entity.Admin;
 
 public interface AdminRepository extends JpaRepository<Admin, Long> {
 
-    Optional<Admin> findByUsernameAndPassword(String username, String password);
+    // ✅ Find by username only
+    Optional<Admin> findByUsername(String username);
 }

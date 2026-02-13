@@ -1,87 +1,53 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState } from "react";
+import axios from "axios";
+import { useNavigate } from "react-router-dom"; // for Vite + React Router
 
-const AuthContext = createContext(null);
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [currentOrder, setCurrentOrder] = useState([]);
+  const navigate = useNavigate();
 
-  const login = (username, password, role) => {
-    // Mock login - in production this would call an API
-    setUser({
-      username,
-      role,
-      name: username,
-    });
-    return true;
+  const login = async (username, password, role) => {
+    try {
+      const response = await axios.post(
+        "http://localhost:8080/api/admin/login",
+        {
+          username: username,
+          password: password,
+        },
+      );
+
+      const token = response.data.token; // ✅ IMPORTANT
+
+      // Save JWT
+      localStorage.setItem("token", token);
+
+      setUser({
+        username,
+        role,
+      });
+
+      alert("Login Successful ✅");
+
+      navigate("/admin/dashboard");
+    } catch (error) {
+      console.error("Login failed:", error);
+      alert("Invalid Username or Password ❌");
+    }
   };
 
   const logout = () => {
+    localStorage.removeItem("token");
     setUser(null);
-    setCurrentOrder([]);
-  };
-
-  const addToOrder = (item) => {
-    setCurrentOrder(prev => {
-      const existingItem = prev.find(i => i.id === item.id);
-      if (existingItem) {
-        return prev.map(i => 
-          i.id === item.id 
-            ? { ...i, quantity: i.quantity + 1 }
-            : i
-        );
-      }
-      return [...prev, { ...item, quantity: 1 }];
-    });
-  };
-
-  const removeFromOrder = (itemId) => {
-    setCurrentOrder(prev => prev.filter(item => item.id !== itemId));
-  };
-
-  const updateQuantity = (itemId, quantity) => {
-    if (quantity <= 0) {
-      removeFromOrder(itemId);
-      return;
-    }
-    setCurrentOrder(prev => 
-      prev.map(item => 
-        item.id === itemId 
-          ? { ...item, quantity }
-          : item
-      )
-    );
-  };
-
-  const clearOrder = () => {
-    setCurrentOrder([]);
-  };
-
-  const getTotalAmount = () => {
-    return currentOrder.reduce((total, item) => total + (item.price * item.quantity), 0);
+    navigate("/admin/login");
   };
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      login,
-      logout,
-      currentOrder,
-      addToOrder,
-      removeFromOrder,
-      updateQuantity,
-      clearOrder,
-      getTotalAmount,
-    }}>
+    <AuthContext.Provider value={{ user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
 };
+
+export const useAuth = () => useContext(AuthContext);
