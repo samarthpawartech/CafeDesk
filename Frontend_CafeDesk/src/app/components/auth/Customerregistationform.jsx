@@ -1,4 +1,5 @@
 import { useState } from "react";
+import axios from "axios";
 
 export const CustomerRegistrationForm = () => {
   const [username, setUsername] = useState("");
@@ -9,8 +10,9 @@ export const CustomerRegistrationForm = () => {
   const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
@@ -19,21 +21,34 @@ export const CustomerRegistrationForm = () => {
       setError("Passwords do not match!");
       return;
     }
-    if (!username || !password) {
-      setError("Username and Password are required!");
-      return;
+
+    try {
+      setLoading(true);
+
+      await axios.post("http://localhost:8080/api/auth/register", {
+        username,
+        password,
+        fullName,
+        email,
+        phone,
+      });
+
+      setSuccess("Registration successful! You can now login.");
+
+      setUsername("");
+      setPassword("");
+      setConfirmPassword("");
+      setFullName("");
+      setEmail("");
+      setPhone("");
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          "Registration failed. Username may already exist.",
+      );
+    } finally {
+      setLoading(false);
     }
-
-    const customerData = { username, password, fullName, email, phone };
-    console.log("Customer Registered:", customerData);
-    setSuccess("Registration successful!");
-
-    setUsername("");
-    setPassword("");
-    setConfirmPassword("");
-    setFullName("");
-    setEmail("");
-    setPhone("");
   };
 
   return (
@@ -47,52 +62,58 @@ export const CustomerRegistrationForm = () => {
           placeholder="Username *"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          className="p-3 rounded-xl bg-[#FFFDF9] border border-[#E6D3B3] focus:outline-none focus:ring-2 focus:ring-[#C8A97E]"
+          className="p-3 rounded-xl bg-[#FFFDF9] border border-[#E6D3B3]"
           required
         />
+
         <input
           type="password"
           placeholder="Password *"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="p-3 rounded-xl bg-[#FFFDF9] border border-[#E6D3B3] focus:outline-none focus:ring-2 focus:ring-[#C8A97E]"
+          className="p-3 rounded-xl bg-[#FFFDF9] border border-[#E6D3B3]"
           required
         />
+
         <input
           type="password"
           placeholder="Confirm Password *"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          className="p-3 rounded-xl bg-[#FFFDF9] border border-[#E6D3B3] focus:outline-none focus:ring-2 focus:ring-[#C8A97E]"
+          className="p-3 rounded-xl bg-[#FFFDF9] border border-[#E6D3B3]"
           required
         />
+
         <input
           type="text"
           placeholder="Full Name"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
-          className="p-3 rounded-xl bg-[#FFFDF9] border border-[#E6D3B3] focus:outline-none focus:ring-2 focus:ring-[#C8A97E]"
+          className="p-3 rounded-xl bg-[#FFFDF9] border border-[#E6D3B3]"
         />
+
         <input
           type="email"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="p-3 rounded-xl bg-[#FFFDF9] border border-[#E6D3B3] focus:outline-none focus:ring-2 focus:ring-[#C8A97E]"
+          className="p-3 rounded-xl bg-[#FFFDF9] border border-[#E6D3B3]"
         />
+
         <input
           type="tel"
           placeholder="Phone Number"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
-          className="p-3 rounded-xl bg-[#FFFDF9] border border-[#E6D3B3] focus:outline-none focus:ring-2 focus:ring-[#C8A97E]"
+          className="p-3 rounded-xl bg-[#FFFDF9] border border-[#E6D3B3]"
         />
 
         <button
           type="submit"
-          className="bg-gradient-to-r from-[#D6B48A] to-[#C49A6C] text-white font-semibold p-3 rounded-xl hover:from-[#C49A6C] hover:to-[#B68A5A] transition-all duration-300 shadow-md"
+          disabled={loading}
+          className="bg-gradient-to-r from-[#D6B48A] to-[#C49A6C] text-white font-semibold p-3 rounded-xl"
         >
-          Register
+          {loading ? "Registering..." : "Register"}
         </button>
       </form>
     </div>

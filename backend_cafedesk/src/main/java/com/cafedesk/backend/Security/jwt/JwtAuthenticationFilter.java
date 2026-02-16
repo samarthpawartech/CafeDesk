@@ -35,34 +35,33 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String username = null;
         String jwt = null;
 
-        // ✅ Check if Authorization header exists
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             jwt = authHeader.substring(7);
-            username = jwtUtil.extractUsername(jwt);
-        }
-
-        // ✅ If username extracted and not already authenticated
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
             if (jwtUtil.validateToken(jwt)) {
-
-                String role = jwtUtil.extractRole(jwt);
-
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(
-                                username,
-                                null,
-                                Collections.singletonList(
-                                        new SimpleGrantedAuthority("ROLE_" + role)
-                                )
-                        );
-
-                authToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
-
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+                username = jwtUtil.extractUsername(jwt);
             }
+        }
+
+        if (username != null &&
+                SecurityContextHolder.getContext().getAuthentication() == null) {
+
+            String role = jwtUtil.extractRole(jwt);
+
+            UsernamePasswordAuthenticationToken authToken =
+                    new UsernamePasswordAuthenticationToken(
+                            username,
+                            null,
+                            Collections.singletonList(
+                                    new SimpleGrantedAuthority(role)
+                            )
+                    );
+
+            authToken.setDetails(
+                    new WebAuthenticationDetailsSource().buildDetails(request)
+            );
+
+            SecurityContextHolder.getContext().setAuthentication(authToken);
         }
 
         filterChain.doFilter(request, response);
