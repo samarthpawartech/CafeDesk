@@ -32,21 +32,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         final String authHeader = request.getHeader("Authorization");
 
-        String username = null;
-        String jwt = null;
-
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            jwt = authHeader.substring(7);
-
-            if (jwtUtil.validateToken(jwt)) {
-                username = jwtUtil.extractUsername(jwt);
-            }
+        // ✅ If no Authorization header → skip JWT logic
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
         }
 
+        String jwt = authHeader.substring(7);
+
+        // ✅ If token invalid → skip authentication (do NOT block request)
+        if (!jwtUtil.validateToken(jwt)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String username = jwtUtil.extractUsername(jwt);
+        String role = jwtUtil.extractRole(jwt);
+
+        // ✅ Set authentication only if not already authenticated
         if (username != null &&
                 SecurityContextHolder.getContext().getAuthentication() == null) {
-
-            String role = jwtUtil.extractRole(jwt);
 
             UsernamePasswordAuthenticationToken authToken =
                     new UsernamePasswordAuthenticationToken(

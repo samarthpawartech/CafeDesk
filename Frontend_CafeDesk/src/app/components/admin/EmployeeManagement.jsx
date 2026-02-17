@@ -1,219 +1,460 @@
-import { useState } from 'react';
-import { Users, UserPlus, Mail, Phone, Clock, CheckCircle, XCircle } from 'lucide-react';
-import { employees as initialEmployees } from '@/app/utils/mockData';
-import { Card } from '@/app/components/ui/card';
-import { Button } from '@/app/components/ui/button';
-import { Badge } from '@/app/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/app/components/ui/avatar';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/table';
+"use client";
 
-export const EmployeeManagement = () => {
-  const [employees, setEmployees] = useState(initialEmployees);
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Search, ChevronDown, Edit, Trash2, Plus, User } from "lucide-react";
 
-  const roleColors = {
-    Barista: 'bg-[#6B4423]',
-    Waiter: 'bg-[#2D5A3D]',
-    Chef: 'bg-[#D4A574]',
-    Manager: 'bg-[#8B6F47]',
+const BASE_URL = "http://localhost:8080/api/employee";
+
+const roles = ["Chef", "Waiter", "Barista", "Store Manager", "General Manager"];
+const shifts = ["Morning Shift", "Evening Shift", "Full-Day Shift"];
+const statuses = ["Active", "Unactive", "On-Leave", "Ex Employee"];
+
+const roleMap = {
+  Chef: "CHEF",
+  Waiter: "WAITER",
+  Barista: "BARISTA",
+  "Store Manager": "STORE_MANAGER",
+  "General Manager": "GENERAL_MANAGER",
+};
+
+const shiftMap = {
+  "Morning Shift": "MORNING_SHIFT",
+  "Evening Shift": "EVENING_SHIFT",
+  "Full-Day Shift": "FULL_DAY_SHIFT",
+};
+
+const statusMap = {
+  Active: "ACTIVE",
+  Unactive: "UNACTIVE",
+  "On-Leave": "ON_LEAVE",
+  "Ex Employee": "EX_EMPLOYEE",
+};
+
+export default function EmployeeManagement() {
+  const [employees, setEmployees] = useState([]);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [openDetails, setOpenDetails] = useState(null);
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [notification, setNotification] = useState(null);
+
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+
+  const fetchEmployees = async () => {
+    try {
+      const res = await fetch(BASE_URL);
+      if (!res.ok) throw new Error("Failed to fetch employees");
+      const data = await res.json();
+      setEmployees(data);
+    } catch (err) {
+      console.error(err);
+      setNotification({ type: "error", message: "Failed to fetch employees!" });
+      setTimeout(() => setNotification(null), 3000);
+    }
   };
 
-  const shiftColors = {
-    Morning: 'bg-blue-500',
-    Evening: 'bg-purple-500',
-    'Full-day': 'bg-green-500',
+  const filteredEmployees = employees.filter((emp) => {
+    const matchesSearch = emp.name.toLowerCase().includes(search.toLowerCase());
+    const matchesStatus =
+      statusFilter === "All" || emp.status === statusMap[statusFilter];
+    return matchesSearch && matchesStatus;
+  });
+
+  const activeEmployees = filteredEmployees.filter(
+    (emp) => emp.status === "ACTIVE",
+  );
+
+  const deleteEmployee = async (id) => {
+    try {
+      const res = await fetch(`${BASE_URL}/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete employee");
+      setEmployees((prev) => prev.filter((emp) => emp.id !== id));
+      setNotification({
+        type: "success",
+        message: "Employee deleted successfully!",
+      });
+      setTimeout(() => setNotification(null), 3000);
+    } catch (err) {
+      console.error(err);
+      setNotification({ type: "error", message: "Failed to delete employee!" });
+      setTimeout(() => setNotification(null), 3000);
+    }
   };
 
-  const getInitials = (name) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase();
+  const saveEmployee = async (data) => {
+    try {
+      const payload = {
+        ...data,
+        role: roleMap[data.role] || data.role,
+        shift: shiftMap[data.shift] || data.shift,
+        status: statusMap[data.status] || data.status,
+        salary: Number(data.salary || 0),
+      };
+
+      let res, savedEmployee;
+      if (data.id) {
+        res = await fetch(`${BASE_URL}/${data.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error("Failed to update employee");
+        savedEmployee = await res.json();
+        setEmployees((prev) =>
+          prev.map((emp) =>
+            emp.id === savedEmployee.id ? savedEmployee : emp,
+          ),
+        );
+        setNotification({
+          type: "success",
+          message: "Employee updated successfully!",
+        });
+      } else {
+        const { id, ...dataToSend } = payload;
+        res = await fetch(BASE_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(dataToSend),
+        });
+        if (!res.ok) throw new Error("Failed to create employee");
+        savedEmployee = await res.json();
+        setEmployees((prev) => [...prev, savedEmployee]);
+        setNotification({
+          type: "success",
+          message: "Employee added successfully!",
+        });
+      }
+
+      setSelectedEmployee(null);
+      setShowAddModal(false);
+      setTimeout(() => setNotification(null), 3000);
+    } catch (err) {
+      console.error(err);
+      setNotification({ type: "error", message: "Failed to save employee!" });
+      setTimeout(() => setNotification(null), 3000);
+    }
   };
 
-  const toggleStatus = (id) => {
-    setEmployees(employees.map(emp => 
-      emp.id === id 
-        ? { ...emp, status: emp.status === 'active' ? 'inactive' : 'active' }
-        : emp
-    ));
+  const statusColor = (status) => {
+    switch (status) {
+      case "ACTIVE":
+        return "bg-green-100 text-green-600";
+      case "ON_LEAVE":
+        return "bg-yellow-100 text-yellow-600";
+      case "EX_EMPLOYEE":
+        return "bg-red-100 text-red-600";
+      default:
+        return "bg-gray-100 text-gray-600";
+    }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="p-6 border-[#E8D5BF]">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-[#6B4423] rounded-lg flex items-center justify-center">
-              <Users className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <p className="text-sm text-[#8B6F47]">Total Staff</p>
-              <p className="text-2xl font-bold text-[#2C1810]">{employees.length}</p>
-            </div>
-          </div>
-        </Card>
+    <div className="min-h-screen bg-gradient-to-br from-[#fdfcfb] via-[#f8f5f2] to-[#f3efe9] p-10 text-gray-800">
+      <h1 className="text-4xl font-bold text-center mb-8 text-gray-700">
+        Employee Management
+      </h1>
 
-        <Card className="p-6 border-[#E8D5BF]">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
-              <CheckCircle className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <p className="text-sm text-[#8B6F47]">Active</p>
-              <p className="text-2xl font-bold text-[#2C1810]">
-                {employees.filter(e => e.status === 'active').length}
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-6 border-[#E8D5BF]">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
-              <Clock className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <p className="text-sm text-[#8B6F47]">On Shift</p>
-              <p className="text-2xl font-bold text-[#2C1810]">
-                {employees.filter(e => e.status === 'active').length}
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-6 border-[#E8D5BF]">
-          <Button className="w-full bg-[#2D5A3D] hover:bg-[#1F3D2A] text-white h-full">
-            <UserPlus className="w-5 h-5 mr-2" />
-            Add Employee
-          </Button>
-        </Card>
+      {/* Search + Add */}
+      <div className="flex flex-col md:flex-row justify-center gap-4 mb-6 items-center">
+        <div className="relative w-96">
+          <Search className="absolute left-3 top-3 text-gray-400" size={18} />
+          <input
+            type="text"
+            placeholder="Search employee..."
+            className="w-full pl-10 pr-4 py-2 rounded-xl bg-white/60 backdrop-blur border border-white/40 focus:ring-2 focus:ring-amber-300 outline-none"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-2 px-5 py-2 bg-amber-400 hover:bg-amber-500 text-white rounded-xl shadow"
+        >
+          <Plus size={18} /> Add Employee
+        </motion.button>
       </div>
 
-      {/* Employee Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {employees.map(employee => (
-          <Card key={employee.id} className="p-6 border-[#E8D5BF] hover:shadow-lg transition-shadow">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <Avatar className="w-12 h-12 bg-[#6B4423] text-white">
-                  <AvatarFallback>{getInitials(employee.name)}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="font-semibold text-[#2C1810]">{employee.name}</h3>
-                  <Badge className={`${roleColors[employee.role]} text-white mt-1`}>
-                    {employee.role}
-                  </Badge>
-                </div>
-              </div>
-              <Badge className={
-                employee.status === 'active' 
-                  ? 'bg-green-500 text-white' 
-                  : 'bg-gray-400 text-white'
-              }>
-                {employee.status === 'active' ? (
-                  <><CheckCircle className="w-3 h-3 mr-1" />Active</>
-                ) : (
-                  <><XCircle className="w-3 h-3 mr-1" />Inactive</>
-                )}
-              </Badge>
-            </div>
-
-            <div className="space-y-2 mb-4">
-              <div className="flex items-center gap-2 text-sm text-[#8B6F47]">
-                <Mail className="w-4 h-4" />
-                {employee.email}
-              </div>
-              <div className="flex items-center gap-2 text-sm text-[#8B6F47]">
-                <Phone className="w-4 h-4" />
-                {employee.phone}
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Clock className="w-4 h-4 text-[#8B6F47]" />
-                <Badge className={`${shiftColors[employee.shift]} text-white`}>
-                  {employee.shift} Shift
-                </Badge>
-              </div>
-            </div>
-
-            <div className="flex gap-2 pt-4 border-t border-[#E8D5BF]">
-              <Button
-                onClick={() => toggleStatus(employee.id)}
-                variant="outline"
-                size="sm"
-                className="flex-1 border-[#E8D5BF] text-[#6B4423] hover:bg-[#F5E6D3]"
-              >
-                {employee.status === 'active' ? 'Deactivate' : 'Activate'}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 border-[#E8D5BF] text-[#6B4423] hover:bg-[#F5E6D3]"
-              >
-                Edit
-              </Button>
-            </div>
-          </Card>
+      {/* Active Employees */}
+      <h2 className="text-2xl font-semibold mb-4 text-gray-700">
+        Active Employees
+      </h2>
+      <div className="grid md:grid-cols-3 gap-6 mb-10">
+        {activeEmployees.length === 0 && (
+          <p className="text-gray-500 col-span-full text-center">
+            No active employees found.
+          </p>
+        )}
+        {activeEmployees.map((emp) => (
+          <EmployeeCard
+            key={emp.id}
+            emp={emp}
+            openDetails={openDetails}
+            setOpenDetails={setOpenDetails}
+            setSelectedEmployee={setSelectedEmployee}
+            deleteEmployee={deleteEmployee}
+            statusColor={statusColor}
+          />
         ))}
       </div>
 
-      {/* Detailed Table */}
-      <Card className="border-[#E8D5BF]">
-        <div className="p-6 border-b border-[#E8D5BF]">
-          <h3 className="font-semibold text-[#2C1810]">Employee Details</h3>
-        </div>
+      {/* Status Filter */}
+      <div className="flex gap-3 mb-6 items-center">
+        <span className="font-semibold text-gray-700">Filter by Status:</span>
+        <select
+          className="px-3 py-2 rounded-xl border border-gray-300 bg-white text-gray-700"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          <option>All</option>
+          {statuses.map((st) => (
+            <option key={st}>{st}</option>
+          ))}
+        </select>
+      </div>
 
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-[#F5E6D3] hover:bg-[#F5E6D3]">
-                <TableHead className="text-[#2C1810]">Name</TableHead>
-                <TableHead className="text-[#2C1810]">Role</TableHead>
-                <TableHead className="text-[#2C1810]">Email</TableHead>
-                <TableHead className="text-[#2C1810]">Phone</TableHead>
-                <TableHead className="text-[#2C1810]">Shift</TableHead>
-                <TableHead className="text-[#2C1810]">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {employees.map(employee => (
-                <TableRow key={employee.id} className="hover:bg-[#FBF8F3]">
-                  <TableCell className="font-medium text-[#2C1810]">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="w-8 h-8 bg-[#6B4423] text-white">
-                        <AvatarFallback className="text-xs">{getInitials(employee.name)}</AvatarFallback>
-                      </Avatar>
-                      {employee.name}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={`${roleColors[employee.role]} text-white`}>
-                      {employee.role}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-[#8B6F47]">{employee.email}</TableCell>
-                  <TableCell className="text-[#8B6F47]">{employee.phone}</TableCell>
-                  <TableCell>
-                    <Badge className={`${shiftColors[employee.shift]} text-white`}>
-                      {employee.shift}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={
-                      employee.status === 'active' 
-                        ? 'bg-green-500 text-white' 
-                        : 'bg-gray-400 text-white'
-                    }>
-                      {employee.status}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
+      {/* All Employees (Card Grid) */}
+      <h2 className="text-2xl font-semibold mb-4 text-gray-700">
+        All Employees
+      </h2>
+      <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {filteredEmployees.length === 0 && (
+          <p className="text-gray-500 col-span-full text-center">
+            No employees found.
+          </p>
+        )}
+        {filteredEmployees.map((emp) => (
+          <EmployeeCard
+            key={emp.id}
+            emp={emp}
+            openDetails={openDetails}
+            setOpenDetails={setOpenDetails}
+            setSelectedEmployee={setSelectedEmployee}
+            deleteEmployee={deleteEmployee}
+            statusColor={statusColor}
+          />
+        ))}
+      </div>
+
+      {/* Modal */}
+      <AnimatePresence>
+        {(showAddModal || selectedEmployee) && (
+          <EmployeeModal
+            data={
+              selectedEmployee || {
+                name: "",
+                email: "",
+                phone: "",
+                role: roles[0],
+                shift: shifts[0],
+                status: statuses[0],
+                salary: 0,
+              }
+            }
+            onClose={() => {
+              setShowAddModal(false);
+              setSelectedEmployee(null);
+            }}
+            onSave={saveEmployee}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Notification */}
+      {notification && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          className={`fixed top-5 right-5 px-4 py-2 rounded shadow text-white ${
+            notification.type === "success" ? "bg-green-500" : "bg-red-500"
+          }`}
+        >
+          {notification.message}
+        </motion.div>
+      )}
     </div>
   );
-};
+}
+
+// -------------------- Employee Card --------------------
+function EmployeeCard({
+  emp,
+  openDetails,
+  setOpenDetails,
+  setSelectedEmployee,
+  deleteEmployee,
+  statusColor,
+}) {
+  return (
+    <motion.div
+      whileHover={{ y: -6 }}
+      className="bg-white/60 backdrop-blur-xl border border-white/40 rounded-3xl p-6 shadow-lg relative"
+    >
+      <div className="flex items-center gap-3 mb-3">
+        <User className="text-gray-600" />
+        <div>
+          <h3 className="text-lg font-semibold">{emp.name}</h3>
+          <p className="text-sm text-gray-500">{emp.email}</p>
+          <p className="text-sm text-gray-500">{emp.phone}</p>
+          <p className="text-sm text-gray-500">
+            <strong>Salary:</strong> ₹{emp.salary || 0}
+          </p>
+        </div>
+      </div>
+
+      <button
+        onClick={() => setOpenDetails(openDetails === emp.id ? null : emp.id)}
+        className="flex items-center gap-2 text-sm text-amber-600 hover:text-amber-700 font-medium"
+      >
+        View Details
+        <motion.div animate={{ rotate: openDetails === emp.id ? 180 : 0 }}>
+          <ChevronDown size={16} />
+        </motion.div>
+      </button>
+
+      <AnimatePresence>
+        {openDetails === emp.id && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden mt-4 bg-white/70 backdrop-blur border border-white/40 rounded-xl p-4 text-sm space-y-2"
+          >
+            <p>
+              <strong>Role:</strong> {emp.role}
+            </p>
+            <p>
+              <strong>Shift:</strong> {emp.shift}
+            </p>
+            <p>
+              <strong>Status:</strong>{" "}
+              <span
+                className={`px-2 py-1 rounded-full text-xs ${statusColor(emp.status)}`}
+              >
+                {emp.status}
+              </span>
+            </p>
+            <p>
+              <strong>Salary:</strong> ₹{emp.salary || 0}
+            </p>
+            <div className="flex gap-3 pt-3">
+              <button
+                onClick={() => setSelectedEmployee(emp)}
+                className="flex items-center gap-1 text-blue-600 hover:underline"
+              >
+                <Edit size={14} /> Edit
+              </button>
+              <button
+                onClick={() => deleteEmployee(emp.id)}
+                className="flex items-center gap-1 text-red-500 hover:underline"
+              >
+                <Trash2 size={14} /> Delete
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+// -------------------- Modal --------------------
+function EmployeeModal({ data, onClose, onSave }) {
+  const [form, setForm] = useState(data);
+
+  return (
+    <motion.div
+      className="fixed inset-0 bg-black/20 backdrop-blur-sm flex justify-center items-center z-50"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      <motion.div
+        initial={{ scale: 0.9 }}
+        animate={{ scale: 1 }}
+        exit={{ scale: 0.9 }}
+        className="bg-white/90 backdrop-blur-2xl border border-white/50 rounded-3xl p-8 w-[420px] shadow-xl"
+      >
+        <h2 className="text-2xl mb-6 text-gray-700">
+          {data.id ? "Edit Employee" : "Add Employee"}
+        </h2>
+
+        <div className="space-y-3">
+          <input
+            placeholder="Full Name"
+            className="w-full px-4 py-2 rounded-xl bg-white/70 border border-white/40"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+          <input
+            placeholder="Email"
+            className="w-full px-4 py-2 rounded-xl bg-white/70 border border-white/40"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+          />
+          <input
+            placeholder="Phone"
+            className="w-full px-4 py-2 rounded-xl bg-white/70 border border-white/40"
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+          />
+          <input
+            type="number"
+            placeholder="Salary"
+            className="w-full px-4 py-2 rounded-xl bg-white/70 border border-white/40"
+            value={form.salary}
+            onChange={(e) => setForm({ ...form, salary: e.target.value })}
+          />
+          <select
+            className="w-full px-4 py-2 rounded-xl bg-white/70 border border-white/40"
+            value={form.role}
+            onChange={(e) => setForm({ ...form, role: e.target.value })}
+          >
+            {roles.map((r) => (
+              <option key={r}>{r}</option>
+            ))}
+          </select>
+          <select
+            className="w-full px-4 py-2 rounded-xl bg-white/70 border border-white/40"
+            value={form.shift}
+            onChange={(e) => setForm({ ...form, shift: e.target.value })}
+          >
+            {shifts.map((s) => (
+              <option key={s}>{s}</option>
+            ))}
+          </select>
+          <select
+            className="w-full px-4 py-2 rounded-xl bg-white/70 border border-white/40"
+            value={form.status}
+            onChange={(e) => setForm({ ...form, status: e.target.value })}
+          >
+            {statuses.map((st) => (
+              <option key={st}>{st}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex justify-end gap-4 mt-6">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onSave(form)}
+            className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-500 text-white"
+          >
+            Save
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
