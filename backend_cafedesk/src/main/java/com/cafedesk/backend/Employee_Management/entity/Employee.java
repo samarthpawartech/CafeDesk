@@ -7,7 +7,7 @@ import com.cafedesk.backend.Employee_Management.enums.EmployeeStatus;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "Employee_Management")
+@Table(name = "Staff_Data")
 public class Employee {
 
     @Id

@@ -1,28 +1,35 @@
-import { Coffee, User, Briefcase, Shield } from 'lucide-react';
-import { Card } from '@/app/components/ui/card';
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { Coffee, User, Briefcase, Shield } from "lucide-react";
+import { Card } from "@/app/components/ui/card";
 
-export const RoleSelector = ({ onSelectRole }) => {
+export const RoleSelector = () => {
+  const navigate = useNavigate();
+
   const roles = [
     {
-      id: 'customer',
-      name: 'Customer',
-      description: 'Browse menu and place orders',
+      id: "customer",
+      name: "Customer",
+      description: "Browse menu and place orders",
       icon: User,
-      color: 'from-[#6B4423] to-[#4A2C1A]',
+      color: "from-[#6B4423] to-[#4A2C1A]",
+      route: "/login/customer",
     },
     {
-      id: 'employee',
-      name: 'Employee',
-      description: 'Manage orders and tables',
+      id: "employee",
+      name: "Employee",
+      description: "Manage orders and tables",
       icon: Briefcase,
-      color: 'from-[#2D5A3D] to-[#1F3D2A]',
+      color: "from-[#2D5A3D] to-[#1F3D2A]",
+      route: "/login/employee",
     },
     {
-      id: 'admin',
-      name: 'Admin',
-      description: 'Full system control',
+      id: "admin",
+      name: "Admin",
+      description: "Full system control",
       icon: Shield,
-      color: 'from-[#8B6F47] to-[#6B4423]',
+      color: "from-[#8B6F47] to-[#6B4423]",
+      route: "/login/admin",
     },
   ];
 
@@ -35,7 +42,9 @@ export const RoleSelector = ({ onSelectRole }) => {
             <Coffee className="w-14 h-14 text-white" />
           </div>
           <h1 className="text-5xl font-bold text-[#2C1810] mb-3">CafeDesk</h1>
-          <p className="text-xl text-[#8B6F47] mb-2">Modern Café Management System</p>
+          <p className="text-xl text-[#8B6F47] mb-2">
+            Modern Café Management System
+          </p>
           <p className="text-sm text-[#8B6F47]">Developed by Samarth Pawar</p>
         </div>
 
@@ -43,21 +52,23 @@ export const RoleSelector = ({ onSelectRole }) => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {roles.map((role) => {
             const Icon = role.icon;
-            
             return (
               <Card
                 key={role.id}
-                onClick={() => onSelectRole(role.id)}
+                onClick={() => navigate(role.route)}
                 className="group cursor-pointer border-2 border-[#E8D5BF] hover:border-[#6B4423] transition-all hover:shadow-2xl hover:-translate-y-2 duration-300 overflow-hidden"
               >
-                <div className={`bg-gradient-to-br ${role.color} p-8 text-center`}>
+                <div
+                  className={`bg-gradient-to-br ${role.color} p-8 text-center`}
+                >
                   <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl mb-4 group-hover:scale-110 transition-transform">
                     <Icon className="w-10 h-10 text-white" />
                   </div>
-                  <h2 className="text-2xl font-bold text-white mb-2">{role.name}</h2>
+                  <h2 className="text-2xl font-bold text-white mb-2">
+                    {role.name}
+                  </h2>
                   <p className="text-white/90">{role.description}</p>
                 </div>
-                
                 <div className="p-6 bg-white text-center">
                   <p className="text-[#6B4423] font-medium group-hover:underline">
                     Continue as {role.name} →
