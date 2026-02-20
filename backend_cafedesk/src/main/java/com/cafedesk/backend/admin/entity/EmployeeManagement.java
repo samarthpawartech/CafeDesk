@@ -1,14 +1,14 @@
-package com.cafedesk.backend.Employee_Management.entity;
+package com.cafedesk.backend.admin.entity;
 
-import com.cafedesk.backend.Employee_Management.enums.EmployeeRole;
-import com.cafedesk.backend.Employee_Management.enums.EmployeeShift;
-import com.cafedesk.backend.Employee_Management.enums.EmployeeStatus;
+import com.cafedesk.backend.admin.enums.EmployeeManagementRole;
+import com.cafedesk.backend.admin.enums.EmployeeManagementShift;
+import com.cafedesk.backend.admin.enums.EmployeeManagementStatus;
 
 import jakarta.persistence.*;
 
 @Entity
 @Table(name = "Staff_Data")
-public class Employee {
+public class EmployeeManagement {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,24 +25,24 @@ public class Employee {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private EmployeeRole role;
+    private EmployeeManagementRole role;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private EmployeeShift shift;
+    private EmployeeManagementShift shift;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private EmployeeStatus status;
+    private EmployeeManagementStatus status;
 
     @Column(nullable = false)
     private Double salary;
 
-    public Employee() {}
+    public EmployeeManagement() {}
 
-    public Employee(String name, String email, String phone,
-                    EmployeeRole role, EmployeeShift shift,
-                    EmployeeStatus status, Double salary) {
+    public EmployeeManagement(String name, String email, String phone,
+                              EmployeeManagementRole role, EmployeeManagementShift shift,
+                              EmployeeManagementStatus status, Double salary) {
         this.name = name;
         this.email = email;
         this.phone = phone;
@@ -63,14 +63,14 @@ public class Employee {
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
 
-    public EmployeeRole getRole() { return role; }
-    public void setRole(EmployeeRole role) { this.role = role; }
+    public EmployeeManagementRole getRole() { return role; }
+    public void setRole(EmployeeManagementRole role) { this.role = role; }
 
-    public EmployeeShift getShift() { return shift; }
-    public void setShift(EmployeeShift shift) { this.shift = shift; }
+    public EmployeeManagementShift getShift() { return shift; }
+    public void setShift(EmployeeManagementShift shift) { this.shift = shift; }
 
-    public EmployeeStatus getStatus() { return status; }
-    public void setStatus(EmployeeStatus status) { this.status = status; }
+    public EmployeeManagementStatus getStatus() { return status; }
+    public void setStatus(EmployeeManagementStatus status) { this.status = status; }
 
     public Double getSalary() { return salary; }
     public void setSalary(Double salary) { this.salary = salary; }

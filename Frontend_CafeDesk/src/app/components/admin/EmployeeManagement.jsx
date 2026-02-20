@@ -1,294 +1,209 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Edit, Trash2, Plus, Search } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Plus, Edit, Trash2, Search } from "lucide-react";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
+import { Badge } from "@/app/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/app/components/ui/dialog";
 
-const BASE_URL = "http://localhost:8080/api/employee";
-
-const roles = ["CHEF", "WAITER", "BARISTA", "STORE_MANAGER", "GENERAL_MANAGER"];
-const shifts = ["MORNING_SHIFT", "EVENING_SHIFT", "FULL_DAY_SHIFT"];
-const statuses = ["ACTIVE", "INACTIVE", "ON_LEAVE", "EX_EMPLOYEE"];
-
-/* ================= Helpers ================= */
-
-const formatLabel = (value) =>
-  value
-    .toLowerCase()
-    .split("_")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
-
-const statusColor = (status) => {
-  switch (status) {
-    case "ACTIVE":
-      return "bg-green-400/20 text-green-700";
-    case "INACTIVE":
-      return "bg-red-400/20 text-red-600";
-    case "ON_LEAVE":
-      return "bg-yellow-400/20 text-yellow-700";
-    case "EX_EMPLOYEE":
-      return "bg-gray-400/20 text-gray-700";
-    default:
-      return "";
-  }
-};
-
-/* ================= Main ================= */
-
-export default function EmployeeManagement() {
+const EmployeeManagement = () => {
   const [employees, setEmployees] = useState([]);
-  const [activeTab, setActiveTab] = useState("ALL");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const [showAddModal, setShowAddModal] = useState(false);
 
-  useEffect(() => {
-    fetchEmployees();
-  }, []);
+  const [formData, setFormData] = useState({
+    id: "",
+    name: "",
+    role: "WAITER",
+    shift: "Morning",
+    available: true,
+  });
 
-  const fetchEmployees = async () => {
-    const res = await fetch(BASE_URL);
-    const data = await res.json();
-    setEmployees(data);
+  const cafeInput =
+    "h-12 w-full rounded-2xl bg-[#fdf6e3]/20 backdrop-blur-md border border-[#fdf6e3]/30 px-5 text-[#333] placeholder:text-[#555] focus:outline-none focus:ring-2 focus:ring-[#fdf6e3]/40 transition-all";
+  const iconClass = "absolute left-4 top-1/2 -translate-y-1/2 text-[#c7a17a]";
+
+  const resetForm = () => {
+    setFormData({
+      id: "",
+      name: "",
+      role: "WAITER",
+      shift: "Morning",
+      available: true,
+    });
+    setEditingEmployee(null);
   };
 
-  /* ===== Filtering Logic ===== */
+  const handleSave = () => {
+    if (!formData.name) return;
+
+    if (editingEmployee) {
+      setEmployees((prev) =>
+        prev.map((emp) =>
+          emp.id === editingEmployee.id ? { ...formData } : emp,
+        ),
+      );
+    } else {
+      const newEmp = { ...formData, id: Date.now() };
+      setEmployees((prev) => [...prev, newEmp]);
+    }
+
+    setIsDialogOpen(false);
+    resetForm();
+  };
+
+  const handleEdit = (emp) => {
+    setEditingEmployee(emp);
+    setFormData(emp);
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = (id) => {
+    setEmployees((prev) => prev.filter((emp) => emp.id !== id));
+  };
 
   const filteredEmployees = useMemo(() => {
-    return employees.filter((emp) => {
-      const matchesTab = activeTab === "ALL" ? true : emp.status === activeTab;
-
-      const matchesSearch =
-        emp.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.phone?.includes(searchTerm);
-
-      return matchesTab && matchesSearch;
-    });
-  }, [employees, activeTab, searchTerm]);
-
-  /* ===== CRUD ===== */
-
-  const saveEmployee = async (data) => {
-    const isEdit = !!data.id;
-    const url = isEdit ? `${BASE_URL}/${data.id}` : BASE_URL;
-    const method = isEdit ? "PUT" : "POST";
-
-    await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...data, salary: Number(data.salary || 0) }),
-    });
-
-    fetchEmployees();
-    setSelectedEmployee(null);
-    setShowAddModal(false);
-  };
-
-  const deleteEmployee = async (id) => {
-    await fetch(`${BASE_URL}/${id}`, { method: "DELETE" });
-    fetchEmployees();
-  };
-
-  /* ================= UI ================= */
+    return employees.filter(
+      (emp) =>
+        emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        emp.role.toLowerCase().includes(searchTerm.toLowerCase()),
+    );
+  }, [employees, searchTerm]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#f8f9fa] via-[#f1f3f5] to-[#e9ecef] p-6 md:p-10">
-      {/* ===== Search Bar (Centered) ===== */}
-      <div className="flex justify-center mb-10">
-        <div className="relative w-full max-w-xl">
-          <Search className="absolute left-4 top-3 text-gray-400" size={18} />
-          <input
-            type="text"
-            placeholder="Search employee by name, email or phone..."
+    <div className="min-h-screen p-10 bg-gradient-to-br from-[#fdf6e3]/10 via-[#fdf6e3]/20 to-[#fdf6e3]/10 backdrop-blur-md">
+      {/* Search + Add */}
+      <div className="mb-12 max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-6">
+        <div className="relative w-full md:flex-1">
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-[#c7a17a]" />
+          <Input
+            placeholder="Search employee..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 rounded-2xl bg-white/60 backdrop-blur-md border border-white/40 shadow-lg focus:outline-none"
+            className={`${cafeInput} pl-12`}
           />
         </div>
-      </div>
 
-      {/* ===== Tabs + Add Button (Same Row) ===== */}
-      <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
-        {/* Tabs */}
-        <div className="flex flex-wrap gap-3">
-          {["ALL", "ACTIVE", "INACTIVE", "ON_LEAVE", "EX_EMPLOYEE"].map(
-            (tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-5 py-2 rounded-2xl text-sm font-medium backdrop-blur-md transition border ${
-                  activeTab === tab
-                    ? "bg-white/80 shadow-md border-white"
-                    : "bg-white/40 border-white/40 hover:bg-white/60"
-                }`}
-              >
-                {formatLabel(tab)}
-              </button>
-            ),
-          )}
-        </div>
-
-        {/* Add Button */}
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 bg-white/70 backdrop-blur-md border border-white/40 shadow-lg px-6 py-2 rounded-2xl hover:scale-105 transition"
+        <Button
+          onClick={() => {
+            resetForm();
+            setIsDialogOpen(true);
+          }}
+          className="h-12 px-8 rounded-2xl bg-[#fdf6e3]/20 backdrop-blur-md border border-[#fdf6e3]/30 text-[#c7a17a] font-semibold hover:bg-[#fdf6e3]/30 transition"
         >
-          <Plus size={18} />
-          Add Employee
-        </button>
+          <Plus className="w-4 h-4 mr-2" /> Add Employee
+        </Button>
       </div>
 
-      {/* ===== Employee Cards ===== */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-        {filteredEmployees.map((emp) => (
-          <motion.div
-            key={emp.id}
-            whileHover={{ y: -8 }}
-            className="bg-white/50 backdrop-blur-xl border border-white/40 rounded-3xl p-6 shadow-xl hover:shadow-2xl transition"
-          >
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800">
-                  {emp.name}
-                </h3>
-                <p className="text-sm text-gray-600">{emp.email}</p>
-                <p className="text-sm text-gray-600">{emp.phone}</p>
+      {/* Employee Cards */}
+      <div className="flex justify-center">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl w-full">
+          {filteredEmployees.map((emp) => (
+            <div
+              key={emp.id}
+              className="rounded-3xl bg-[#fdf6e3]/20 backdrop-blur-md shadow-lg p-6 transition-all hover:shadow-xl"
+            >
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="font-semibold text-[#c7a17a]">{emp.name}</h3>
+                <Badge
+                  className={
+                    emp.available
+                      ? "bg-green-100/50 text-green-700"
+                      : "bg-red-100/50 text-red-600"
+                  }
+                >
+                  {emp.available ? "Available" : "Unavailable"}
+                </Badge>
               </div>
-
-              <span
-                className={`text-xs px-3 py-1 rounded-full font-medium ${statusColor(
-                  emp.status,
-                )}`}
-              >
-                {formatLabel(emp.status)}
-              </span>
+              <p className="text-[#333]/80 text-sm mb-2">Role: {emp.role}</p>
+              <p className="text-[#333]/80 text-sm mb-2">Shift: {emp.shift}</p>
+              <div className="flex gap-2 mt-3">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleEdit(emp)}
+                  className="text-[#333]/80 hover:text-[#c7a17a]"
+                >
+                  <Edit className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleDelete(emp.id)}
+                  className="text-[#333]/80 hover:text-red-400"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
-
-            <div className="mt-5 space-y-2 text-sm text-gray-700">
-              <p>
-                <strong>Role:</strong> {formatLabel(emp.role)}
-              </p>
-              <p>
-                <strong>Shift:</strong> {formatLabel(emp.shift)}
-              </p>
-              <p>
-                <strong>Salary:</strong> ₹{emp.salary || 0}
-              </p>
-            </div>
-
-            <div className="flex gap-6 mt-6 text-sm">
-              <button
-                onClick={() => setSelectedEmployee(emp)}
-                className="text-blue-600 hover:underline flex items-center gap-1"
-              >
-                <Edit size={14} /> Edit
-              </button>
-
-              <button
-                onClick={() => deleteEmployee(emp.id)}
-                className="text-red-500 hover:underline flex items-center gap-1"
-              >
-                <Trash2 size={14} /> Delete
-              </button>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      <AnimatePresence>
-        {(showAddModal || selectedEmployee) && (
-          <EmployeeModal
-            data={
-              selectedEmployee || {
-                id: null,
-                name: "",
-                email: "",
-                phone: "",
-                role: roles[0],
-                shift: shifts[0],
-                status: statuses[0],
-                salary: "",
-              }
-            }
-            onClose={() => {
-              setSelectedEmployee(null);
-              setShowAddModal(false);
-            }}
-            onSave={saveEmployee}
-          />
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-/* ================= Modal (Same As Yours) ================= */
-
-function EmployeeModal({ data, onClose, onSave }) {
-  const [form, setForm] = useState({ ...data });
-
-  useEffect(() => {
-    setForm({ ...data });
-  }, [data]);
-
-  const handleChange = (field, value) =>
-    setForm((prev) => ({ ...prev, [field]: value }));
-
-  return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex justify-center items-center p-4">
-      <div className="bg-white/60 backdrop-blur-2xl border border-white/40 rounded-3xl p-8 w-full max-w-md shadow-2xl space-y-4">
-        <h2 className="text-xl font-semibold text-gray-800">
-          {data.id ? "Edit Employee" : "Add Employee"}
-        </h2>
-
-        {["name", "email", "phone", "salary"].map((field) => (
-          <input
-            key={field}
-            type={field === "salary" ? "number" : "text"}
-            placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
-            className="w-full bg-white/70 border border-white/40 rounded-xl p-2 focus:outline-none"
-            value={form[field]}
-            onChange={(e) => handleChange(field, e.target.value)}
-          />
-        ))}
-
-        {[
-          { key: "role", list: roles },
-          { key: "shift", list: shifts },
-          { key: "status", list: statuses },
-        ].map(({ key, list }) => (
-          <select
-            key={key}
-            value={form[key]}
-            onChange={(e) => handleChange(key, e.target.value)}
-            className="w-full bg-white/70 border border-white/40 rounded-xl p-2"
-          >
-            {list.map((item) => (
-              <option key={item} value={item}>
-                {formatLabel(item)}
-              </option>
-            ))}
-          </select>
-        ))}
-
-        <div className="flex justify-end gap-3 pt-3">
-          <button
-            onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-white/60 border border-white/40"
-          >
-            Cancel
-          </button>
-
-          <button
-            onClick={() => onSave(form)}
-            className="px-5 py-2 rounded-xl bg-white/80 shadow-md"
-          >
-            Save
-          </button>
+          ))}
         </div>
       </div>
+
+      {/* Dialog Form */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <div className="flex items-start md:items-start justify-center min-h-screen pt-10 md:pt-20">
+          <DialogContent className="rounded-3xl bg-[#fdf6e3]/20 backdrop-blur-md shadow-xl border border-[#fdf6e3]/30 mx-auto max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-xl text-[#c7a17a]">
+                {editingEmployee ? "Edit Employee" : "Add Employee"}
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              {editingEmployee && (
+                <Input value={formData.id} disabled className={cafeInput} />
+              )}
+
+              <Input
+                className={cafeInput}
+                placeholder="Employee Name"
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+              />
+
+              <Input
+                className={cafeInput}
+                placeholder="Role (e.g. WAITER)"
+                value={formData.role}
+                onChange={(e) =>
+                  setFormData({ ...formData, role: e.target.value })
+                }
+              />
+
+              <Input
+                className={cafeInput}
+                placeholder="Shift (e.g. Morning)"
+                value={formData.shift}
+                onChange={(e) =>
+                  setFormData({ ...formData, shift: e.target.value })
+                }
+              />
+            </div>
+
+            <DialogFooter>
+              <Button
+                onClick={handleSave}
+                className="rounded-2xl px-8 h-12 bg-[#fdf6e3]/20 backdrop-blur-md border border-[#fdf6e3]/30 text-[#c7a17a] font-semibold hover:bg-[#fdf6e3]/30 transition"
+              >
+                Save Employee
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </div>
+      </Dialog>
     </div>
   );
-}
+};
+
+export default EmployeeManagement;

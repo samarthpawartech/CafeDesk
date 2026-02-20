@@ -1,12 +1,8 @@
-package com.cafedesk.backend.Employee_Management.enums;
-
-import com.cafedesk.backend.Employee_Management.enums.EmployeeRole;
-import com.cafedesk.backend.Employee_Management.enums.EmployeeShift;
-import com.cafedesk.backend.Employee_Management.enums.EmployeeStatus;
+package com.cafedesk.backend.admin.enums;
 
 import jakarta.validation.constraints.*;
 
-public class EmployeeRequest {
+public class EmployeeManagementRequest {
 
     @NotBlank(message = "Name is required")
     private String name;
@@ -20,13 +16,13 @@ public class EmployeeRequest {
     private String phone;
 
     @NotNull(message = "Role is required")
-    private EmployeeRole role;
+    private EmployeeManagementRole role;
 
     @NotNull(message = "Shift is required")
-    private EmployeeShift shift;
+    private EmployeeManagementShift shift;
 
     @NotNull(message = "Status is required")
-    private EmployeeStatus status;
+    private EmployeeManagementStatus status;
 
 
     private Double salary;
@@ -57,27 +53,27 @@ public class EmployeeRequest {
         this.phone = phone;
     }
 
-    public EmployeeRole getRole() {
+    public EmployeeManagementRole getRole() {
         return role;
     }
 
-    public void setRole(EmployeeRole role) {
+    public void setRole(EmployeeManagementRole role) {
         this.role = role;
     }
 
-    public EmployeeShift getShift() {
+    public EmployeeManagementShift getShift() {
         return shift;
     }
 
-    public void setShift(EmployeeShift shift) {
+    public void setShift(EmployeeManagementShift shift) {
         this.shift = shift;
     }
 
-    public EmployeeStatus getStatus() {
+    public EmployeeManagementStatus getStatus() {
         return status;
     }
 
-    public void setStatus(EmployeeStatus status) {
+    public void setStatus(EmployeeManagementStatus status) {
         this.status = status;
     }
 }

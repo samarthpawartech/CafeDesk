@@ -1,28 +1,40 @@
 // src/app/components/auth/CustomerRegistrationForm.jsx
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Lock, Mail, Phone } from "lucide-react";
+import { User, Lock, Mail, Phone, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
-import axios from "axios";
+import axios from "@/app/api/axiosConfig";
 
 export const CustomerRegistrationForm = () => {
   const navigate = useNavigate();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+
+  const [formData, setFormData] = useState({
+    username: "",
+    password: "",
+    confirmPassword: "",
+    fullName: "",
+    email: "",
+    phone: "",
+  });
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
 
-    if (password !== confirmPassword) {
+    if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match!");
       return;
     }
@@ -30,33 +42,41 @@ export const CustomerRegistrationForm = () => {
     try {
       setLoading(true);
 
-      await axios.post("http://localhost:8080/api/customer/register", {
-        username,
-        password,
-        fullName,
-        email,
-        phone,
+      await axios.post("/api/customer/register", {
+        username: formData.username,
+        password: formData.password,
+        fullName: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
       });
 
-      setSuccess("Registration successful! Redirecting to login...");
-      console.log("Registration successfully");
+      setSuccess("Registration successful! Redirecting...");
 
       setTimeout(() => {
-        navigate("/login/customer"); // ✅ Redirect to login page
-      }, 1500);
+        navigate("/login/customer");
+      }, 1200);
 
-      // Clear form fields
-      setUsername("");
-      setPassword("");
-      setConfirmPassword("");
-      setFullName("");
-      setEmail("");
-      setPhone("");
+      setFormData({
+        username: "",
+        password: "",
+        confirmPassword: "",
+        fullName: "",
+        email: "",
+        phone: "",
+      });
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Registration failed. Username may already exist.",
-      );
+      console.error(err);
+
+      if (err.response?.status === 403) {
+        setError("Access denied. Check backend security config.");
+      } else if (err.response?.status === 409) {
+        setError("Username already exists.");
+      } else {
+        setError(
+          err.response?.data?.message ||
+            "Registration failed. Please try again.",
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -69,10 +89,10 @@ export const CustomerRegistrationForm = () => {
     "absolute left-4 top-2 text-[#8B6F47] text-sm transition-all duration-300 peer-placeholder-shown:top-5 peer-placeholder-shown:text-base peer-placeholder-shown:text-[#A99F87] peer-focus:top-2 peer-focus:text-xs peer-focus:text-[#C8A97E]";
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#FFFDF9] via-[#F7EFE5] to-[#EADFCC] animate-fade-in">
-      <div className="w-full max-w-md sm:max-w-lg">
-        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-[#EADFCC]/60 p-6 sm:p-10 animate-slide-up">
-          <h2 className="text-3xl sm:text-4xl font-bold text-center text-[#3A2418] mb-6">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#FFFDF9] via-[#F7EFE5] to-[#EADFCC]">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-3xl shadow-2xl p-8 border border-[#EADFCC]/60">
+          <h2 className="text-3xl font-bold text-center text-[#3A2418] mb-6">
             Customer Registration
           </h2>
 
@@ -85,52 +105,68 @@ export const CustomerRegistrationForm = () => {
             {/* Username */}
             <div className="relative">
               <input
+                name="username"
                 type="text"
                 placeholder="Username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={formData.username}
+                onChange={handleChange}
                 className={inputClasses}
                 required
               />
-              <User className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8B6F47] peer-focus:text-[#C8A97E] transition-colors duration-300" />
+              <User className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8B6F47]" />
               <label className={labelClasses}>Username *</label>
             </div>
 
             {/* Password */}
             <div className="relative">
               <input
-                type="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={formData.password}
+                onChange={handleChange}
                 className={inputClasses}
                 required
               />
-              <Lock className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8B6F47] peer-focus:text-[#C8A97E] transition-colors duration-300" />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
               <label className={labelClasses}>Password *</label>
             </div>
 
             {/* Confirm Password */}
             <div className="relative">
               <input
-                type="password"
+                name="confirmPassword"
+                type={showConfirmPassword ? "text" : "password"}
                 placeholder="Confirm Password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                value={formData.confirmPassword}
+                onChange={handleChange}
                 className={inputClasses}
                 required
               />
-              <Lock className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8B6F47] peer-focus:text-[#C8A97E] transition-colors duration-300" />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2"
+              >
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
               <label className={labelClasses}>Confirm Password *</label>
             </div>
 
             {/* Full Name */}
             <div className="relative">
               <input
+                name="fullName"
                 type="text"
                 placeholder="Full Name"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                value={formData.fullName}
+                onChange={handleChange}
                 className={inputClasses}
               />
               <User className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8B6F47]" />
@@ -140,10 +176,11 @@ export const CustomerRegistrationForm = () => {
             {/* Email */}
             <div className="relative">
               <input
+                name="email"
                 type="email"
                 placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={formData.email}
+                onChange={handleChange}
                 className={inputClasses}
               />
               <Mail className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8B6F47]" />
@@ -153,70 +190,27 @@ export const CustomerRegistrationForm = () => {
             {/* Phone */}
             <div className="relative">
               <input
+                name="phone"
                 type="tel"
-                placeholder="Phone Number"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Phone"
+                value={formData.phone}
+                onChange={handleChange}
                 className={inputClasses}
               />
               <Phone className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8B6F47]" />
               <label className={labelClasses}>Phone</label>
             </div>
 
-            {/* Submit */}
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-14 sm:h-16 rounded-xl bg-gradient-to-r from-[#C8A97E] to-[#B08968] text-[#3A2418] font-semibold tracking-wide transition-all duration-300 transform hover:scale-105"
+              className="w-full h-14 rounded-xl bg-gradient-to-r from-[#C8A97E] to-[#B08968] text-[#3A2418] font-semibold hover:scale-105 transition-all"
             >
               {loading ? "Registering..." : "Register"}
             </Button>
           </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-sm sm:text-base text-[#6B4423]">
-              Already have an account?{" "}
-              <button
-                onClick={() => navigate("/login/customer")}
-                className="underline font-medium hover:text-[#3A2418] transition-colors duration-300"
-              >
-                Login here
-              </button>
-            </p>
-          </div>
         </div>
       </div>
-
-      {/* Animations */}
-      <style jsx>{`
-        @keyframes fade-in {
-          0% {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          100% {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        .animate-fade-in {
-          animation: fade-in 0.8s ease-out forwards;
-        }
-
-        @keyframes slide-up {
-          0% {
-            opacity: 0;
-            transform: translateY(40px);
-          }
-          100% {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        .animate-slide-up {
-          animation: slide-up 0.6s ease-out forwards;
-        }
-      `}</style>
     </div>
   );
 };

@@ -17,7 +17,7 @@ function AppRoutes() {
 
   return (
     <Routes>
-      {/* Home / Role Selection */}
+      {/* Home */}
       <Route path="/" element={<RoleSelector />} />
 
       {/* Login Routes */}
@@ -25,34 +25,40 @@ function AppRoutes() {
       <Route path="/login/employee" element={<EmployeeLogin />} />
       <Route path="/login/admin" element={<AdminLogin />} />
 
-      {/* Registration */}
-      <Route path="/register" element={<CustomerRegistrationForm />} />
+      {/* Registration Route (Updated Path) */}
+      <Route path="/register/customer" element={<CustomerRegistrationForm />} />
 
-      {/* Dashboards */}
+      {/* Dashboards (Protected Routes) */}
       <Route
         path="/dashboard/customer"
         element={
           user?.role === "customer" ? (
             <CustomerDashboard />
           ) : (
-            <Navigate to="/" />
+            <Navigate to="/login/customer" />
           )
         }
       />
+
       <Route
         path="/dashboard/employee"
         element={
           user?.role === "employee" ? (
             <EmployeeDashboard />
           ) : (
-            <Navigate to="/" />
+            <Navigate to="/login/employee" />
           )
         }
       />
+
       <Route
         path="/dashboard/admin"
         element={
-          user?.role === "admin" ? <AdminDashboard /> : <Navigate to="/" />
+          user?.role === "admin" ? (
+            <AdminDashboard />
+          ) : (
+            <Navigate to="/login/admin" />
+          )
         }
       />
 

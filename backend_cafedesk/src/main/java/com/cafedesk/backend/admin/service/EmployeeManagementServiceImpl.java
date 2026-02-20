@@ -1,30 +1,30 @@
-package com.cafedesk.backend.Employee_Management.service;
+package com.cafedesk.backend.admin.service;
 
-import com.cafedesk.backend.Employee_Management.DTO.EmployeeRequest;
-import com.cafedesk.backend.Employee_Management.DTO.EmployeeResponse;
-import com.cafedesk.backend.Employee_Management.entity.Employee;
-import com.cafedesk.backend.Employee_Management.repository.EmployeeRepository;
+import com.cafedesk.backend.admin.DTO.EmployeeManagementRequest;
+import com.cafedesk.backend.admin.DTO.EmployeeManagementResponse;
+import com.cafedesk.backend.admin.entity.EmployeeManagement;
+import com.cafedesk.backend.admin.repository.EmployeeManagementRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-public class EmployeeServiceImpl {
+public class EmployeeManagementServiceImpl {
 
-    private final EmployeeRepository repository;
+    private final EmployeeManagementRepository repository;
 
-    public EmployeeServiceImpl(EmployeeRepository repository) {
+    public EmployeeManagementServiceImpl(EmployeeManagementRepository repository) {
         this.repository = repository;
     }
 
     // Create new employee
-    public EmployeeResponse create(EmployeeRequest request) {
+    public EmployeeManagementResponse create(EmployeeManagementRequest request) {
         if (repository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already exists");
         }
 
-        Employee employee = new Employee(
+        EmployeeManagement employeeManagement = new EmployeeManagement(
                 request.getName(),
                 request.getEmail(),
                 request.getPhone(),
@@ -34,12 +34,12 @@ public class EmployeeServiceImpl {
                 request.getSalary()
         );
 
-        Employee saved = repository.save(employee);
+        EmployeeManagement saved = repository.save(employeeManagement);
         return mapToResponse(saved);
     }
 
     // Get all employees
-    public List<EmployeeResponse> getAll() {
+    public List<EmployeeManagementResponse> getAll() {
         return repository.findAll()
                 .stream()
                 .map(this::mapToResponse)
@@ -47,19 +47,19 @@ public class EmployeeServiceImpl {
     }
 
     // Update employee by ID
-    public EmployeeResponse update(Long id, EmployeeRequest request) {
-        Employee employee = repository.findById(id)
+    public EmployeeManagementResponse update(Long id, EmployeeManagementRequest request) {
+        EmployeeManagement employeeManagement = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Employee with ID " + id + " not found"));
 
-        employee.setName(request.getName());
-        employee.setEmail(request.getEmail());
-        employee.setPhone(request.getPhone());
-        employee.setRole(request.getRole());
-        employee.setShift(request.getShift());
-        employee.setStatus(request.getStatus());
-        employee.setSalary(request.getSalary());
+        employeeManagement.setName(request.getName());
+        employeeManagement.setEmail(request.getEmail());
+        employeeManagement.setPhone(request.getPhone());
+        employeeManagement.setRole(request.getRole());
+        employeeManagement.setShift(request.getShift());
+        employeeManagement.setStatus(request.getStatus());
+        employeeManagement.setSalary(request.getSalary());
 
-        Employee updated = repository.save(employee);
+        EmployeeManagement updated = repository.save(employeeManagement);
         return mapToResponse(updated);
     }
 
@@ -72,8 +72,8 @@ public class EmployeeServiceImpl {
     }
 
     // Helper method to map Employee entity to DTO
-    private EmployeeResponse mapToResponse(Employee e) {
-        return new EmployeeResponse(
+    private EmployeeManagementResponse mapToResponse(EmployeeManagement e) {
+        return new EmployeeManagementResponse(
                 e.getId(),
                 e.getName(),
                 e.getEmail(),

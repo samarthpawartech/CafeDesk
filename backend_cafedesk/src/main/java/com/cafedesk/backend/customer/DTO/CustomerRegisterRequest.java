@@ -11,7 +11,8 @@ public class CustomerRegisterRequest {
     public CustomerRegisterRequest() {
     }
 
-    public CustomerRegisterRequest(String username, String password, String fullName, String email, String phone) {
+    public CustomerRegisterRequest(String username, String password,
+                                   String fullName, String email, String phone) {
         this.username = username;
         this.password = password;
         this.fullName = fullName;

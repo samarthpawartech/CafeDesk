@@ -1,8 +1,8 @@
-package com.cafedesk.backend.Employee_Management.controller;
+package com.cafedesk.backend.admin.controller;
 
-import com.cafedesk.backend.Employee_Management.DTO.EmployeeRequest;
-import com.cafedesk.backend.Employee_Management.DTO.EmployeeResponse;
-import com.cafedesk.backend.Employee_Management.service.EmployeeService;
+import com.cafedesk.backend.admin.DTO.EmployeeManagementRequest;
+import com.cafedesk.backend.admin.DTO.EmployeeManagementResponse;
+import com.cafedesk.backend.admin.service.EmployeeManagementService;
 
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -13,11 +13,11 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/employee")
 @CrossOrigin(origins = "http://localhost:5173") // React/Vite frontend
-public class EmployeeController {
+public class EmployeeManagementController {
 
-    private final EmployeeService service;
+    private final EmployeeManagementService service;
 
-    public EmployeeController(EmployeeService service) {
+    public EmployeeManagementController(EmployeeManagementService service) {
         this.service = service;
     }
 
@@ -25,22 +25,22 @@ public class EmployeeController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public EmployeeResponse create(@Valid @RequestBody EmployeeRequest request) {
+    public EmployeeManagementResponse create(@Valid @RequestBody EmployeeManagementRequest request) {
         return service.create(request);
     }
 
     /* ================= GET ALL ================= */
 
     @GetMapping
-    public List<EmployeeResponse> getAll() {
+    public List<EmployeeManagementResponse> getAll() {
         return service.getAll();
     }
 
     /* ================= UPDATE ================= */
 
     @PutMapping("/{id}")
-    public EmployeeResponse update(@PathVariable Long id,
-                                   @Valid @RequestBody EmployeeRequest request) {
+    public EmployeeManagementResponse update(@PathVariable Long id,
+                                             @Valid @RequestBody EmployeeManagementRequest request) {
 
         return service.update(id, request);
     }

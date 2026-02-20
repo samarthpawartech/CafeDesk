@@ -6,8 +6,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [currentOrder, setCurrentOrder] = useState([]);
 
-  // ❌ DO NOT restore user automatically
-  // Only restore cart
+  // Restore only cart
   useEffect(() => {
     const storedOrder = localStorage.getItem("currentOrder");
     if (storedOrder) {
@@ -15,48 +14,60 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // Save cart
   useEffect(() => {
     localStorage.setItem("currentOrder", JSON.stringify(currentOrder));
   }, [currentOrder]);
 
   const login = async (username, password, role) => {
+    let url = "";
+
+    if (role === "admin") {
+      url = "http://localhost:8080/api/admin/login";
+    } else if (role === "employee") {
+      url = "http://localhost:8080/api/employee/login";
+    } else if (role === "customer") {
+      url = "http://localhost:8080/api/customer/login";
+    }
+
     try {
-      let url = "";
-
-      if (role === "admin") url = "http://localhost:8080/api/admin/login";
-      else if (role === "employee")
-        url = "http://localhost:8080/api/employee/login";
-      else if (role === "customer")
-        url = "http://localhost:8080/api/customer/login";
-
       const response = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: username.trim(), // ✅ MUST match backend
+          password: password.trim(), // ✅ MUST match backend
+        }),
       });
 
-      if (!response.ok) throw new Error("Login failed");
-
       const data = await response.json();
-      const token = data.token;
 
-      localStorage.setItem("token", token);
+      if (!response.ok || !data.token) {
+        throw new Error(data.message || "Login failed");
+      }
 
-      const userData = { username, role };
+      // Save JWT token
+      localStorage.setItem("token", data.token);
+
+      const userData = {
+        username: username,
+        role: role,
+      };
+
       localStorage.setItem("user", JSON.stringify(userData));
-
       setUser(userData);
 
-      alert("Login Successful ✅");
+      return true;
     } catch (error) {
       console.error("Login failed:", error);
-      alert("Invalid Username or Password ❌");
+      throw error;
     }
   };
 
   const logout = () => {
-    localStorage.clear(); // 🔥 clears everything
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setUser(null);
     setCurrentOrder([]);
   };

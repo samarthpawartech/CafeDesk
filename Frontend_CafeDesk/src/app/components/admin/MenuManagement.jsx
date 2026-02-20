@@ -1,196 +1,297 @@
-import { useState } from 'react';
-import { Plus, Edit, Trash2, Search } from 'lucide-react';
-import { menuItems as initialMenuItems } from '@/app/utils/mockData';
-import { Card } from '@/app/components/ui/card';
-import { Button } from '@/app/components/ui/button';
-import { Badge } from '@/app/components/ui/badge';
-import { Input } from '@/app/components/ui/input';
-import { Label } from '@/app/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/app/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
-import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
+"use client";
+
+import { useState, useMemo } from "react";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Search,
+  Hash,
+  Tag,
+  FileText,
+  DollarSign,
+  Layers,
+  Upload,
+  CheckCircle,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/app/components/ui/button";
+import { Badge } from "@/app/components/ui/badge";
+import { Input } from "@/app/components/ui/input";
+import { Label } from "@/app/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/app/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select";
 
 export const MenuManagement = () => {
-  const [menuItems, setMenuItems] = useState(initialMenuItems);
+  const [menuItems, setMenuItems] = useState([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  
+  const [searchTerm, setSearchTerm] = useState("");
+
   const [formData, setFormData] = useState({
-    name: '',
-    category: 'Drinks',
-    price: '',
-    description: '',
+    id: "",
+    name: "",
+    description: "",
+    price: "",
+    category: "Drinks",
     available: true,
+    image: null,
   });
 
-  const openAddDialog = () => {
-    setEditingItem(null);
+  const cafeInput =
+    "h-12 w-full rounded-full bg-white border border-gray-300 px-5 text-[#5C4A3E] placeholder:text-[#8C7A6B] focus:outline-none focus:ring-0 focus:border-gray-400 transition-all";
+
+  const resetForm = () => {
     setFormData({
-      name: '',
-      category: 'Drinks',
-      price: '',
-      description: '',
+      id: "",
+      name: "",
+      description: "",
+      price: "",
+      category: "Drinks",
       available: true,
+      image: null,
     });
-    setIsDialogOpen(true);
+    setEditingItem(null);
   };
 
-  const openEditDialog = (item) => {
-    setEditingItem(item);
-    setFormData({
-      name: item.name,
-      category: item.category,
-      price: item.price.toString(),
-      description: item.description,
-      available: item.available,
-    });
-    setIsDialogOpen(true);
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFormData((prev) => ({ ...prev, image: reader.result }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSave = () => {
+    if (!formData.name || !formData.price) return;
+
     if (editingItem) {
-      setMenuItems(menuItems.map(item => 
-        item.id === editingItem.id 
-          ? { ...item, ...formData, price: parseFloat(formData.price) }
-          : item
-      ));
+      setMenuItems((prev) =>
+        prev.map((item) =>
+          item.id === editingItem.id
+            ? { ...formData, price: parseFloat(formData.price) }
+            : item,
+        ),
+      );
     } else {
       const newItem = {
-        id: Math.max(...menuItems.map(i => i.id)) + 1,
         ...formData,
+        id: Date.now(),
         price: parseFloat(formData.price),
-        image: `${formData.category.toLowerCase()} food`,
       };
-      setMenuItems([...menuItems, newItem]);
+      setMenuItems((prev) => [...prev, newItem]);
     }
+
     setIsDialogOpen(false);
+    resetForm();
   };
 
-  const handleDelete = (itemId) => {
-    if (confirm('Are you sure you want to delete this item?')) {
-      setMenuItems(menuItems.filter(item => item.id !== itemId));
-    }
+  const handleEdit = (item) => {
+    setEditingItem(item);
+    setFormData(item);
+    setIsDialogOpen(true);
   };
 
-  const filteredItems = menuItems.filter(item =>
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const categoryCount = {
-    Drinks: menuItems.filter(i => i.category === 'Drinks').length,
-    Snacks: menuItems.filter(i => i.category === 'Snacks').length,
-    Meals: menuItems.filter(i => i.category === 'Meals').length,
+  const handleDelete = (id) => {
+    setMenuItems((prev) => prev.filter((item) => item.id !== id));
   };
+
+  const filteredItems = useMemo(() => {
+    return menuItems.filter(
+      (item) =>
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.category.toLowerCase().includes(searchTerm.toLowerCase()),
+    );
+  }, [menuItems, searchTerm]);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8B6F47]" />
-          <Input
-            placeholder="Search menu items..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+    <div className="min-h-screen bg-gradient-to-br from-[#F3EDE6] to-[#E6D5C3] p-10">
+      {/* Search + Add */}
+      <div className="flex justify-center mb-12">
+        <div className="flex w-full max-w-6xl items-center gap-6 flex-col md:flex-row">
+          <div className="relative w-full">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-700" />
+            <Input
+              placeholder="Search menu item..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={`${cafeInput} pl-12`}
+            />
+          </div>
+
+          <Button
+            onClick={() => {
+              resetForm();
+              setIsDialogOpen(true);
+            }}
+            className="h-12 px-8 rounded-full bg-white text-gray-800 shadow-md hover:bg-gray-100"
+          >
+            <Plus className="w-4 h-4 mr-2 text-gray-800" />
+            Add Menu Item
+          </Button>
         </div>
-        <Button onClick={openAddDialog} className="bg-[#6B4423] hover:bg-[#4A2C1A] text-white">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Menu Item
-        </Button>
       </div>
 
-      {/* Category Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {Object.entries(categoryCount).map(([category, count]) => (
-          <Card key={category} className="p-6 border-[#E8D5BF]">
-            <h3 className="text-sm text-[#8B6F47] mb-1">{category}</h3>
-            <p className="text-2xl font-bold text-[#2C1810]">{count} items</p>
-          </Card>
-        ))}
-      </div>
+      {/* Cards */}
+      <div className="flex justify-center">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl w-full">
+          <AnimatePresence>
+            {filteredItems.map((item) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                whileHover={{ y: -5 }}
+                className="rounded-3xl p-6 bg-white shadow-lg"
+              >
+                {item.image && (
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    className="h-40 w-full object-cover rounded-xl mb-3"
+                  />
+                )}
 
-      {/* Menu Items Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredItems.map(item => (
-          <Card key={item.id} className="overflow-hidden border-[#E8D5BF] hover:shadow-lg transition-shadow">
-            <div className="aspect-video bg-[#F5E6D3] relative overflow-hidden">
-              <ImageWithFallback
-                src={`https://source.unsplash.com/400x300/?${item.image}`}
-                alt={item.name}
-                className="w-full h-full object-cover"
-              />
-              {!item.available && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                  <Badge variant="destructive">Out of Stock</Badge>
-                </div>
-              )}
-            </div>
-            <div className="p-4 space-y-3">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-semibold text-[#2C1810]">{item.name}</h3>
-                  <p className="text-sm text-[#8B6F47] mt-1">{item.description}</p>
-                </div>
-                <Badge className="bg-[#2D5A3D] text-white">{item.category}</Badge>
-              </div>
-              
-              <div className="flex justify-between items-center pt-3 border-t border-[#E8D5BF]">
-                <span className="text-xl font-bold text-[#6B4423]">${item.price.toFixed(2)}</span>
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => openEditDialog(item)}
-                    size="sm"
-                    variant="outline"
-                    className="border-[#E8D5BF] text-[#6B4423] hover:bg-[#F5E6D3]"
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="font-semibold text-[#4B2E2B]">{item.name}</h3>
+                  <Badge
+                    className={
+                      item.available
+                        ? "bg-green-100 text-green-700"
+                        : "bg-red-100 text-red-600"
+                    }
                   >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    onClick={() => handleDelete(item.id)}
-                    size="sm"
-                    variant="outline"
-                    className="border-red-200 text-red-600 hover:bg-red-50"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                    {item.available ? "Available" : "Unavailable"}
+                  </Badge>
                 </div>
-              </div>
-            </div>
-          </Card>
-        ))}
+
+                <p className="text-sm text-[#6B4F3A] mb-2">
+                  {item.description}
+                </p>
+
+                <div className="flex justify-between items-center mt-3">
+                  <span className="font-bold text-[#A4754E]">
+                    ₹ {item.price}
+                  </span>
+
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleEdit(item)}
+                    >
+                      <Edit className="w-4 h-4 text-blue-600" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDelete(item.id)}
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
       </div>
 
-      {/* Add/Edit Dialog */}
+      {/* Dialog Form */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="relative rounded-3xl bg-white shadow-xl border-none">
           <DialogHeader>
-            <DialogTitle>{editingItem ? 'Edit Menu Item' : 'Add Menu Item'}</DialogTitle>
+            <DialogTitle className="text-xl text-[#4B2E2B]">
+              {editingItem ? "Edit Menu Item" : "Add Menu Item"}
+            </DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Item Name</Label>
+            {editingItem && (
+              <div className="relative">
+                <Hash
+                  size={18}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-700"
+                />
+                <Input value={formData.id} disabled className={cafeInput} />
+              </div>
+            )}
+
+            <div className="relative">
+              <Tag
+                size={18}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-700"
+              />
               <Input
+                className={`${cafeInput} pl-12`}
+                placeholder="Item Name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Enter item name"
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>Category</Label>
+            <div className="relative">
+              <FileText
+                size={18}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-700"
+              />
+              <Input
+                className={`${cafeInput} pl-12`}
+                placeholder="Item Description"
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+              />
+            </div>
+
+            <div className="relative">
+              <DollarSign
+                size={18}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-700"
+              />
+              <Input
+                type="number"
+                className={`${cafeInput} pl-12`}
+                placeholder="Item Price"
+                value={formData.price}
+                onChange={(e) =>
+                  setFormData({ ...formData, price: e.target.value })
+                }
+              />
+            </div>
+
+            <div className="relative">
+              <Layers
+                size={18}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-700"
+              />
               <Select
                 value={formData.category}
-                onValueChange={(value) => setFormData({ ...formData, category: value })}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, category: value })
+                }
               >
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger className={`${cafeInput} pl-12`}>
+                  <SelectValue placeholder="Item Category" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-50">
                   <SelectItem value="Drinks">Drinks</SelectItem>
                   <SelectItem value="Snacks">Snacks</SelectItem>
                   <SelectItem value="Meals">Meals</SelectItem>
@@ -198,42 +299,47 @@ export const MenuManagement = () => {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Price ($)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                placeholder="0.00"
+            <div className="relative">
+              <CheckCircle
+                size={18}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-700"
               />
+              <Select
+                value={formData.available ? "true" : "false"}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, available: value === "true" })
+                }
+              >
+                <SelectTrigger className={`${cafeInput} pl-12`}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="z-50">
+                  <SelectItem value="true">Available</SelectItem>
+                  <SelectItem value="false">Currently Unavailable</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Description</Label>
+            <div className="relative">
+              <Upload
+                size={18}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-700"
+              />
               <Input
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Brief description"
+                type="file"
+                accept="image/*"
+                className={`${cafeInput} pl-12`}
+                onChange={handleImageUpload}
               />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="available"
-                checked={formData.available}
-                onChange={(e) => setFormData({ ...formData, available: e.target.checked })}
-                className="w-4 h-4 rounded border-[#E8D5BF]"
-              />
-              <Label htmlFor="available" className="cursor-pointer">Available for order</Label>
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} className="bg-[#6B4423] hover:bg-[#4A2C1A] text-white">
-              {editingItem ? 'Update' : 'Add'} Item
+            <Button
+              onClick={handleSave}
+              className="rounded-full px-8 h-12 bg-[#B8895C] hover:bg-[#A4754E] text-white"
+            >
+              Save Item
             </Button>
           </DialogFooter>
         </DialogContent>

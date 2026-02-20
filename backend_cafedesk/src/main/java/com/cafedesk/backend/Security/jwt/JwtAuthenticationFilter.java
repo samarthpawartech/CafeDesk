@@ -30,43 +30,62 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
+        String servletPath = request.getServletPath();
+
+        // ✅ Skip public endpoints
+        if (servletPath.contains("/login") ||
+                servletPath.contains("/register")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         final String authHeader = request.getHeader("Authorization");
 
-        // ✅ If no Authorization header → skip JWT logic
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String jwt = authHeader.substring(7);
+        try {
+            String jwt = authHeader.substring(7);
 
-        // ✅ If token invalid → skip authentication (do NOT block request)
-        if (!jwtUtil.validateToken(jwt)) {
-            filterChain.doFilter(request, response);
-            return;
-        }
+            if (!jwtUtil.validateToken(jwt)) {
+                filterChain.doFilter(request, response);
+                return;
+            }
 
-        String username = jwtUtil.extractUsername(jwt);
-        String role = jwtUtil.extractRole(jwt);
+            String username = jwtUtil.extractUsername(jwt);
+            String role = jwtUtil.extractRole(jwt);
 
-        // ✅ Set authentication only if not already authenticated
-        if (username != null &&
-                SecurityContextHolder.getContext().getAuthentication() == null) {
+            // 🔥 IMPORTANT FIX: Add ROLE_ prefix if missing
+            if (role != null && !role.startsWith("ROLE_")) {
+                role = "ROLE_" + role;
+            }
 
-            UsernamePasswordAuthenticationToken authToken =
-                    new UsernamePasswordAuthenticationToken(
-                            username,
-                            null,
-                            Collections.singletonList(
-                                    new SimpleGrantedAuthority(role)
-                            )
-                    );
+            if (username != null &&
+                    SecurityContextHolder.getContext().getAuthentication() == null) {
 
-            authToken.setDetails(
-                    new WebAuthenticationDetailsSource().buildDetails(request)
-            );
+                UsernamePasswordAuthenticationToken authToken =
+                        new UsernamePasswordAuthenticationToken(
+                                username,
+                                null,
+                                Collections.singletonList(
+                                        new SimpleGrantedAuthority(role)
+                                )
+                        );
 
-            SecurityContextHolder.getContext().setAuthentication(authToken);
+                authToken.setDetails(
+                        new WebAuthenticationDetailsSource()
+                                .buildDetails(request)
+                );
+
+                SecurityContextHolder.getContext()
+                        .setAuthentication(authToken);
+            }
+
+        } catch (Exception e) {
+            // Optional: log error
+            SecurityContextHolder.clearContext();
         }
 
         filterChain.doFilter(request, response);
