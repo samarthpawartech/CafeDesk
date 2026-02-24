@@ -15,6 +15,7 @@ public class EmployeeManagementResponse {
     private EmployeeManagementStatus status;
     private Double salary;
 
+    // Constructor
     public EmployeeManagementResponse(Long id, String name, String email,
                                       String phone, EmployeeManagementRole role,
                                       EmployeeManagementShift shift, EmployeeManagementStatus status,
@@ -29,6 +30,7 @@ public class EmployeeManagementResponse {
         this.salary = salary;
     }
 
+    // Getters
     public Long getId() { return id; }
     public String getName() { return name; }
     public String getEmail() { return email; }

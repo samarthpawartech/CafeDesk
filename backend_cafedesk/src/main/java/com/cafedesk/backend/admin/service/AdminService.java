@@ -1,5 +1,6 @@
 package com.cafedesk.backend.admin.service;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.cafedesk.backend.admin.entity.Admin;
@@ -11,11 +12,14 @@ public class AdminService {
 
     private final AdminRepository adminRepository;
     private final JwtUtil jwtUtil;
+    private final PasswordEncoder passwordEncoder;
 
     public AdminService(AdminRepository adminRepository,
-                        JwtUtil jwtUtil) {
+                        JwtUtil jwtUtil,
+                        PasswordEncoder passwordEncoder) {
         this.adminRepository = adminRepository;
         this.jwtUtil = jwtUtil;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public String authenticate(String username, String password) {
@@ -28,12 +32,15 @@ public class AdminService {
             return null;
         }
 
-        // 🔐 Plain password check (NOT secure, for testing only)
-        if (!admin.getPassword().equals(password)) {
+        // ✅ BCrypt password check (FIXED)
+        if (!passwordEncoder.matches(password, admin.getPassword())) {
             return null;
         }
 
-        // ✅ Generate JWT token
-        return jwtUtil.generateToken(admin.getUsername(), "ADMIN");
+        // ✅ Generate JWT token with role
+        return jwtUtil.generateToken(
+                admin.getUsername(),
+                admin.getRole()
+        );
     }
 }

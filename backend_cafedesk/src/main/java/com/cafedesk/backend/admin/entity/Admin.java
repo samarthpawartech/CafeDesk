@@ -7,7 +7,7 @@ import jakarta.persistence.*;
 public class Admin {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // ✅ Auto Increment
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
 
@@ -17,13 +17,19 @@ public class Admin {
     @Column(nullable = false)
     private String password;
 
+    // ✅ ADD ROLE COLUMN
+    @Column(nullable = false)
+    private String role;
+
+    // =========================
     // Getters and Setters
+    // =========================
 
     public Long getId() {
         return id;
     }
 
-    // ❌ No need to manually set ID (database will generate it)
+    // Optional (usually not needed manually)
     public void setId(Long id) {
         this.id = id;
     }
@@ -42,5 +48,14 @@ public class Admin {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    // ✅ ROLE GETTER & SETTER
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
     }
 }

@@ -6,7 +6,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -30,17 +29,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
-        String servletPath = request.getServletPath();
-
-        // ✅ Skip public endpoints
-        if (servletPath.contains("/login") ||
-                servletPath.contains("/register")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
         final String authHeader = request.getHeader("Authorization");
 
+        // If no Authorization header → continue
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
@@ -49,18 +40,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String jwt = authHeader.substring(7);
 
+            // Validate token
             if (!jwtUtil.validateToken(jwt)) {
+                SecurityContextHolder.clearContext();
                 filterChain.doFilter(request, response);
                 return;
             }
 
             String username = jwtUtil.extractUsername(jwt);
-            String role = jwtUtil.extractRole(jwt);
-
-            // 🔥 IMPORTANT FIX: Add ROLE_ prefix if missing
-            if (role != null && !role.startsWith("ROLE_")) {
-                role = "ROLE_" + role;
-            }
 
             if (username != null &&
                     SecurityContextHolder.getContext().getAuthentication() == null) {
@@ -69,9 +56,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         new UsernamePasswordAuthenticationToken(
                                 username,
                                 null,
-                                Collections.singletonList(
-                                        new SimpleGrantedAuthority(role)
-                                )
+                                Collections.emptyList()
                         );
 
                 authToken.setDetails(
@@ -84,7 +69,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
         } catch (Exception e) {
-            // Optional: log error
             SecurityContextHolder.clearContext();
         }
 

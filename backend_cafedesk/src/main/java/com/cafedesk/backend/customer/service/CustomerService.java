@@ -23,7 +23,7 @@ public class CustomerService {
         this.jwtUtil = jwtUtil;
     }
 
-    // ✅ REGISTER METHOD (ADDED)
+    // ✅ REGISTER METHOD
     public AuthResponse register(CustomerRegisterRequest request) {
 
         if (customerRepository.existsByUsername(request.getUsername().trim())) {
@@ -44,7 +44,7 @@ public class CustomerService {
 
         customerRepository.save(customer);
 
-        // Generate JWT token after registration
+        // ✅ Generate JWT token WITH ROLE
         String token = jwtUtil.generateToken(
                 customer.getUsername(),
                 customer.getRole()
@@ -53,7 +53,7 @@ public class CustomerService {
         return new AuthResponse(token);
     }
 
-    // ✅ LOGIN METHOD (YOUR ORIGINAL - KEPT)
+    // ✅ LOGIN METHOD
     public AuthResponse login(CustomerLoginRequest request) {
 
         Customer customer = customerRepository
@@ -64,6 +64,7 @@ public class CustomerService {
             throw new RuntimeException("Invalid username or password");
         }
 
+        // ✅ Generate JWT token WITH ROLE
         String token = jwtUtil.generateToken(
                 customer.getUsername(),
                 customer.getRole()

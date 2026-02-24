@@ -11,6 +11,7 @@ import {
   DollarSign,
   Image as ImageIcon,
   CheckCircle,
+  XCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/app/components/ui/button";
@@ -47,9 +48,6 @@ export const MenuManagement = () => {
     available: true,
     image: null,
   });
-
-  const cafeInput =
-    "h-12 w-full rounded-full bg-white border border-gray-300 px-5 pl-12 text-[#5C4A3E] placeholder:text-[#8C7A6B] focus:outline-none focus:ring-0 focus:border-gray-400 transition-all";
 
   const categories = [
     "All",
@@ -132,12 +130,10 @@ export const MenuManagement = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F3EDE6] to-[#E6D5C3] p-10">
-      {/* Centered Container */}
       <div className="w-full max-w-6xl mx-auto">
-        {/* Search + Add Button (Centered Between Red Lines) */}
+        {/* Search + Add Button */}
         <div className="flex justify-center mb-6">
           <div className="flex items-center gap-6 w-full max-w-4xl">
-            {/* Search */}
             <div className="flex-1 relative">
               <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-700" />
               <Input
@@ -147,8 +143,6 @@ export const MenuManagement = () => {
                 className="pl-12 h-12 rounded-full w-full"
               />
             </div>
-
-            {/* Add Button */}
             <Button
               onClick={() => {
                 resetForm();
@@ -187,42 +181,56 @@ export const MenuManagement = () => {
                 key={item.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                whileHover={{ y: -5 }}
-                className="rounded-3xl p-6 bg-white shadow-lg"
+                whileHover={{ y: -5, scale: 1.02 }}
+                className="rounded-3xl p-6 bg-white shadow-xl hover:shadow-2xl transition-all duration-300 relative"
               >
+                {/* Image + Availability Dot */}
                 {item.image && (
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="h-40 w-full object-cover rounded-xl mb-3"
-                  />
+                  <div className="relative mb-4">
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="h-44 w-full object-cover rounded-2xl"
+                    />
+                    <span className="absolute top-3 left-3 bg-white/70 text-gray-800 px-3 py-1 rounded-full text-xs font-semibold">
+                      {item.category}
+                    </span>
+                    {/* Hoverable availability dot */}
+                    <motion.div
+                      className={`absolute top-3 right-3 w-3 h-3 rounded-full border-2 border-white cursor-pointer ${
+                        item.available ? "bg-green-500" : "bg-red-500"
+                      }`}
+                      title={item.available ? "Available" : "Unavailable"}
+                      whileHover={{ scale: 1.5 }}
+                    />
+                  </div>
                 )}
 
+                {/* Name */}
                 <div className="flex justify-between items-center mb-2">
-                  <div>
-                    <h3 className="font-semibold text-[#4B2E2B]">
-                      {item.name}
-                    </h3>
-                    <p className="text-sm text-[#6B4F3A]">{item.category}</p>
-                  </div>
-                  <Badge
-                    className={
-                      item.available
-                        ? "bg-green-100 text-green-700"
-                        : "bg-red-100 text-red-600"
-                    }
-                  >
-                    {item.available ? "Available" : "Unavailable"}
-                  </Badge>
+                  <h3 className="font-bold text-xl text-[#4B2E2B] flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-[#B8895C]" />
+                    {item.name}
+                  </h3>
+                  {/* Icon status */}
+                  {item.available ? (
+                    <CheckCircle className="w-5 h-5 text-green-500" />
+                  ) : (
+                    <XCircle className="w-5 h-5 text-red-500" />
+                  )}
                 </div>
 
-                <p className="text-sm text-[#6B4F3A] mb-2">
-                  {item.description}
+                {/* Description */}
+                <p className="text-[#6B4F3A] text-sm flex items-center gap-2 mb-3">
+                  <Tag className="w-4 h-4 text-[#B8895C]" />{" "}
+                  {item.description || "No description"}
                 </p>
 
-                <div className="flex justify-between items-center mt-3">
-                  <span className="font-bold text-[#A4754E]">
-                    ₹ {item.price}
+                {/* Price + Actions */}
+                <div className="flex justify-between items-center mt-4">
+                  <span className="font-bold text-[#A4754E] text-lg flex items-center gap-1">
+                    <DollarSign className="w-4 h-4 text-yellow-600" /> ₹{" "}
+                    {item.price}
                   </span>
 
                   <div className="flex gap-2">
@@ -247,6 +255,127 @@ export const MenuManagement = () => {
           </AnimatePresence>
         </div>
       </div>
+
+      {/* Add/Edit Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {editingItem ? "Edit Menu Item" : "Add Menu Item"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-4">
+            {/* Name */}
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-[#B8895C]" />
+              <Input
+                placeholder="Enter item name"
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+              />
+            </div>
+
+            {/* Description */}
+            <div className="flex items-center gap-2">
+              <Tag className="w-5 h-5 text-[#B8895C]" />
+              <Input
+                placeholder="Enter description"
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+              />
+            </div>
+
+            {/* Price */}
+            <div className="flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-yellow-600" />
+              <Input
+                type="number"
+                placeholder="Enter price"
+                value={formData.price}
+                onChange={(e) =>
+                  setFormData({ ...formData, price: e.target.value })
+                }
+              />
+            </div>
+
+            {/* Category */}
+            <div className="flex items-center gap-2">
+              <Tag className="w-5 h-5 text-[#B8895C]" />
+              <Select
+                value={formData.category}
+                onValueChange={(val) =>
+                  setFormData({ ...formData, category: val })
+                }
+                className="flex-1"
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories
+                    .filter((cat) => cat !== "All")
+                    .map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Image */}
+            <div className="flex items-center gap-2">
+              <ImageIcon className="w-5 h-5 text-[#B8895C]" />
+              <Input type="file" onChange={handleImageUpload} />
+            </div>
+
+            {/* Status with symbols */}
+            <div className="flex items-center gap-2">
+              <span>Status:</span>
+              <Select
+                value={formData.available ? "available" : "unavailable"}
+                onValueChange={(val) =>
+                  setFormData({ ...formData, available: val === "available" })
+                }
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="available">
+                    <CheckCircle className="w-4 h-4 text-green-500 mr-2 inline-block" />
+                    Available
+                  </SelectItem>
+                  <SelectItem value="unavailable">
+                    <XCircle className="w-4 h-4 text-red-500 mr-2 inline-block" />
+                    Unavailable
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter className="mt-4 flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setIsDialogOpen(false);
+                resetForm();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSave}>
+              {editingItem ? "Update" : "Add"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

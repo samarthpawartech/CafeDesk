@@ -1,8 +1,8 @@
 package com.cafedesk.backend.Security.jwt;
 
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Component;
 
@@ -22,6 +22,7 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
     }
 
+    // ✅ Generate token WITH ROLE
     public String generateToken(String username, String role) {
 
         return Jwts.builder()
@@ -33,14 +34,17 @@ public class JwtUtil {
                 .compact();
     }
 
+    // ✅ Extract username
     public String extractUsername(String token) {
         return extractAllClaims(token).getSubject();
     }
 
+    // ✅ Extract role
     public String extractRole(String token) {
         return extractAllClaims(token).get("role", String.class);
     }
 
+    // ✅ Validate token
     public boolean validateToken(String token) {
         try {
             extractAllClaims(token);
@@ -50,6 +54,7 @@ public class JwtUtil {
         }
     }
 
+    // ✅ Extract all claims
     private Claims extractAllClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())

@@ -14,13 +14,15 @@ public class EmployeeManagementService {
 
     private final EmployeeManagementRepository repository;
 
-    // Constructor injection (preferred)
     public EmployeeManagementService(EmployeeManagementRepository repository) {
         this.repository = repository;
     }
 
-    // Create new employee
+    // CREATE
     public EmployeeManagementResponse create(EmployeeManagementRequest request) {
+        if (repository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("Email already exists");
+        }
         EmployeeManagement emp = new EmployeeManagement(
                 request.getName(),
                 request.getEmail(),
@@ -34,18 +36,22 @@ public class EmployeeManagementService {
         return mapToResponse(saved);
     }
 
-    // Get all employees
+    // GET ALL
     public List<EmployeeManagementResponse> getAll() {
-        return repository.findAll()
-                .stream()
+        return repository.findAll().stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
-    // Update employee by id
+    // UPDATE
     public EmployeeManagementResponse update(Long id, EmployeeManagementRequest request) {
         EmployeeManagement emp = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Employee with ID " + id + " not found"));
+                .orElseThrow(() -> new RuntimeException("Employee not found"));
+
+        // Check for email uniqueness on update
+        if (!emp.getEmail().equals(request.getEmail()) && repository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("Email already exists");
+        }
 
         emp.setName(request.getName());
         emp.setEmail(request.getEmail());
@@ -59,25 +65,25 @@ public class EmployeeManagementService {
         return mapToResponse(updated);
     }
 
-    // Delete employee by id
+    // DELETE
     public void delete(Long id) {
         if (!repository.existsById(id)) {
-            throw new RuntimeException("Employee with ID " + id + " not found");
+            throw new RuntimeException("Employee not found");
         }
         repository.deleteById(id);
     }
 
-    // Helper method to map Employee entity to DTO
-    private EmployeeManagementResponse mapToResponse(EmployeeManagement emp) {
+    // MAP ENTITY TO DTO
+    private EmployeeManagementResponse mapToResponse(EmployeeManagement e) {
         return new EmployeeManagementResponse(
-                emp.getId(),
-                emp.getName(),
-                emp.getEmail(),
-                emp.getPhone(),
-                emp.getRole(),
-                emp.getShift(),
-                emp.getStatus(),
-                emp.getSalary()
+                e.getId(),
+                e.getName(),
+                e.getEmail(),
+                e.getPhone(),
+                e.getRole(),
+                e.getShift(),
+                e.getStatus(),
+                e.getSalary()
         );
     }
 }
