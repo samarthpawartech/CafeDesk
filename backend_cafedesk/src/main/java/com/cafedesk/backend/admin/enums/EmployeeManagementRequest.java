@@ -25,6 +25,7 @@ public class EmployeeManagementRequest {
     private EmployeeManagementStatus status;
 
 
+    @SuppressWarnings("unused")
     private Double salary;
 
 // -------------------- Getters & Setters --------------------
