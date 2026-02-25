@@ -17,7 +17,6 @@ public class Admin {
     @Column(nullable = false)
     private String password;
 
-    // ✅ ADD ROLE COLUMN
     @Column(nullable = false)
     private String role;
 
@@ -29,7 +28,6 @@ public class Admin {
         return id;
     }
 
-    // Optional (usually not needed manually)
     public void setId(Long id) {
         this.id = id;
     }
@@ -50,12 +48,37 @@ public class Admin {
         this.password = password;
     }
 
-    // ✅ ROLE GETTER & SETTER
+    /**
+     * Always return role WITHOUT "ROLE_" prefix
+     * So JWT + Security can safely add it.
+     */
     public String getRole() {
+
+        if (role == null) {
+            return null;
+        }
+
+        if (role.startsWith("ROLE_")) {
+            return role.substring(5);
+        }
+
         return role;
     }
 
+    /**
+     * Always store role WITHOUT prefix in DB
+     */
     public void setRole(String role) {
-        this.role = role;
+
+        if (role == null) {
+            this.role = null;
+            return;
+        }
+
+        if (role.startsWith("ROLE_")) {
+            this.role = role.substring(5);
+        } else {
+            this.role = role;
+        }
     }
 }

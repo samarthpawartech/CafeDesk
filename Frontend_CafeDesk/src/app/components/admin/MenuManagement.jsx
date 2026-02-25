@@ -1,21 +1,20 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import axios from "axios";
 import {
   Plus,
   Edit,
   Trash2,
   Search,
+  UploadCloud,
   Tag,
   FileText,
   DollarSign,
-  Image as ImageIcon,
+  Layers,
   CheckCircle,
-  XCircle,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/app/components/ui/button";
-import { Badge } from "@/app/components/ui/badge";
 import { Input } from "@/app/components/ui/input";
 import {
   Dialog,
@@ -24,20 +23,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/app/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/app/components/ui/select";
 
 export const MenuManagement = () => {
   const [menuItems, setMenuItems] = useState([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeCategory, setActiveCategory] = useState("All");
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [availabilityFilter, setAvailabilityFilter] = useState("All");
 
   const [formData, setFormData] = useState({
     id: "",
@@ -46,18 +39,34 @@ export const MenuManagement = () => {
     price: "",
     category: "Beverages",
     available: true,
-    image: null,
+    imageFile: null,
+    preview: null,
   });
 
-  const categories = [
-    "All",
-    "Beverages",
-    "Breakfast & Brunch",
-    "Lunch & Light Meals",
-    "Snacks & Sides",
-    "Desserts & Sweets",
-    "Healthy / Special Diet",
-  ];
+  const categories = ["Beverages", "Breakfast & Brunch", "Desserts", "Snacks"];
+  const API = "http://localhost:8080/api/menu";
+  const BASE_URL = "http://localhost:8080";
+
+  const buildImageUrl = (path) => {
+    if (!path) return null;
+    return `${BASE_URL}${path.startsWith("/") ? path : "/" + path}`;
+  };
+
+  const fetchMenu = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.get(API, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setMenuItems(res.data);
+    } catch (err) {
+      console.error("Fetch Error:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchMenu();
+  }, []);
 
   const resetForm = () => {
     setFormData({
@@ -67,7 +76,8 @@ export const MenuManagement = () => {
       price: "",
       category: "Beverages",
       available: true,
-      image: null,
+      imageFile: null,
+      preview: null,
     });
     setEditingItem(null);
   };
@@ -76,302 +86,309 @@ export const MenuManagement = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setFormData((prev) => ({ ...prev, image: reader.result }));
-    };
-    reader.readAsDataURL(file);
+    setFormData((prev) => ({
+      ...prev,
+      imageFile: file,
+      preview: URL.createObjectURL(file),
+    }));
   };
 
-  const handleSave = () => {
-    if (!formData.name || !formData.price) return;
+  const handleSave = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const formDataToSend = new FormData();
 
-    if (editingItem) {
-      setMenuItems((prev) =>
-        prev.map((item) =>
-          item.id === editingItem.id
-            ? { ...formData, price: parseFloat(formData.price) }
-            : item,
-        ),
-      );
-    } else {
-      const newItem = {
-        ...formData,
-        id: Date.now(),
+      const menuObject = {
+        name: formData.name,
+        description: formData.description,
         price: parseFloat(formData.price),
+        category: formData.category,
+        availability: formData.available,
       };
-      setMenuItems((prev) => [...prev, newItem]);
-    }
 
-    setIsDialogOpen(false);
-    resetForm();
+      formDataToSend.append(
+        "menu",
+        new Blob([JSON.stringify(menuObject)], { type: "application/json" }),
+      );
+
+      if (formData.imageFile) {
+        formDataToSend.append("image", formData.imageFile);
+      }
+
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+
+      if (editingItem) {
+        await axios.put(`${API}/${formData.id}`, formDataToSend, config);
+      } else {
+        if (!formData.imageFile) {
+          alert("Please select an image");
+          return;
+        }
+        await axios.post(API, formDataToSend, config);
+      }
+
+      fetchMenu();
+      setIsDialogOpen(false);
+      resetForm();
+    } catch (err) {
+      console.error("Save Error:", err.response?.data || err);
+    }
   };
 
   const handleEdit = (item) => {
     setEditingItem(item);
-    setFormData(item);
+    setFormData({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      category: item.category,
+      available: item.availability,
+      imageFile: null,
+      preview: buildImageUrl(item.imagePath),
+    });
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id) => {
-    setMenuItems((prev) => prev.filter((item) => item.id !== id));
+  const handleDelete = async (id) => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`${API}/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      fetchMenu();
+    } catch (err) {
+      console.error("Delete Error:", err);
+    }
   };
 
   const filteredItems = useMemo(() => {
-    return menuItems.filter((item) => {
-      const matchesSearch =
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.category.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory =
-        activeCategory === "All" || item.category === activeCategory;
-      return matchesSearch && matchesCategory;
-    });
-  }, [menuItems, searchTerm, activeCategory]);
+    return menuItems
+      .filter((item) =>
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()),
+      )
+      .filter(
+        (item) =>
+          selectedCategory === "All" || item.category === selectedCategory,
+      )
+      .filter(
+        (item) =>
+          availabilityFilter === "All" ||
+          item.availability === (availabilityFilter === "Available"),
+      );
+  }, [menuItems, searchTerm, selectedCategory, availabilityFilter]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F3EDE6] to-[#E6D5C3] p-10">
-      <div className="w-full max-w-6xl mx-auto">
-        {/* Search + Add Button */}
-        <div className="flex justify-center mb-6">
-          <div className="flex items-center gap-6 w-full max-w-4xl">
-            <div className="flex-1 relative">
-              <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-700" />
-              <Input
-                placeholder="Search menu item..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-12 h-12 rounded-full w-full"
-              />
-            </div>
-            <Button
-              onClick={() => {
-                resetForm();
-                setIsDialogOpen(true);
-              }}
-              className="h-12 px-8 rounded-full bg-white text-gray-800 shadow-md hover:bg-gray-100 flex-shrink-0"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Menu Item
-            </Button>
+      <div className="max-w-6xl mx-auto">
+        {/* Top Row: Search + Availability + Add Button */}
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+          {/* Search Bar */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Input
+              placeholder="Search menu item..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 h-11 w-full rounded-full bg-white border border-gray-300 focus:ring-2 focus:ring-[#6B4423]"
+            />
           </div>
+
+          {/* Availability Filter */}
+          <select
+            value={availabilityFilter}
+            onChange={(e) => setAvailabilityFilter(e.target.value)}
+            className="h-11 px-4 rounded-full border border-gray-300 bg-white w-full md:w-48 focus:ring-2 focus:ring-[#6B4423]"
+          >
+            <option>All</option>
+            <option>Available</option>
+            <option>Unavailable</option>
+          </select>
+
+          {/* Add Button */}
+          <Button
+            onClick={() => {
+              resetForm();
+              setIsDialogOpen(true);
+            }}
+            className="rounded-full bg-white text-black shadow-md hover:bg-gray-100 h-11 px-6"
+          >
+            <Plus className="w-4 h-4 mr-2" /> Add Menu Item
+          </Button>
         </div>
 
-        {/* Categories */}
-        <div className="flex justify-center flex-wrap gap-3 mb-12">
+        {/* Second Row: Category Buttons */}
+        <div className="flex flex-wrap items-center gap-4 mb-8">
           {categories.map((cat) => (
-            <button
+            <Button
               key={cat}
-              className={`px-4 h-12 flex items-center justify-center rounded-full text-sm font-medium whitespace-nowrap ${
-                activeCategory === cat
-                  ? "bg-[#B8895C] text-white"
-                  : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-100"
-              }`}
-              onClick={() => setActiveCategory(cat)}
+              variant={selectedCategory === cat ? "default" : "outline"}
+              onClick={() => setSelectedCategory(cat)}
+              className="h-11 rounded-full px-6"
             >
               {cat}
-            </button>
+            </Button>
           ))}
         </div>
 
-        {/* Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <AnimatePresence>
-            {filteredItems.map((item) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                whileHover={{ y: -5, scale: 1.02 }}
-                className="rounded-3xl p-6 bg-white shadow-xl hover:shadow-2xl transition-all duration-300 relative"
-              >
-                {/* Image + Availability Dot */}
-                {item.image && (
-                  <div className="relative mb-4">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="h-44 w-full object-cover rounded-2xl"
-                    />
-                    <span className="absolute top-3 left-3 bg-white/70 text-gray-800 px-3 py-1 rounded-full text-xs font-semibold">
-                      {item.category}
-                    </span>
-                    {/* Hoverable availability dot */}
-                    <motion.div
-                      className={`absolute top-3 right-3 w-3 h-3 rounded-full border-2 border-white cursor-pointer ${
-                        item.available ? "bg-green-500" : "bg-red-500"
-                      }`}
-                      title={item.available ? "Available" : "Unavailable"}
-                      whileHover={{ scale: 1.5 }}
-                    />
-                  </div>
-                )}
-
-                {/* Name */}
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-bold text-xl text-[#4B2E2B] flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-[#B8895C]" />
-                    {item.name}
-                  </h3>
-                  {/* Icon status */}
-                  {item.available ? (
-                    <CheckCircle className="w-5 h-5 text-green-500" />
-                  ) : (
-                    <XCircle className="w-5 h-5 text-red-500" />
-                  )}
+        {/* Menu Cards */}
+        <div className="grid md:grid-cols-3 gap-8">
+          {filteredItems.map((item) => (
+            <div key={item.id} className="bg-white p-6 rounded-3xl shadow-lg">
+              {item.imagePath && (
+                <img
+                  src={buildImageUrl(item.imagePath)}
+                  alt={item.name}
+                  className="h-40 w-full object-cover rounded-2xl mb-4"
+                />
+              )}
+              <h3 className="font-bold text-xl text-[#4B2E2B]">{item.name}</h3>
+              <p className="text-sm text-gray-600 mb-2">{item.description}</p>
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-[#A4754E]">₹ {item.price}</span>
+                <div className="flex gap-2">
+                  <Edit
+                    className="w-4 h-4 cursor-pointer text-blue-600"
+                    onClick={() => handleEdit(item)}
+                  />
+                  <Trash2
+                    className="w-4 h-4 cursor-pointer text-red-600"
+                    onClick={() => handleDelete(item.id)}
+                  />
                 </div>
-
-                {/* Description */}
-                <p className="text-[#6B4F3A] text-sm flex items-center gap-2 mb-3">
-                  <Tag className="w-4 h-4 text-[#B8895C]" />{" "}
-                  {item.description || "No description"}
-                </p>
-
-                {/* Price + Actions */}
-                <div className="flex justify-between items-center mt-4">
-                  <span className="font-bold text-[#A4754E] text-lg flex items-center gap-1">
-                    <DollarSign className="w-4 h-4 text-yellow-600" /> ₹{" "}
-                    {item.price}
-                  </span>
-
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleEdit(item)}
-                    >
-                      <Edit className="w-4 h-4 text-blue-600" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleDelete(item.id)}
-                    >
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </Button>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Add/Edit Dialog */}
+      {/* Dialog for Add/Edit */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-md bg-[#F8F5F1] rounded-2xl p-8">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-xl font-semibold text-[#2C1810]">
               {editingItem ? "Edit Menu Item" : "Add Menu Item"}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="flex flex-col gap-4">
+          <div className="space-y-4 mt-4">
             {/* Name */}
-            <div className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-[#B8895C]" />
+            <div className="relative">
+              <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <Input
-                placeholder="Enter item name"
+                placeholder="Item name"
                 value={formData.name}
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
+                className="pl-10 rounded-xl h-11 w-full"
               />
             </div>
 
             {/* Description */}
-            <div className="flex items-center gap-2">
-              <Tag className="w-5 h-5 text-[#B8895C]" />
+            <div className="relative">
+              <FileText className="absolute left-3 top-3 w-4 h-4 text-gray-500" />
               <Input
-                placeholder="Enter description"
+                placeholder="Description"
                 value={formData.description}
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
+                className="pl-10 rounded-xl h-11 w-full"
               />
             </div>
 
             {/* Price */}
-            <div className="flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-yellow-600" />
+            <div className="relative">
+              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <Input
                 type="number"
-                placeholder="Enter price"
+                placeholder="Price"
                 value={formData.price}
                 onChange={(e) =>
                   setFormData({ ...formData, price: e.target.value })
                 }
+                className="pl-10 rounded-xl h-11 w-full"
               />
             </div>
 
-            {/* Category */}
-            <div className="flex items-center gap-2">
-              <Tag className="w-5 h-5 text-[#B8895C]" />
-              <Select
+            {/* Category Select */}
+            <div className="relative">
+              <Layers className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <select
                 value={formData.category}
-                onValueChange={(val) =>
-                  setFormData({ ...formData, category: val })
+                onChange={(e) =>
+                  setFormData({ ...formData, category: e.target.value })
                 }
-                className="flex-1"
+                className="pl-10 w-full rounded-xl border px-3 h-11"
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories
-                    .filter((cat) => cat !== "All")
-                    .map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+                {categories.map((cat) => (
+                  <option key={cat}>{cat}</option>
+                ))}
+              </select>
             </div>
 
-            {/* Image */}
-            <div className="flex items-center gap-2">
-              <ImageIcon className="w-5 h-5 text-[#B8895C]" />
-              <Input type="file" onChange={handleImageUpload} />
+            {/* Image Upload */}
+            <div className="border-2 border-dashed rounded-2xl p-6 text-center bg-white">
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                id="fileUpload"
+                onChange={handleImageUpload}
+              />
+              <label htmlFor="fileUpload" className="cursor-pointer">
+                <UploadCloud
+                  className="mx-auto mb-2 text-[#6B4423]"
+                  size={32}
+                />
+                <p className="text-sm text-gray-600">Upload Image</p>
+              </label>
             </div>
 
-            {/* Status with symbols */}
-            <div className="flex items-center gap-2">
-              <span>Status:</span>
-              <Select
-                value={formData.available ? "available" : "unavailable"}
-                onValueChange={(val) =>
-                  setFormData({ ...formData, available: val === "available" })
+            {formData.preview && (
+              <img
+                src={formData.preview}
+                alt="Preview"
+                className="h-40 w-full object-cover rounded-xl"
+              />
+            )}
+
+            {/* Availability */}
+            <div className="relative">
+              <CheckCircle className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <select
+                value={formData.available ? "Available" : "Unavailable"}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    available: e.target.value === "Available",
+                  })
                 }
+                className="pl-10 w-full rounded-xl border px-3 h-11"
               >
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="available">
-                    <CheckCircle className="w-4 h-4 text-green-500 mr-2 inline-block" />
-                    Available
-                  </SelectItem>
-                  <SelectItem value="unavailable">
-                    <XCircle className="w-4 h-4 text-red-500 mr-2 inline-block" />
-                    Unavailable
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+                <option>Available</option>
+                <option>Unavailable</option>
+              </select>
             </div>
           </div>
 
-          <DialogFooter className="mt-4 flex justify-end gap-2">
+          <DialogFooter className="mt-6 flex gap-3">
+            <Button
+              onClick={handleSave}
+              className="bg-[#6B4423] text-white rounded-xl px-6"
+            >
+              {editingItem ? "Update" : "Add"}
+            </Button>
             <Button
               variant="secondary"
               onClick={() => {
                 setIsDialogOpen(false);
                 resetForm();
               }}
+              className="bg-[#D6C2A8] text-black rounded-xl px-6"
             >
               Cancel
-            </Button>
-            <Button onClick={handleSave}>
-              {editingItem ? "Update" : "Add"}
             </Button>
           </DialogFooter>
         </DialogContent>
