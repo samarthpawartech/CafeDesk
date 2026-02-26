@@ -43,30 +43,35 @@ export const MenuManagement = () => {
     preview: null,
   });
 
-  const categories = ["Beverages", "Breakfast & Brunch", "Desserts", "Snacks"];
+  const categories = [
+    { label: "All", value: "All" },
+    { label: "Beverages", value: "Beverages" },
+    { label: "Breakfast & Brunch", value: "Breakfast and Brunch" },
+    { label: "Desserts", value: "Desserts" },
+    { label: "Snacks", value: "Snacks" },
+  ];
+
   const API = "http://localhost:8080/api/menu";
   const BASE_URL = "http://localhost:8080";
 
-  const buildImageUrl = (path) => {
-    if (!path) return null;
-    return `${BASE_URL}${path.startsWith("/") ? path : "/" + path}`;
-  };
+  const buildImageUrl = (path) =>
+    path ? `${BASE_URL}${path.startsWith("/") ? path : "/" + path}` : null;
+
+  /* ================= API ================= */
 
   const fetchMenu = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await axios.get(API, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setMenuItems(res.data);
-    } catch (err) {
-      console.error("Fetch Error:", err);
-    }
+    const token = localStorage.getItem("token");
+    const res = await axios.get(API, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setMenuItems(res.data);
   };
 
   useEffect(() => {
     fetchMenu();
   }, []);
+
+  /* ================= HANDLERS ================= */
 
   const resetForm = () => {
     setFormData({
@@ -94,45 +99,37 @@ export const MenuManagement = () => {
   };
 
   const handleSave = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const formDataToSend = new FormData();
+    const token = localStorage.getItem("token");
 
-      const menuObject = {
-        name: formData.name,
-        description: formData.description,
-        price: parseFloat(formData.price),
-        category: formData.category,
-        availability: formData.available,
-      };
+    const payload = {
+      name: formData.name,
+      description: formData.description,
+      price: Number(formData.price),
+      category: formData.category,
+      availability: formData.available,
+    };
 
-      formDataToSend.append(
-        "menu",
-        new Blob([JSON.stringify(menuObject)], { type: "application/json" }),
-      );
+    const form = new FormData();
+    form.append(
+      "menu",
+      new Blob([JSON.stringify(payload)], { type: "application/json" }),
+    );
 
-      if (formData.imageFile) {
-        formDataToSend.append("image", formData.imageFile);
-      }
-
-      const config = { headers: { Authorization: `Bearer ${token}` } };
-
-      if (editingItem) {
-        await axios.put(`${API}/${formData.id}`, formDataToSend, config);
-      } else {
-        if (!formData.imageFile) {
-          alert("Please select an image");
-          return;
-        }
-        await axios.post(API, formDataToSend, config);
-      }
-
-      fetchMenu();
-      setIsDialogOpen(false);
-      resetForm();
-    } catch (err) {
-      console.error("Save Error:", err.response?.data || err);
+    if (formData.imageFile) {
+      form.append("image", formData.imageFile);
     }
+
+    const config = {
+      headers: { Authorization: `Bearer ${token}` },
+    };
+
+    editingItem
+      ? await axios.put(`${API}/${formData.id}`, form, config)
+      : await axios.post(API, form, config);
+
+    fetchMenu();
+    setIsDialogOpen(false);
+    resetForm();
   };
 
   const handleEdit = (item) => {
@@ -151,108 +148,118 @@ export const MenuManagement = () => {
   };
 
   const handleDelete = async (id) => {
-    try {
-      const token = localStorage.getItem("token");
-      await axios.delete(`${API}/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      fetchMenu();
-    } catch (err) {
-      console.error("Delete Error:", err);
-    }
+    const token = localStorage.getItem("token");
+    await axios.delete(`${API}/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    fetchMenu();
   };
+
+  /* ================= FILTER ================= */
 
   const filteredItems = useMemo(() => {
     return menuItems
-      .filter((item) =>
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()),
+      .filter((i) => i.name.toLowerCase().includes(searchTerm.toLowerCase()))
+      .filter(
+        (i) => selectedCategory === "All" || i.category === selectedCategory,
       )
       .filter(
-        (item) =>
-          selectedCategory === "All" || item.category === selectedCategory,
-      )
-      .filter(
-        (item) =>
+        (i) =>
           availabilityFilter === "All" ||
-          item.availability === (availabilityFilter === "Available"),
+          i.availability === (availabilityFilter === "Available"),
       );
   }, [menuItems, searchTerm, selectedCategory, availabilityFilter]);
+
+  /* ================= UI ================= */
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F3EDE6] to-[#E6D5C3] p-10">
       <div className="max-w-6xl mx-auto">
-        {/* Top Row: Search + Availability + Add Button */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-          {/* Search Bar */}
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+        {/* TOP CONTROLS */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="relative h-11">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
             <Input
               placeholder="Search menu item..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 h-11 w-full rounded-full bg-white border border-gray-300 focus:ring-2 focus:ring-[#6B4423]"
+              className="pl-10 h-full w-full bg-white"
             />
           </div>
 
-          {/* Availability Filter */}
           <select
             value={availabilityFilter}
             onChange={(e) => setAvailabilityFilter(e.target.value)}
-            className="h-11 px-4 rounded-full border border-gray-300 bg-white w-full md:w-48 focus:ring-2 focus:ring-[#6B4423]"
+            className="h-11 w-full px-4 rounded-md border bg-white"
           >
             <option>All</option>
             <option>Available</option>
             <option>Unavailable</option>
           </select>
 
-          {/* Add Button */}
           <Button
+            className="h-11 w-full"
             onClick={() => {
               resetForm();
               setIsDialogOpen(true);
             }}
-            className="rounded-full bg-white text-black shadow-md hover:bg-gray-100 h-11 px-6"
           >
-            <Plus className="w-4 h-4 mr-2" /> Add Menu Item
+            <Plus className="w-4 h-4 mr-2" />
+            Add Menu Item
           </Button>
         </div>
 
-        {/* Second Row: Category Buttons */}
-        <div className="flex flex-wrap items-center gap-4 mb-8">
-          {categories.map((cat) => (
-            <Button
-              key={cat}
-              variant={selectedCategory === cat ? "default" : "outline"}
-              onClick={() => setSelectedCategory(cat)}
-              className="h-11 rounded-full px-6"
-            >
-              {cat}
-            </Button>
-          ))}
+        {/* CATEGORY TABS */}
+        <div className="flex justify-center mb-10">
+          <div className="flex gap-3 flex-wrap">
+            {categories.map((cat) => (
+              <Button
+                key={cat.value}
+                variant={selectedCategory === cat.value ? "default" : "outline"}
+                onClick={() => setSelectedCategory(cat.value)}
+                className="h-10 px-6"
+              >
+                {cat.label}
+              </Button>
+            ))}
+          </div>
         </div>
 
-        {/* Menu Cards */}
+        {/* MENU CARDS */}
         <div className="grid md:grid-cols-3 gap-8">
           {filteredItems.map((item) => (
-            <div key={item.id} className="bg-white p-6 rounded-3xl shadow-lg">
+            <div key={item.id} className="bg-white p-6 rounded-2xl shadow-lg">
               {item.imagePath && (
                 <img
                   src={buildImageUrl(item.imagePath)}
                   alt={item.name}
-                  className="h-40 w-full object-cover rounded-2xl mb-4"
+                  className="h-40 w-full object-cover rounded-xl mb-4"
                 />
               )}
-              <h3 className="font-bold text-xl text-[#4B2E2B]">{item.name}</h3>
-              <p className="text-sm text-gray-600 mb-2">{item.description}</p>
+
+              <h3 className="font-bold text-lg">{item.name}</h3>
+              <p className="text-sm text-gray-600 mb-3">{item.description}</p>
+
               <div className="flex justify-between items-center">
-                <span className="font-bold text-[#A4754E]">₹ {item.price}</span>
+                <span className="font-semibold">₹ {item.price}</span>
+
+                <span
+                  className={`px-3 py-1 text-xs rounded-md ${
+                    item.availability
+                      ? "bg-green-100 text-green-700"
+                      : "bg-red-100 text-red-700"
+                  }`}
+                >
+                  {item.availability ? "Available" : "Unavailable"}
+                </span>
+
                 <div className="flex gap-2">
                   <Edit
-                    className="w-4 h-4 cursor-pointer text-blue-600"
+                    className="w-4 h-4 cursor-pointer"
                     onClick={() => handleEdit(item)}
                   />
                   <Trash2
-                    className="w-4 h-4 cursor-pointer text-red-600"
+                    className="w-4 h-4 cursor-pointer"
                     onClick={() => handleDelete(item.id)}
                   />
                 </div>
@@ -262,102 +269,106 @@ export const MenuManagement = () => {
         </div>
       </div>
 
-      {/* Dialog for Add/Edit */}
+      {/* DIALOG */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-md bg-[#F8F5F1] rounded-2xl p-8">
           <DialogHeader>
-            <DialogTitle className="text-xl font-semibold text-[#2C1810]">
+            <DialogTitle className="text-xl font-semibold">
               {editingItem ? "Edit Menu Item" : "Add Menu Item"}
             </DialogTitle>
           </DialogHeader>
 
+          {/* FORM */}
           <div className="space-y-4 mt-4">
-            {/* Name */}
-            <div className="relative">
+            {/* NAME */}
+            <div className="relative h-11">
               <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <Input
+                className="h-full w-full pl-10"
                 placeholder="Item name"
                 value={formData.name}
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
-                className="pl-10 rounded-xl h-11 w-full"
               />
             </div>
 
-            {/* Description */}
-            <div className="relative">
-              <FileText className="absolute left-3 top-3 w-4 h-4 text-gray-500" />
+            {/* DESCRIPTION */}
+            <div className="relative h-11">
+              <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <Input
+                className="h-full w-full pl-10"
                 placeholder="Description"
                 value={formData.description}
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
-                className="pl-10 rounded-xl h-11 w-full"
               />
             </div>
 
-            {/* Price */}
-            <div className="relative">
+            {/* PRICE */}
+            <div className="relative h-11">
               <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <Input
                 type="number"
+                className="h-full w-full pl-10"
                 placeholder="Price"
                 value={formData.price}
                 onChange={(e) =>
                   setFormData({ ...formData, price: e.target.value })
                 }
-                className="pl-10 rounded-xl h-11 w-full"
               />
             </div>
 
-            {/* Category Select */}
-            <div className="relative">
+            {/* CATEGORY */}
+            <div className="relative h-11">
               <Layers className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <select
+                className="h-full w-full pl-10 border rounded-md bg-white"
                 value={formData.category}
                 onChange={(e) =>
                   setFormData({ ...formData, category: e.target.value })
                 }
-                className="pl-10 w-full rounded-xl border px-3 h-11"
               >
-                {categories.map((cat) => (
-                  <option key={cat}>{cat}</option>
-                ))}
+                {categories
+                  .filter((c) => c.value !== "All")
+                  .map((cat) => (
+                    <option key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </option>
+                  ))}
               </select>
             </div>
 
-            {/* Image Upload */}
-            <div className="border-2 border-dashed rounded-2xl p-6 text-center bg-white">
+            {/* IMAGE UPLOAD */}
+            <div className="h-11 w-full">
               <input
                 type="file"
-                accept="image/*"
-                className="hidden"
                 id="fileUpload"
+                className="hidden"
                 onChange={handleImageUpload}
               />
-              <label htmlFor="fileUpload" className="cursor-pointer">
-                <UploadCloud
-                  className="mx-auto mb-2 text-[#6B4423]"
-                  size={32}
-                />
-                <p className="text-sm text-gray-600">Upload Image</p>
+              <label
+                htmlFor="fileUpload"
+                className="h-full w-full border-2 border-dashed rounded-md flex items-center justify-center gap-2 cursor-pointer bg-white"
+              >
+                <UploadCloud size={18} />
+                Upload Image
               </label>
             </div>
 
             {formData.preview && (
               <img
                 src={formData.preview}
-                alt="Preview"
                 className="h-40 w-full object-cover rounded-xl"
               />
             )}
 
-            {/* Availability */}
-            <div className="relative">
+            {/* AVAILABILITY */}
+            <div className="relative h-11">
               <CheckCircle className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <select
+                className="h-full w-full pl-10 border rounded-md bg-white"
                 value={formData.available ? "Available" : "Unavailable"}
                 onChange={(e) =>
                   setFormData({
@@ -365,7 +376,6 @@ export const MenuManagement = () => {
                     available: e.target.value === "Available",
                   })
                 }
-                className="pl-10 w-full rounded-xl border px-3 h-11"
               >
                 <option>Available</option>
                 <option>Unavailable</option>
@@ -374,10 +384,7 @@ export const MenuManagement = () => {
           </div>
 
           <DialogFooter className="mt-6 flex gap-3">
-            <Button
-              onClick={handleSave}
-              className="bg-[#6B4423] text-white rounded-xl px-6"
-            >
+            <Button onClick={handleSave}>
               {editingItem ? "Update" : "Add"}
             </Button>
             <Button
@@ -386,7 +393,6 @@ export const MenuManagement = () => {
                 setIsDialogOpen(false);
                 resetForm();
               }}
-              className="bg-[#D6C2A8] text-black rounded-xl px-6"
             >
               Cancel
             </Button>
