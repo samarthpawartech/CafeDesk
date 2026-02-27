@@ -1,16 +1,22 @@
+"use client";
+
 import { createContext, useContext, useState, useEffect } from "react";
 
-const AuthContext = createContext();
+const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [currentOrder, setCurrentOrder] = useState([]);
 
-  // Restore only cart
+  /* ---------------- RESTORE CART ONLY ---------------- */
   useEffect(() => {
     const storedOrder = localStorage.getItem("currentOrder");
     if (storedOrder) {
-      setCurrentOrder(JSON.parse(storedOrder));
+      try {
+        setCurrentOrder(JSON.parse(storedOrder));
+      } catch {
+        setCurrentOrder([]);
+      }
     }
   }, []);
 
@@ -18,6 +24,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("currentOrder", JSON.stringify(currentOrder));
   }, [currentOrder]);
 
+  /* ---------------- LOGIN (FIXED) ---------------- */
   const login = async (username, password, role) => {
     let url = "";
 
@@ -27,6 +34,8 @@ export const AuthProvider = ({ children }) => {
       url = "http://localhost:8080/api/employee/login";
     } else if (role === "customer") {
       url = "http://localhost:8080/api/customer/login";
+    } else {
+      throw new Error("Invalid role");
     }
 
     try {
@@ -36,23 +45,36 @@ export const AuthProvider = ({ children }) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          username: username.trim(), // ✅ MUST match backend
-          password: password.trim(), // ✅ MUST match backend
+          username: username.trim(),
+          password: password.trim(),
         }),
       });
 
-      const data = await response.json();
+      // ✅ READ RAW RESPONSE FIRST
+      const text = await response.text();
 
-      if (!response.ok || !data.token) {
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        // Backend returned plain text (500, HTML, etc.)
+        throw new Error(text || "Server error");
+      }
+
+      if (!response.ok) {
         throw new Error(data.message || "Login failed");
       }
 
-      // Save JWT token
+      if (!data.token) {
+        throw new Error("Token missing in response");
+      }
+
+      // ✅ Save JWT token
       localStorage.setItem("token", data.token);
 
       const userData = {
-        username: username,
-        role: role,
+        username,
+        role,
       };
 
       localStorage.setItem("user", JSON.stringify(userData));
@@ -60,28 +82,29 @@ export const AuthProvider = ({ children }) => {
 
       return true;
     } catch (error) {
-      console.error("Login failed:", error);
+      console.error("Login failed:", error.message);
       throw error;
     }
   };
 
+  /* ---------------- LOGOUT ---------------- */
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("currentOrder");
     setUser(null);
     setCurrentOrder([]);
   };
 
+  /* ---------------- ORDER HELPERS ---------------- */
   const addToOrder = (item) => {
     setCurrentOrder((prev) => {
       const existing = prev.find((i) => i.id === item.id);
-
       if (existing) {
         return prev.map((i) =>
           i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i,
         );
       }
-
       return [...prev, { ...item, quantity: 1 }];
     });
   };
@@ -124,4 +147,11 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+/* ✅ NAMED EXPORT (IMPORTANT) */
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within AuthProvider");
+  }
+  return context;
+};

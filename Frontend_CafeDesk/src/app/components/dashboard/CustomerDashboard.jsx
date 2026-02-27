@@ -1,334 +1,269 @@
-import { useState } from "react";
+"use client";
+
+import { useState, useEffect } from "react";
 import {
   Coffee,
   ShoppingCart,
-  QrCode,
   FileText,
+  History,
+  MessageSquare,
   LogOut,
   Plus,
-  Minus,
   Trash2,
+  CheckCircle,
+  Star,
+  Download,
 } from "lucide-react";
+import { jsPDF } from "jspdf";
 import { useAuth } from "@/app/context/AuthContext";
-import { menuItems, bills } from "@/app/utils/mockData";
+import { menuItems, bills as mockBills } from "@/app/utils/mockData";
 import { Button } from "@/app/components/ui/button";
 import { Card } from "@/app/components/ui/card";
-import { Badge } from "@/app/components/ui/badge";
+import { Textarea } from "@/app/components/ui/textarea";
 import { ImageWithFallback } from "@/app/components/figma/ImageWithFallback";
 
 export const CustomerDashboard = () => {
   const {
     user,
     logout,
-    currentOrder = [], // ✅ default to empty array
+    currentOrder,
     addToOrder,
-    updateQuantity,
     removeFromOrder,
     getTotalAmount,
     clearOrder,
   } = useAuth();
 
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [showQRScanner, setShowQRScanner] = useState(false);
+  const [activeTab, setActiveTab] = useState("brew");
+  const [bills, setBills] = useState(mockBills);
+  const [rating, setRating] = useState(0);
+  const [remark, setRemark] = useState("");
+  const [tableNumber, setTableNumber] = useState(""); // ✅ TABLE FROM QR
 
-  const categories = ["All", "Drinks", "Snacks", "Meals"];
-  const filteredMenu =
-    selectedCategory === "All"
-      ? menuItems
-      : menuItems.filter((item) => item.category === selectedCategory);
+  /* ✅ AUTO READ TABLE NUMBER FROM QR URL (?table=T01) */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const table = params.get("table");
+    if (table) setTableNumber(table);
+  }, []);
 
-  const customerBills = bills.filter(
-    (bill) => bill.customerName === user?.name,
+  const cartCount = currentOrder.reduce(
+    (total, item) => total + item.quantity,
+    0,
   );
-  const pendingBills = customerBills.filter(
-    (bill) => bill.status === "pending",
-  );
 
+  const userBills = bills.filter((b) => b.customerName === user?.username);
+  const pendingBills = userBills.filter((b) => b.status === "pending");
+  const orderHistory = userBills.filter((b) => b.status === "paid");
+
+  /* ---------------- PLACE ORDER ---------------- */
   const handlePlaceOrder = () => {
-    alert(`Order placed successfully! Total: $${getTotalAmount().toFixed(2)}`);
+    if (currentOrder.length === 0) return;
+    if (!tableNumber) return alert("Table number missing. Scan QR again.");
+
+    const newBill = {
+      id: `INV-${Date.now()}`,
+      customerName: user?.username,
+      tableNumber, // ✅ AUTO FROM QR
+      amount: getTotalAmount(),
+      status: "pending",
+      date: new Date().toLocaleString(),
+    };
+
+    setBills((prev) => [...prev, newBill]);
     clearOrder();
+    setActiveTab("bills");
+    alert(`Order placed for Table ${tableNumber}`);
+  };
+
+  /* ---------------- INVOICE ---------------- */
+  const downloadInvoice = (bill) => {
+    const pdf = new jsPDF();
+    pdf.setFontSize(18);
+    pdf.text("CafeDesk Invoice", 20, 20);
+    pdf.setFontSize(12);
+    pdf.text(`Invoice ID: ${bill.id}`, 20, 40);
+    pdf.text(`Customer: ${bill.customerName}`, 20, 50);
+    pdf.text(`Table Number: ${bill.tableNumber}`, 20, 60);
+    pdf.text(`Date: ${bill.date}`, 20, 70);
+    pdf.text(`Amount Paid: ₹${bill.amount}`, 20, 80);
+    pdf.save(`${bill.id}.pdf`);
+  };
+
+  /* ---------------- FEEDBACK ---------------- */
+  const submitFeedback = () => {
+    if (rating === 0) return alert("Please give rating ⭐");
+    alert(`Thanks for rating ${rating} ⭐`);
+    setRating(0);
+    setRemark("");
   };
 
   return (
     <div className="min-h-screen bg-[#FBF8F3]">
-      {/* Header */}
-      <div className="bg-[#6B4423] text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-[#2D5A3D] rounded-lg flex items-center justify-center">
-                <Coffee className="w-7 h-7" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold">CafeDesk</h1>
-                <p className="text-sm text-white/80">by Samarth Pawar</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm text-white/80">Welcome,</p>
-                <p className="font-medium">{user?.name}</p>
-              </div>
-
-              {/* Cart Button with Badge */}
-              <Button
-                variant="ghost"
-                className="relative text-white hover:bg-white/10"
-              >
-                <ShoppingCart className="w-5 h-5" />
-                {currentOrder.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
-                    {currentOrder.reduce((sum, item) => sum + item.quantity, 0)}
-                  </span>
-                )}
-              </Button>
-
-              {/* Logout */}
-              <Button
-                onClick={logout}
-                variant="ghost"
-                className="text-white hover:bg-white/10"
-              >
-                <LogOut className="w-5 h-5" />
-              </Button>
-            </div>
-          </div>
+      {/* NAVBAR */}
+      <div className="bg-[#6B4423] text-white px-6 py-4 flex justify-between">
+        <div className="flex gap-2 font-bold">
+          <Coffee /> CafeDesk
         </div>
+        <Button onClick={logout} variant="ghost" className="text-white">
+          <LogOut className="w-4 h-4 mr-1" /> Logout
+        </Button>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Menu Section */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Quick Actions */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Card
-                className="p-6 bg-white border-[#E8D5BF] cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => setShowQRScanner(!showQRScanner)}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-[#2D5A3D] rounded-lg flex items-center justify-center">
-                    <QrCode className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-[#2C1810]">
-                      Scan QR Menu
-                    </h3>
-                    <p className="text-sm text-[#8B6F47]">
-                      Quick access to menu
-                    </p>
-                  </div>
-                </div>
-              </Card>
+      {/* TABS */}
+      <div className="flex justify-center gap-2 mt-6 flex-wrap">
+        {[
+          ["brew", "Brew & Bites", Coffee],
+          ["order", "Current Order", ShoppingCart],
+          ["bills", "Pending Bills", FileText],
+          ["history", "Order History", History],
+          ["feedback", "Feedback", MessageSquare],
+        ].map(([id, label, Icon]) => (
+          <button
+            key={id}
+            onClick={() => setActiveTab(id)}
+            className={`relative px-4 py-2 rounded-md border flex items-center gap-2 ${
+              activeTab === id
+                ? "bg-[#6B4423] text-white"
+                : "bg-white text-[#6B4423]"
+            }`}
+          >
+            <Icon className="w-4 h-4" />
+            {label}
+            {id === "order" && cartCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                {cartCount}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
 
-              <Card className="p-6 bg-white border-[#E8D5BF]">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-[#6B4423] rounded-lg flex items-center justify-center">
-                    <FileText className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-[#2C1810]">
-                      Pending Bills
-                    </h3>
-                    <p className="text-2xl font-bold text-[#6B4423]">
-                      {pendingBills.length}
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            </div>
-
-            {/* Category Filter */}
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {categories.map((category) => (
-                <Button
-                  key={category}
-                  onClick={() => setSelectedCategory(category)}
-                  variant={
-                    selectedCategory === category ? "default" : "outline"
-                  }
-                  className={
-                    selectedCategory === category
-                      ? "bg-[#6B4423] text-white hover:bg-[#4A2C1A]"
-                      : "border-[#E8D5BF] text-[#6B4423] hover:bg-[#F5E6D3]"
-                  }
-                >
-                  {category}
-                </Button>
-              ))}
-            </div>
-
-            {/* Menu Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {filteredMenu.map((item) => (
-                <Card
-                  key={item.id}
-                  className="overflow-hidden border-[#E8D5BF] hover:shadow-lg transition-shadow"
-                >
-                  <div className="aspect-video bg-[#F5E6D3] relative overflow-hidden">
-                    <ImageWithFallback
-                      src={`https://source.unsplash.com/400x300/?${item.image}`}
-                      alt={item.name}
-                      className="w-full h-full object-cover"
-                    />
-                    {!item.available && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <Badge variant="destructive">Out of Stock</Badge>
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className="font-semibold text-[#2C1810]">
-                          {item.name}
-                        </h3>
-                        <p className="text-sm text-[#8B6F47]">
-                          {item.description}
-                        </p>
-                      </div>
-                      <Badge className="bg-[#2D5A3D] text-white">
-                        {item.category}
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between items-center mt-4">
-                      <span className="text-xl font-bold text-[#6B4423]">
-                        ${item.price.toFixed(2)}
-                      </span>
-                      <Button
-                        onClick={() => addToOrder(item)}
-                        disabled={!item.available}
-                        className="bg-[#6B4423] hover:bg-[#4A2C1A] text-white"
-                        size="sm"
-                      >
-                        <Plus className="w-4 h-4 mr-1" />
-                        Add
-                      </Button>
-                    </div>
+      {/* CONTENT */}
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        <Card className="p-6">
+          {/* BREW */}
+          {activeTab === "brew" && (
+            <div className="grid md:grid-cols-3 gap-4">
+              {menuItems.map((item) => (
+                <Card key={item.id} className="p-4 space-y-2">
+                  <ImageWithFallback
+                    src={item.image}
+                    alt={item.name}
+                    className="h-40 w-full object-cover rounded"
+                  />
+                  <h3 className="font-semibold">{item.name}</h3>
+                  <p className="text-sm text-gray-500">{item.category}</p>
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold">₹{item.price}</span>
+                    <Button size="sm" onClick={() => addToOrder(item)}>
+                      <Plus className="w-4 h-4 mr-1" /> Add
+                    </Button>
                   </div>
                 </Card>
               ))}
             </div>
-          </div>
+          )}
 
-          {/* Order Summary Sidebar */}
-          <div className="lg:col-span-1">
-            <Card className="sticky top-4 border-[#E8D5BF]">
-              <div className="p-6 border-b border-[#E8D5BF] bg-[#6B4423] text-white rounded-t-lg">
-                <div className="flex items-center gap-2">
-                  <ShoppingCart className="w-5 h-5" />
-                  <h3 className="font-semibold">Current Order</h3>
-                </div>
-              </div>
-
-              <div className="p-6 space-y-4 max-h-96 overflow-y-auto">
-                {currentOrder.length === 0 ? (
-                  <p className="text-center text-[#8B6F47] py-8">
-                    Your cart is empty
-                  </p>
-                ) : (
-                  currentOrder.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex gap-3 pb-3 border-b border-[#E8D5BF]"
-                    >
-                      <div className="flex-1">
-                        <h4 className="font-medium text-[#2C1810]">
-                          {item.name}
-                        </h4>
-                        <p className="text-sm text-[#8B6F47]">
-                          ${item.price.toFixed(2)} each
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            updateQuantity(item.id, item.quantity - 1)
-                          }
-                          className="h-8 w-8 p-0"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </Button>
-                        <span className="w-8 text-center font-medium">
-                          {item.quantity}
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            updateQuantity(item.id, item.quantity + 1)
-                          }
-                          className="h-8 w-8 p-0"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => removeFromOrder(item.id)}
-                          className="h-8 w-8 p-0 text-[#C44536]"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {currentOrder.length > 0 && (
-                <div className="p-6 border-t border-[#E8D5BF] space-y-4">
-                  <div className="flex justify-between items-center text-lg font-semibold">
-                    <span className="text-[#2C1810]">Total:</span>
-                    <span className="text-[#6B4423]">
-                      ${getTotalAmount().toFixed(2)}
-                    </span>
+          {/* CURRENT ORDER */}
+          {activeTab === "order" && (
+            <div className="space-y-4">
+              {currentOrder.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex justify-between border-b pb-2"
+                >
+                  <div>
+                    <p>{item.name}</p>
+                    <p className="text-sm text-gray-500">
+                      ₹{item.price} × {item.quantity}
+                    </p>
                   </div>
                   <Button
-                    onClick={handlePlaceOrder}
-                    className="w-full bg-[#2D5A3D] hover:bg-[#1F3D2A] text-white"
+                    variant="ghost"
+                    onClick={() => removeFromOrder(item.id)}
                   >
-                    Place Order
-                  </Button>
-                  <Button
-                    onClick={clearOrder}
-                    variant="outline"
-                    className="w-full border-[#E8D5BF] text-[#C44536] hover:bg-[#C44536]/10"
-                  >
-                    Clear Cart
+                    <Trash2 className="text-red-500 w-4 h-4" />
                   </Button>
                 </div>
-              )}
-            </Card>
-          </div>
-        </div>
-      </div>
+              ))}
 
-      {/* QR Scanner Modal */}
-      {showQRScanner && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md p-8 text-center">
-            <QrCode className="w-24 h-24 mx-auto mb-4 text-[#6B4423]" />
-            <h3 className="text-xl font-semibold mb-2">QR Code Scanner</h3>
-            <p className="text-[#8B6F47] mb-6">
-              Point your camera at the QR code on your table
-            </p>
-            <div className="w-full h-64 bg-[#F5E6D3] rounded-lg flex items-center justify-center mb-6">
-              <p className="text-[#8B6F47]">Camera view would appear here</p>
+              {currentOrder.length > 0 && (
+                <div className="flex justify-between pt-4">
+                  <p className="font-bold">
+                    Table: {tableNumber} | Total: ₹{getTotalAmount()}
+                  </p>
+                  <Button onClick={handlePlaceOrder}>Place Order</Button>
+                </div>
+              )}
             </div>
-            <Button
-              onClick={() => setShowQRScanner(false)}
-              className="w-full bg-[#6B4423] hover:bg-[#4A2C1A] text-white"
-            >
-              Close Scanner
-            </Button>
-          </Card>
-        </div>
-      )}
+          )}
+
+          {/* PENDING BILLS */}
+          {activeTab === "bills" &&
+            pendingBills.map((bill) => (
+              <div key={bill.id} className="flex justify-between border-b py-2">
+                <div>
+                  <p className="font-semibold">{bill.id}</p>
+                  <p className="text-sm text-gray-500">
+                    Table {bill.tableNumber} | ₹{bill.amount}
+                  </p>
+                </div>
+                <span className="text-orange-600 font-semibold">
+                  ⏳ Pending Approval
+                </span>
+              </div>
+            ))}
+
+          {/* ORDER HISTORY */}
+          {activeTab === "history" &&
+            orderHistory.map((bill) => (
+              <div key={bill.id} className="flex justify-between border-b py-2">
+                <span>{bill.id}</span>
+                <div className="flex gap-2 items-center">
+                  <CheckCircle className="text-green-600 w-4 h-4" />₹
+                  {bill.amount}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => downloadInvoice(bill)}
+                  >
+                    <Download className="w-4 h-4 mr-1" /> Invoice
+                  </Button>
+                </div>
+              </div>
+            ))}
+
+          {/* FEEDBACK */}
+          {activeTab === "feedback" && (
+            <div className="flex flex-col items-center space-y-5 max-w-md mx-auto">
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Star
+                    key={n}
+                    onClick={() => setRating(n)}
+                    className={`w-7 h-7 cursor-pointer ${
+                      rating >= n
+                        ? "text-yellow-400 fill-yellow-400"
+                        : "text-gray-300"
+                    }`}
+                  />
+                ))}
+              </div>
+
+              <Textarea
+                placeholder="Optional remark"
+                value={remark}
+                onChange={(e) => setRemark(e.target.value)}
+                className="w-full"
+              />
+
+              <Button className="px-10" onClick={submitFeedback}>
+                Submit Feedback
+              </Button>
+            </div>
+          )}
+        </Card>
+      </div>
     </div>
   );
 };
