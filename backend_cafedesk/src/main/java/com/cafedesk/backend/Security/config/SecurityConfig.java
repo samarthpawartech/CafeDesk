@@ -35,10 +35,11 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-
                 .authorizeHttpRequests(auth -> auth
 
-                        // ✅ PUBLIC AUTH ENDPOINTS
+                        /* ================= PUBLIC ================= */
+
+                        // Authentication
                         .requestMatchers(
                                 "/api/customer/register",
                                 "/api/customer/login",
@@ -46,29 +47,39 @@ public class SecurityConfig {
                                 "/api/admin/login"
                         ).permitAll()
 
-                        // ✅ STATIC IMAGE ACCESS (VERY IMPORTANT FIX)
+                        // Public Menu API
+                        .requestMatchers(HttpMethod.GET, "/api/customer/menu").permitAll()
+
+                        // ✅ Important: Allow image access
                         .requestMatchers("/menu/**").permitAll()
 
-                        // ✅ Swagger
+                        // Preflight
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // Swagger
                         .requestMatchers(
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html"
                         ).permitAll()
 
-                        // ✅ Preflight
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        /* ================= ADMIN ================= */
+                        .requestMatchers("/api/admin/**").authenticated()
 
-                        // 🔥 ADMIN ONLY
-                        .requestMatchers("/api/menu/**").hasRole("ADMIN")
+                        /* ================= EMPLOYEE ================= */
+                        .requestMatchers("/api/employee/**").authenticated()
 
-                        // Employees authenticated
-                        .requestMatchers("/api/employees/**").authenticated()
+                        /* ================= CUSTOMER ================= */
 
-                        // All others
+                        // Temporarily allow place-order for dev testing
+                        .requestMatchers("/api/customer/place-order").permitAll()
+
+                        // Other customer endpoints require authentication
+                        .requestMatchers("/api/customer/**").authenticated()
+
+                        /* ================= FALLBACK ================= */
                         .anyRequest().authenticated()
                 )
-
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) ->
                                 response.sendError(
@@ -77,8 +88,7 @@ public class SecurityConfig {
                                 )
                         )
                 )
-
-                // 🔥 JWT FILTER
+                // JWT Filter
                 .addFilterBefore(
                         jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class

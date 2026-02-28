@@ -21,7 +21,7 @@ public class MenuService {
 
     private final MenuRepository repository;
 
-    // ✅ Image upload folder (Frontend public folder)
+    // Image upload folder
     private final String uploadDir = "D:/CafeDesk/frontend_CafeDesk/public/menu/";
 
     public MenuService(MenuRepository repository) {
@@ -37,15 +37,13 @@ public class MenuService {
             imagePath = saveImage(image);
         }
 
-        Menu menu = new Menu(
-                dto.getName(),
-                dto.getDescription(),
-                dto.getPrice(),
-                dto.getCategory(),
-                dto.getAvailability(),
-                imagePath,
-                null
-        );
+        Menu menu = new Menu();
+        menu.setName(dto.getName());
+        menu.setDescription(dto.getDescription());
+        menu.setPrice(dto.getPrice());
+        menu.setCategory(dto.getCategory());
+        menu.setAvailability(dto.getAvailability());
+        menu.setImagePath(imagePath);
 
         Menu savedMenu = repository.save(menu);
         return mapToDTO(savedMenu);
@@ -97,7 +95,7 @@ public class MenuService {
         repository.delete(menu);
     }
 
-    // ================= IMAGE SAVE METHOD =================
+    // ================= IMAGE SAVE =================
     private String saveImage(MultipartFile file) {
 
         try {
@@ -108,14 +106,11 @@ public class MenuService {
 
             String originalFileName = Objects.requireNonNull(file.getOriginalFilename());
             String extension = originalFileName.substring(originalFileName.lastIndexOf("."));
-
             String fileName = UUID.randomUUID() + extension;
 
             Path path = Paths.get(uploadDir + fileName);
-
             Files.copy(file.getInputStream(), path, StandardCopyOption.REPLACE_EXISTING);
 
-            // This path will be stored in DB
             return "/menu/" + fileName;
 
         } catch (IOException e) {
@@ -132,8 +127,7 @@ public class MenuService {
                 menu.getPrice(),
                 menu.getCategory(),
                 menu.getAvailability(),
-                menu.getImagePath(),
-                menu.getCreatedAt()
+                menu.getImagePath()
         );
     }
 }

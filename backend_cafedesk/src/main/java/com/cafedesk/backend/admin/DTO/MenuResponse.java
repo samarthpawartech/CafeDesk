@@ -13,12 +13,12 @@ public class MenuResponse {
     private String imagePath;
     private LocalDateTime createdAt;
 
-    public MenuResponse() {}
+    public MenuResponse(Long id, String name, String description, Double price, String category, Boolean availability, String imagePath) {}
 
     public MenuResponse(Long id, String name, String description,
-                           Double price, String category,
-                           Boolean availability, String imagePath,
-                           LocalDateTime createdAt) {
+                        Double price, String category,
+                        Boolean availability, String imagePath,
+                        LocalDateTime createdAt) {
         this.id = id;
         this.name = name;
         this.description = description;

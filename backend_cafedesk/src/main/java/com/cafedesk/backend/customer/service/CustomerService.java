@@ -1,31 +1,43 @@
 package com.cafedesk.backend.customer.service;
 
 import com.cafedesk.backend.customer.DTO.*;
-import com.cafedesk.backend.customer.entity.Customer;
-import com.cafedesk.backend.customer.repository.CustomerRepository;
+import com.cafedesk.backend.customer.entity.*;
+import com.cafedesk.backend.customer.repository.*;
 import com.cafedesk.backend.Security.jwt.JwtUtil;
-
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
+    private final CustomerMenuRepository menuRepository;
+    private final BillRepository billRepository;
+    private final FeedbackRepository feedbackRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
     public CustomerService(CustomerRepository customerRepository,
+                           CustomerMenuRepository menuRepository,
+                           BillRepository billRepository,
+                           FeedbackRepository feedbackRepository,
                            PasswordEncoder passwordEncoder,
                            JwtUtil jwtUtil) {
         this.customerRepository = customerRepository;
+        this.menuRepository = menuRepository;
+        this.billRepository = billRepository;
+        this.feedbackRepository = feedbackRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
     }
 
-    // ✅ REGISTER METHOD
-    public AuthResponse register(CustomerRegisterRequest request) {
+    /* ================= AUTH ================= */
 
+    public AuthResponse register(CustomerRegisterRequest request) {
         if (customerRepository.existsByUsername(request.getUsername().trim())) {
             throw new RuntimeException("Username already exists");
         }
@@ -44,18 +56,11 @@ public class CustomerService {
 
         customerRepository.save(customer);
 
-        // ✅ Generate JWT token WITH ROLE
-        String token = jwtUtil.generateToken(
-                customer.getUsername(),
-                customer.getRole()
-        );
-
+        String token = jwtUtil.generateToken(customer.getUsername(), customer.getRole());
         return new AuthResponse(token);
     }
 
-    // ✅ LOGIN METHOD
     public AuthResponse login(CustomerLoginRequest request) {
-
         Customer customer = customerRepository
                 .findByUsername(request.getUsername().trim())
                 .orElseThrow(() -> new RuntimeException("Invalid username or password"));
@@ -64,12 +69,51 @@ public class CustomerService {
             throw new RuntimeException("Invalid username or password");
         }
 
-        // ✅ Generate JWT token WITH ROLE
-        String token = jwtUtil.generateToken(
-                customer.getUsername(),
-                customer.getRole()
-        );
-
+        String token = jwtUtil.generateToken(customer.getUsername(), customer.getRole());
         return new AuthResponse(token);
+    }
+
+    /* ================= DASHBOARD ================= */
+
+    public List<MenuItem> getMenu() {
+        return menuRepository.findByAvailableTrue();
+    }
+
+    // ✅ FIXED: Save bill items properly
+    public Bill placeOrder(PlaceOrderRequest request) {
+        Bill bill = new Bill();
+        bill.setCustomerName(request.getCustomerName());
+        bill.setTableNumber(request.getTableNumber());
+        bill.setAmount(request.getAmount());
+        bill.setStatus("pending");
+        bill.setDate(LocalDateTime.now());
+
+        List<BillItem> billItems = new ArrayList<>();
+        if (request.getItems() != null) {
+            for (PlaceOrderRequest.OrderItem oi : request.getItems()) {
+                BillItem bi = new BillItem();
+                bi.setName(oi.getName());
+                bi.setPrice(oi.getPrice());
+                bi.setQuantity(oi.getQuantity());
+                bi.setBill(bill); // link item to bill
+                billItems.add(bi);
+            }
+        }
+        bill.setItems(billItems);
+
+        return billRepository.save(bill);
+    }
+
+    public List<Bill> getBills(String username) {
+        return billRepository.findByCustomerName(username);
+    }
+
+    public Feedback submitFeedback(FeedbackRequest request) {
+        Feedback feedback = new Feedback();
+        feedback.setCustomerName(request.getCustomerName());
+        feedback.setRating(request.getRating());
+        feedback.setRemark(request.getRemark());
+        feedback.setDate(LocalDateTime.now());
+        return feedbackRepository.save(feedback);
     }
 }

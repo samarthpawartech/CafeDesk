@@ -1,11 +1,11 @@
-package com.cafedesk.backend.admin.entity;
+package com.cafedesk.backend.customer.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "menu_data")
-public class Menu {
+public class MenuItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -23,35 +23,17 @@ public class Menu {
     @Column(nullable = false)
     private String category;
 
-    @Column(nullable = false)
-    private Boolean availability;
+    @Column(name = "availability", nullable = false)
+    private boolean available;
 
     @Column(name = "image_path")
     private String imagePath;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
 
-    public Menu() {
+    public MenuItem() {
     }
 
-    public Menu(String name, String description, Double price,
-                String category, Boolean availability,
-                String imagePath) {
-        this.name = name;
-        this.description = description;
-        this.price = price;
-        this.category = category;
-        this.availability = availability;
-        this.imagePath = imagePath;
-    }
-
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-    }
-
-    // Getters & Setters
+    // ---------- Getters & Setters ----------
 
     public Long getId() {
         return id;
@@ -90,11 +72,11 @@ public class Menu {
     }
 
     public Boolean getAvailability() {
-        return availability;
+        return available;
     }
 
     public void setAvailability(Boolean availability) {
-        this.availability = availability;
+        this.available = availability;
     }
 
     public String getImagePath() {
@@ -105,7 +87,4 @@ public class Menu {
         this.imagePath = imagePath;
     }
 
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
 }
