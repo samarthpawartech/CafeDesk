@@ -31,6 +31,7 @@ export const MenuManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [availabilityFilter, setAvailabilityFilter] = useState("All");
+  const [isLoading, setIsLoading] = useState(true);
 
   const [formData, setFormData] = useState({
     id: "",
@@ -60,11 +61,19 @@ export const MenuManagement = () => {
   /* ================= API ================= */
 
   const fetchMenu = async () => {
-    const token = localStorage.getItem("token");
-    const res = await axios.get(API, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    setMenuItems(res.data);
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await axios.get(API, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setMenuItems(res.data || []);
+    } catch (error) {
+      console.error("Error fetching menu:", error);
+      setMenuItems([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -102,10 +111,10 @@ export const MenuManagement = () => {
     const token = localStorage.getItem("token");
 
     const payload = {
-      name: formData.name,
-      description: formData.description,
-      price: Number(formData.price),
-      category: formData.category,
+      name: formData.name || "",
+      description: formData.description || "",
+      price: Number(formData.price) || 0,
+      category: formData.category || "Beverages",
       availability: formData.available,
     };
 
@@ -123,24 +132,29 @@ export const MenuManagement = () => {
       headers: { Authorization: `Bearer ${token}` },
     };
 
-    editingItem
-      ? await axios.put(`${API}/${formData.id}`, form, config)
-      : await axios.post(API, form, config);
-
-    fetchMenu();
-    setIsDialogOpen(false);
-    resetForm();
+    try {
+      if (editingItem) {
+        await axios.put(`${API}/${formData.id}`, form, config);
+      } else {
+        await axios.post(API, form, config);
+      }
+      fetchMenu();
+      setIsDialogOpen(false);
+      resetForm();
+    } catch (error) {
+      console.error("Error saving menu item:", error);
+    }
   };
 
   const handleEdit = (item) => {
     setEditingItem(item);
     setFormData({
       id: item.id,
-      name: item.name,
-      description: item.description,
-      price: item.price,
-      category: item.category,
-      available: item.availability,
+      name: item.name || "",
+      description: item.description || "",
+      price: item.price || "",
+      category: item.category || "Beverages",
+      available: item.availability ?? true,
       imageFile: null,
       preview: buildImageUrl(item.imagePath),
     });
@@ -149,24 +163,36 @@ export const MenuManagement = () => {
 
   const handleDelete = async (id) => {
     const token = localStorage.getItem("token");
-    await axios.delete(`${API}/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    fetchMenu();
+    try {
+      await axios.delete(`${API}/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      fetchMenu();
+    } catch (error) {
+      console.error("Error deleting menu item:", error);
+    }
   };
 
   /* ================= FILTER ================= */
 
   const filteredItems = useMemo(() => {
     return menuItems
-      .filter((i) => i.name.toLowerCase().includes(searchTerm.toLowerCase()))
+      .filter((i) =>
+        i.name
+          ? i.name.toLowerCase().includes(searchTerm.toLowerCase())
+          : false,
+      )
       .filter(
-        (i) => selectedCategory === "All" || i.category === selectedCategory,
+        (i) =>
+          selectedCategory === "All" ||
+          (i.category ? i.category === selectedCategory : false),
       )
       .filter(
         (i) =>
           availabilityFilter === "All" ||
-          i.availability === (availabilityFilter === "Available"),
+          (i.availability !== null && i.availability !== undefined
+            ? i.availability === (availabilityFilter === "Available")
+            : false),
       );
   }, [menuItems, searchTerm, selectedCategory, availabilityFilter]);
 
@@ -176,7 +202,7 @@ export const MenuManagement = () => {
     <div className="min-h-screen bg-gradient-to-br from-[#F3EDE6] to-[#E6D5C3] p-10">
       <div className="max-w-6xl mx-auto">
         {/* TOP CONTROLS */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="relative h-11">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
             <Input
@@ -207,6 +233,10 @@ export const MenuManagement = () => {
             <Plus className="w-4 h-4 mr-2" />
             Add Menu Item
           </Button>
+
+          <Button onClick={fetchMenu} className="h-11 w-full">
+            Refresh Menu
+          </Button>
         </div>
 
         {/* CATEGORY TABS */}
@@ -226,47 +256,60 @@ export const MenuManagement = () => {
         </div>
 
         {/* MENU CARDS */}
-        <div className="grid md:grid-cols-3 gap-8">
-          {filteredItems.map((item) => (
-            <div key={item.id} className="bg-white p-6 rounded-2xl shadow-lg">
-              {item.imagePath && (
-                <img
-                  src={buildImageUrl(item.imagePath)}
-                  alt={item.name}
-                  className="h-40 w-full object-cover rounded-xl mb-4"
-                />
-              )}
-
-              <h3 className="font-bold text-lg">{item.name}</h3>
-              <p className="text-sm text-gray-600 mb-3">{item.description}</p>
-
-              <div className="flex justify-between items-center">
-                <span className="font-semibold">₹ {item.price}</span>
-
-                <span
-                  className={`px-3 py-1 text-xs rounded-md ${
-                    item.availability
-                      ? "bg-green-100 text-green-700"
-                      : "bg-red-100 text-red-700"
-                  }`}
-                >
-                  {item.availability ? "Available" : "Unavailable"}
-                </span>
-
-                <div className="flex gap-2">
-                  <Edit
-                    className="w-4 h-4 cursor-pointer"
-                    onClick={() => handleEdit(item)}
+        {isLoading ? (
+          <p className="text-center text-gray-600">Loading menu items...</p>
+        ) : filteredItems.length === 0 ? (
+          <p className="text-center text-gray-600">No menu items found.</p>
+        ) : (
+          <div className="grid md:grid-cols-3 gap-8">
+            {filteredItems.map((item) => (
+              <div
+                key={item.id ?? `menu-${Math.random()}`}
+                className="bg-white p-6 rounded-2xl shadow-lg"
+              >
+                {item.imagePath && (
+                  <img
+                    src={buildImageUrl(item.imagePath)}
+                    alt={item.name || "Menu item"}
+                    className="h-40 w-full object-cover rounded-xl mb-4"
                   />
-                  <Trash2
-                    className="w-4 h-4 cursor-pointer"
-                    onClick={() => handleDelete(item.id)}
-                  />
+                )}
+
+                <h3 className="font-bold text-lg">
+                  {item.name || "Unnamed Item"}
+                </h3>
+                <p className="text-sm text-gray-600 mb-3">
+                  {item.description || "No description"}
+                </p>
+
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold">₹ {item.price ?? 0}</span>
+
+                  <span
+                    className={`px-3 py-1 text-xs rounded-md ${
+                      item.availability
+                        ? "bg-green-100 text-green-700"
+                        : "bg-red-100 text-red-700"
+                    }`}
+                  >
+                    {item.availability ? "Available" : "Unavailable"}
+                  </span>
+
+                  <div className="flex gap-2">
+                    <Edit
+                      className="w-4 h-4 cursor-pointer"
+                      onClick={() => handleEdit(item)}
+                    />
+                    <Trash2
+                      className="w-4 h-4 cursor-pointer"
+                      onClick={() => handleDelete(item.id)}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* DIALOG */}
@@ -280,7 +323,6 @@ export const MenuManagement = () => {
 
           {/* FORM */}
           <div className="space-y-4 mt-4">
-            {/* NAME */}
             <div className="relative h-11">
               <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <Input
@@ -293,7 +335,6 @@ export const MenuManagement = () => {
               />
             </div>
 
-            {/* DESCRIPTION */}
             <div className="relative h-11">
               <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <Input
@@ -306,7 +347,6 @@ export const MenuManagement = () => {
               />
             </div>
 
-            {/* PRICE */}
             <div className="relative h-11">
               <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <Input
@@ -320,7 +360,6 @@ export const MenuManagement = () => {
               />
             </div>
 
-            {/* CATEGORY */}
             <div className="relative h-11">
               <Layers className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <select
@@ -340,7 +379,6 @@ export const MenuManagement = () => {
               </select>
             </div>
 
-            {/* IMAGE UPLOAD */}
             <div className="h-11 w-full">
               <input
                 type="file"
@@ -364,7 +402,6 @@ export const MenuManagement = () => {
               />
             )}
 
-            {/* AVAILABILITY */}
             <div className="relative h-11">
               <CheckCircle className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <select

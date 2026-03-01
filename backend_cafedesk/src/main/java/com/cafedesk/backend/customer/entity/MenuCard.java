@@ -5,7 +5,7 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "menu_data")
-public class MenuItem {
+public class MenuCard {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,7 +30,7 @@ public class MenuItem {
     private String imagePath;
 
 
-    public MenuItem() {
+    public MenuCard() {
     }
 
     // ---------- Getters & Setters ----------

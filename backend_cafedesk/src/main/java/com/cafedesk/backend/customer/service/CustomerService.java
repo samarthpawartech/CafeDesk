@@ -75,7 +75,7 @@ public class CustomerService {
 
     /* ================= DASHBOARD ================= */
 
-    public List<MenuItem> getMenu() {
+    public List<MenuCard> getMenu() {
         return menuRepository.findByAvailableTrue();
     }
 

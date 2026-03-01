@@ -13,8 +13,7 @@ public class MenuResponse {
     private String imagePath;
     private LocalDateTime createdAt;
 
-    public MenuResponse(Long id, String name, String description, Double price, String category, Boolean availability, String imagePath) {}
-
+    // ✅ FULL Constructor
     public MenuResponse(Long id, String name, String description,
                         Double price, String category,
                         Boolean availability, String imagePath,
@@ -29,7 +28,7 @@ public class MenuResponse {
         this.createdAt = createdAt;
     }
 
-    // Getters
+    // ✅ Getters
     public Long getId() { return id; }
     public String getName() { return name; }
     public String getDescription() { return description; }

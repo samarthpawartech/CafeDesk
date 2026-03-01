@@ -7,7 +7,7 @@ import com.cafedesk.backend.customer.DTO.FeedbackRequest;
 import com.cafedesk.backend.customer.DTO.AuthResponse;
 import com.cafedesk.backend.customer.entity.Bill;
 import com.cafedesk.backend.customer.entity.Feedback;
-import com.cafedesk.backend.customer.entity.MenuItem;
+import com.cafedesk.backend.customer.entity.MenuCard;
 import com.cafedesk.backend.customer.service.CustomerService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -40,7 +40,7 @@ public class CustomerController {
     /* ================= DASHBOARD ================= */
 
     @GetMapping("/menu")
-    public List<MenuItem> getMenu() {
+    public List<MenuCard> getMenu() {
         return customerService.getMenu();
     }
 

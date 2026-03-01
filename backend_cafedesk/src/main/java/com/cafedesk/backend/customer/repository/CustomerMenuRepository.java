@@ -1,18 +1,18 @@
 package com.cafedesk.backend.customer.repository;
 
-import com.cafedesk.backend.customer.entity.MenuItem;
+import com.cafedesk.backend.customer.entity.MenuCard;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 
-public interface CustomerMenuRepository extends JpaRepository<MenuItem, Long> {
+public interface CustomerMenuRepository extends JpaRepository<MenuCard, Long> {
 
     // Find only available menu items
-    List<MenuItem> findByAvailableTrue();
+    List<MenuCard> findByAvailableTrue();
 
     // Find by exact name (case-sensitive)
-    List<MenuItem> findByName(String name);
+    List<MenuCard> findByName(String name);
 
     // Optional: Find by name containing text (case-insensitive)
-    List<MenuItem> findByNameContainingIgnoreCase(String namePart);
+    List<MenuCard> findByNameContainingIgnoreCase(String namePart);
 }

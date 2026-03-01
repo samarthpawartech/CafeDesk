@@ -127,7 +127,8 @@ public class MenuService {
                 menu.getPrice(),
                 menu.getCategory(),
                 menu.getAvailability(),
-                menu.getImagePath()
+                menu.getImagePath(),
+                menu.getCreatedAt()   // ✅ FIXED (IMPORTANT)
         );
     }
 }

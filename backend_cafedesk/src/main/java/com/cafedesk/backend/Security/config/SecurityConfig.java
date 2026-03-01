@@ -11,6 +11,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
 
 @Configuration
 public class SecurityConfig {
@@ -26,12 +31,34 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    // ✅ CORS Configuration for Security
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+
+        CorsConfiguration configuration = new CorsConfiguration();
+
+        configuration.setAllowCredentials(true);
+
+        // ✅ Frontend URL (Vite)
+        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("*"));
+
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
+        source.registerCorsConfiguration("/**", configuration);
+
+        return source;
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
                 .csrf(csrf -> csrf.disable())
-                .cors(cors -> {})
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
@@ -39,7 +66,6 @@ public class SecurityConfig {
 
                         /* ================= PUBLIC ================= */
 
-                        // Authentication
                         .requestMatchers(
                                 "/api/customer/register",
                                 "/api/customer/login",
@@ -47,16 +73,12 @@ public class SecurityConfig {
                                 "/api/admin/login"
                         ).permitAll()
 
-                        // Public Menu API
                         .requestMatchers(HttpMethod.GET, "/api/customer/menu").permitAll()
 
-                        // ✅ Important: Allow image access
                         .requestMatchers("/menu/**").permitAll()
 
-                        // Preflight
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Swagger
                         .requestMatchers(
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
@@ -70,14 +92,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/employee/**").authenticated()
 
                         /* ================= CUSTOMER ================= */
-
-                        // Temporarily allow place-order for dev testing
                         .requestMatchers("/api/customer/place-order").permitAll()
-
-                        // Other customer endpoints require authentication
                         .requestMatchers("/api/customer/**").authenticated()
 
-                        /* ================= FALLBACK ================= */
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
@@ -88,7 +105,6 @@ public class SecurityConfig {
                                 )
                         )
                 )
-                // JWT Filter
                 .addFilterBefore(
                         jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class
