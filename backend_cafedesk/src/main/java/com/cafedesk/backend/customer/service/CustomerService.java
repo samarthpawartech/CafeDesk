@@ -21,12 +21,14 @@ public class CustomerService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
-    public CustomerService(CustomerRepository customerRepository,
-                           CustomerMenuRepository menuRepository,
-                           BillRepository billRepository,
-                           FeedbackRepository feedbackRepository,
-                           PasswordEncoder passwordEncoder,
-                           JwtUtil jwtUtil) {
+    public CustomerService(
+            CustomerRepository customerRepository,
+            CustomerMenuRepository menuRepository,
+            BillRepository billRepository,
+            FeedbackRepository feedbackRepository,
+            PasswordEncoder passwordEncoder,
+            JwtUtil jwtUtil
+    ) {
         this.customerRepository = customerRepository;
         this.menuRepository = menuRepository;
         this.billRepository = billRepository;
@@ -38,6 +40,7 @@ public class CustomerService {
     /* ================= AUTH ================= */
 
     public AuthResponse register(CustomerRegisterRequest request) {
+
         if (customerRepository.existsByUsername(request.getUsername().trim())) {
             throw new RuntimeException("Username already exists");
         }
@@ -56,20 +59,34 @@ public class CustomerService {
 
         customerRepository.save(customer);
 
-        String token = jwtUtil.generateToken(customer.getUsername(), customer.getRole());
+        String token = jwtUtil.generateToken(
+                customer.getUsername(),
+                customer.getRole()
+        );
+
         return new AuthResponse(token);
     }
 
     public AuthResponse login(CustomerLoginRequest request) {
+
         Customer customer = customerRepository
                 .findByUsername(request.getUsername().trim())
-                .orElseThrow(() -> new RuntimeException("Invalid username or password"));
+                .orElseThrow(() ->
+                        new RuntimeException("Invalid username or password")
+                );
 
-        if (!passwordEncoder.matches(request.getPassword(), customer.getPassword())) {
+        if (!passwordEncoder.matches(
+                request.getPassword(),
+                customer.getPassword())
+        ) {
             throw new RuntimeException("Invalid username or password");
         }
 
-        String token = jwtUtil.generateToken(customer.getUsername(), customer.getRole());
+        String token = jwtUtil.generateToken(
+                customer.getUsername(),
+                customer.getRole()
+        );
+
         return new AuthResponse(token);
     }
 
@@ -79,8 +96,10 @@ public class CustomerService {
         return menuRepository.findByAvailableTrue();
     }
 
-    // ✅ FIXED: Save bill items properly
+    /* ================= PLACE ORDER ================= */
+
     public Bill placeOrder(PlaceOrderRequest request) {
+
         Bill bill = new Bill();
         bill.setCustomerName(request.getCustomerName());
         bill.setTableNumber(request.getTableNumber());
@@ -89,31 +108,41 @@ public class CustomerService {
         bill.setDate(LocalDateTime.now());
 
         List<BillItem> billItems = new ArrayList<>();
+
         if (request.getItems() != null) {
-            for (PlaceOrderRequest.OrderItem oi : request.getItems()) {
-                BillItem bi = new BillItem();
-                bi.setName(oi.getName());
-                bi.setPrice(oi.getPrice());
-                bi.setQuantity(oi.getQuantity());
-                bi.setBill(bill); // link item to bill
-                billItems.add(bi);
+            for (PlaceOrderRequest.OrderItem item : request.getItems()) {
+
+                BillItem billItem = new BillItem();
+                billItem.setName(item.getName());
+                billItem.setPrice(item.getPrice());
+                billItem.setQuantity(item.getQuantity());
+                billItem.setBill(bill); // IMPORTANT
+
+                billItems.add(billItem);
             }
         }
+
         bill.setItems(billItems);
 
         return billRepository.save(bill);
     }
 
+    /* ================= BILLS ================= */
+
     public List<Bill> getBills(String username) {
         return billRepository.findByCustomerName(username);
     }
 
+    /* ================= FEEDBACK ================= */
+
     public Feedback submitFeedback(FeedbackRequest request) {
+
         Feedback feedback = new Feedback();
         feedback.setCustomerName(request.getCustomerName());
         feedback.setRating(request.getRating());
         feedback.setRemark(request.getRemark());
         feedback.setDate(LocalDateTime.now());
+
         return feedbackRepository.save(feedback);
     }
 }

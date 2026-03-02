@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { QRCodeSVG } from "qrcode.react";
 
 const CafeDeskInvoice = ({
   invoiceNumber = "INV-1001",
@@ -26,14 +27,42 @@ const CafeDeskInvoice = ({
     (sum, item) => sum + item.price * item.quantity,
     0,
   );
+
   const taxAmount = ((subTotal * taxRate) / 100).toFixed(2);
   const total = (subTotal + Number(taxAmount)).toFixed(2);
+
+  const qrValue = `CafeDesk Invoice
+Invoice: ${invoiceNumber}
+Customer: ${customer.name}
+Table: ${customer.table}
+Total: ₹${total}`;
 
   return (
     <div style={styles.body}>
       {/* HEADER */}
       <div style={styles.header}>
-        <div style={styles.invoiceTitle}>INVOICE</div>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          {/* Coffee Cup SVG Logo */}
+          <svg
+            width="42"
+            height="42"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#6B4423"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M18 8h1a4 4 0 0 1 0 8h-1" />
+            <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4Z" />
+            <line x1="6" y1="1" x2="6" y2="4" />
+            <line x1="10" y1="1" x2="10" y2="4" />
+            <line x1="14" y1="1" x2="14" y2="4" />
+          </svg>
+
+          <div style={styles.invoiceTitle}>INVOICE</div>
+        </div>
+
         <div style={styles.companyInfo}>
           <div>
             <strong>Invoice #:</strong> {invoiceNumber}
@@ -124,6 +153,14 @@ const CafeDeskInvoice = ({
         <br />
         {footerText2}
       </div>
+
+      {/* QR + FOOTER */}
+      <div style={styles.footer}>
+        <QRCodeSVG value={qrValue} size={90} />
+        <div>
+          Developed by <strong>Samarth Pawar</strong> ❤️
+        </div>
+      </div>
     </div>
   );
 };
@@ -198,5 +235,13 @@ const styles = {
     padding: "20px",
     background: "#f9f9f9",
     borderLeft: "4px solid #000",
+  },
+  footer: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: "40px",
+    fontSize: "12px",
+    color: "#666",
   },
 };

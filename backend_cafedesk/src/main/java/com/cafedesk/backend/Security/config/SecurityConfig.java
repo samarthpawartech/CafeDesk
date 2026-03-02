@@ -31,25 +31,20 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    // ✅ CORS Configuration for Security
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
 
-        CorsConfiguration configuration = new CorsConfiguration();
+        config.setAllowCredentials(true);
 
-        configuration.setAllowCredentials(true);
+        // ✅ allow any Vite localhost port (5173, 5174, etc.)
+        config.setAllowedOriginPatterns(List.of("http://localhost:*"));
 
-        // ✅ Frontend URL (Vite)
-        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
 
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
-
-        UrlBasedCorsConfigurationSource source =
-                new UrlBasedCorsConfigurationSource();
-
-        source.registerCorsConfiguration("/**", configuration);
-
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
         return source;
     }
 
@@ -67,48 +62,36 @@ public class SecurityConfig {
                         /* ================= PUBLIC ================= */
 
                         .requestMatchers(
-                                "/api/customer/register",
                                 "/api/customer/login",
+                                "/api/customer/register",
                                 "/api/employee/login",
                                 "/api/admin/login"
                         ).permitAll()
 
                         .requestMatchers(HttpMethod.GET, "/api/customer/menu").permitAll()
 
+                        // ✅ allow menu images
                         .requestMatchers("/menu/**").permitAll()
+
+                        // ✅ QR / guest ordering
+                        .requestMatchers("/api/customer/place-order").permitAll()
 
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        .requestMatchers(
-                                "/v3/api-docs/**",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html"
-                        ).permitAll()
+                        /* ================= PROTECTED ================= */
 
-                        /* ================= ADMIN ================= */
                         .requestMatchers("/api/admin/**").authenticated()
-
-                        /* ================= EMPLOYEE ================= */
                         .requestMatchers("/api/employee/**").authenticated()
-
-                        /* ================= CUSTOMER ================= */
-                        .requestMatchers("/api/customer/place-order").permitAll()
                         .requestMatchers("/api/customer/**").authenticated()
 
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint((request, response, authException) ->
-                                response.sendError(
-                                        HttpServletResponse.SC_UNAUTHORIZED,
-                                        "Unauthorized"
-                                )
+                        .authenticationEntryPoint((req, res, ex2) ->
+                                res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")
                         )
                 )
-                .addFilterBefore(
-                        jwtAuthenticationFilter,
-                        UsernamePasswordAuthenticationFilter.class
-                );
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

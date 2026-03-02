@@ -2,6 +2,7 @@ package com.cafedesk.backend.customer.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -17,28 +18,68 @@ public class Bill {
     private String status;
     private LocalDateTime date;
 
-    @OneToMany(mappedBy = "bill", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<BillItem> items;
+    @OneToMany(
+            mappedBy = "bill",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<BillItem> items = new ArrayList<>();
 
     /* ================= GETTERS & SETTERS ================= */
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
 
-    public String getCustomerName() { return customerName; }
-    public void setCustomerName(String customerName) { this.customerName = customerName; }
+    public Long getId() {
+        return id;
+    }
 
-    public String getTableNumber() { return tableNumber; }
-    public void setTableNumber(String tableNumber) { this.tableNumber = tableNumber; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public Double getAmount() { return amount; }
-    public void setAmount(Double amount) { this.amount = amount; }
+    public String getCustomerName() {
+        return customerName;
+    }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public void setCustomerName(String customerName) {
+        this.customerName = customerName;
+    }
 
-    public LocalDateTime getDate() { return date; }
-    public void setDate(LocalDateTime date) { this.date = date; }
+    public String getTableNumber() {
+        return tableNumber;
+    }
 
-    public List<BillItem> getItems() { return items; }
-    public void setItems(List<BillItem> items) { this.items = items; }
+    public void setTableNumber(String tableNumber) {
+        this.tableNumber = tableNumber;
+    }
+
+    public Double getAmount() {
+        return amount;
+    }
+
+    public void setAmount(Double amount) {
+        this.amount = amount;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public LocalDateTime getDate() {
+        return date;
+    }
+
+    public void setDate(LocalDateTime date) {
+        this.date = date;
+    }
+
+    public List<BillItem> getItems() {
+        return items;
+    }
+
+    public void setItems(List<BillItem> items) {
+        this.items = items;
+    }
 }

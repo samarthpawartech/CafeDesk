@@ -1,5 +1,6 @@
 package com.cafedesk.backend.customer.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 @Entity
@@ -13,11 +14,12 @@ public class BillItem {
     private Double price;
     private Integer quantity;
 
-    @ManyToOne
-    @JoinColumn(name = "bill_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "bill_id", nullable = false)
+    @JsonIgnore   // 🔥 BREAKS INFINITE LOOP
     private Bill bill;
 
-    /* ================= GETTERS & SETTERS ================= */
+    /* GETTERS & SETTERS */
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 

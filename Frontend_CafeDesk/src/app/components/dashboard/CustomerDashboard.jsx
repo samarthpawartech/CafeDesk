@@ -50,7 +50,7 @@ export const CustomerDashboard = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const table = params.get("table");
-    setTableNumber(table || "T01"); // fallback for testing
+    setTableNumber(table || "T01");
   }, []);
 
   /* ================= FETCH MENU ================= */
@@ -79,9 +79,6 @@ export const CustomerDashboard = () => {
 
   const userBills = bills.filter((b) => b.customerName === user?.username);
   const pendingBills = userBills.filter((b) => b.status === "pending");
-  const cashPendingBills = userBills.filter(
-    (b) => b.status === "pending" && b.paymentMode === "cash_pending",
-  );
   const orderHistory = userBills.filter((b) => b.status === "paid");
 
   /* ================= PLACE ORDER ================= */
@@ -114,18 +111,14 @@ export const CustomerDashboard = () => {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        console.error("Backend error:", err);
-        return alert(
-          `Failed to place order: ${err.message || res.statusText} (status ${res.status})`,
-        );
+        return alert(`Failed to place order: ${err.message || res.statusText}`);
       }
 
       const bill = await res.json();
       setBills((prev) => [...prev, bill]);
       clearOrder();
       setActiveTab("bills");
-    } catch (err) {
-      console.error("Network or server error:", err);
+    } catch {
       alert("Failed to place order: network or server error");
     }
   };
@@ -162,11 +155,12 @@ export const CustomerDashboard = () => {
       setRating(0);
       setRemark("");
       alert("Thank you for your feedback ❤️");
-    } catch (err) {
-      console.error("Feedback error:", err);
+    } catch {
       alert("Failed to submit feedback");
     }
   };
+
+  const orderCount = currentOrder.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
     <div className="min-h-screen bg-[#FBF8F3]">
@@ -184,9 +178,19 @@ export const CustomerDashboard = () => {
       <div className="flex justify-center gap-2 mt-6 flex-wrap">
         {[
           ["brew", "Brew & Bites", Coffee],
-          ["order", "Current Order", ShoppingCart],
+          [
+            "order",
+            <>
+              Current Order
+              {orderCount > 0 && (
+                <span className="ml-2 bg-red-600 text-white text-xs px-2 py-0.5 rounded-full">
+                  {orderCount}
+                </span>
+              )}
+            </>,
+            ShoppingCart,
+          ],
           ["bills", "Pending Bills", FileText],
-          ["cash", "Pay by Cash", FileText],
           ["history", "Order History", History],
           ["feedback", "Feedback", MessageSquare],
         ].map(([id, label, Icon]) => (
@@ -207,7 +211,7 @@ export const CustomerDashboard = () => {
 
       <div className="max-w-7xl mx-auto px-6 py-6">
         <Card className="p-6">
-          {/* BREW TAB */}
+          {/* BREW */}
           {activeTab === "brew" && (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
               {menuItems.map((item) => (
@@ -280,7 +284,7 @@ export const CustomerDashboard = () => {
             </div>
           )}
 
-          {/* PENDING BILLS */}
+          {/* BILLS */}
           {activeTab === "bills" &&
             pendingBills.map((bill) => (
               <div key={bill.id} className="flex justify-between border-b py-2">
@@ -295,7 +299,7 @@ export const CustomerDashboard = () => {
               </div>
             ))}
 
-          {/* ORDER HISTORY */}
+          {/* HISTORY */}
           {activeTab === "history" &&
             orderHistory.map((bill) => (
               <div key={bill.id} className="flex justify-between border-b py-2">
@@ -352,7 +356,8 @@ export const CustomerDashboard = () => {
                 name: invoiceBill.customerName,
                 table: invoiceBill.tableNumber,
               }}
-              items={invoiceBill.items || currentOrder}
+              items={invoiceBill.items}
+              status={invoiceBill.status} // ✅ PAID badge works
             />
           </div>
         </div>

@@ -28,12 +28,16 @@ public class CustomerController {
     /* ================= AUTH ================= */
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@RequestBody CustomerRegisterRequest request) {
+    public ResponseEntity<AuthResponse> register(
+            @RequestBody CustomerRegisterRequest request
+    ) {
         return ResponseEntity.ok(customerService.register(request));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestBody CustomerLoginRequest request) {
+    public ResponseEntity<AuthResponse> login(
+            @RequestBody CustomerLoginRequest request
+    ) {
         return ResponseEntity.ok(customerService.login(request));
     }
 
@@ -44,20 +48,25 @@ public class CustomerController {
         return customerService.getMenu();
     }
 
-    // ✅ FIXED: place-order endpoint properly reads request body
     @PostMapping("/place-order")
-    public ResponseEntity<Bill> placeOrder(@RequestBody PlaceOrderRequest request) {
+    public ResponseEntity<Bill> placeOrder(
+            @RequestBody PlaceOrderRequest request
+    ) {
         Bill savedBill = customerService.placeOrder(request);
         return ResponseEntity.ok(savedBill);
     }
 
     @GetMapping("/bills/{username}")
-    public List<Bill> getBills(@PathVariable String username) {
+    public List<Bill> getBills(
+            @PathVariable String username
+    ) {
         return customerService.getBills(username);
     }
 
     @PostMapping("/feedback")
-    public ResponseEntity<Feedback> submitFeedback(@RequestBody FeedbackRequest request) {
+    public ResponseEntity<Feedback> submitFeedback(
+            @RequestBody FeedbackRequest request
+    ) {
         Feedback feedback = customerService.submitFeedback(request);
         return ResponseEntity.ok(feedback);
     }

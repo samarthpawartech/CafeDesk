@@ -25,83 +25,66 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.jwtUtil = jwtUtil;
     }
 
-    /* ================= SKIP FILTER FOR PUBLIC ENDPOINTS ================= */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
 
         String path = request.getServletPath();
 
-        // Preflight
         if (HttpMethod.OPTIONS.matches(request.getMethod())) {
             return true;
         }
 
-        // Public customer APIs
-        if (path.equals("/api/customer/login") ||
-                path.equals("/api/customer/register") ||
-                path.equals("/api/customer/menu")) {
-            return true;
-        }
-
-        // Public employee/admin login
-        if (path.equals("/api/employee/login") ||
-                path.equals("/api/admin/login")) {
-            return true;
-        }
-
-        return false;
+        return path.equals("/api/customer/login")
+                || path.equals("/api/customer/register")
+                || path.equals("/api/customer/menu")
+                || path.equals("/api/customer/place-order")
+                || path.equals("/api/employee/login")
+                || path.equals("/api/admin/login");
     }
 
-    /* ================= JWT FILTER ================= */
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
-        final String authHeader = request.getHeader("Authorization");
+        String authHeader = request.getHeader("Authorization");
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        final String jwt = authHeader.substring(7);
+        String jwt = authHeader.substring(7);
 
         try {
-            // Validate token
             if (!jwtUtil.validateToken(jwt)) {
-                SecurityContextHolder.clearContext();
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid JWT token");
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid JWT");
                 return;
             }
 
             String username = jwtUtil.extractUsername(jwt);
-            String role = jwtUtil.extractRole(jwt); // e.g., "CUSTOMER"
+            String role = jwtUtil.extractRole(jwt);
 
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            SimpleGrantedAuthority authority =
+                    new SimpleGrantedAuthority("ROLE_" + role.toUpperCase());
 
-                // Map role with "ROLE_" prefix
-                SimpleGrantedAuthority authority =
-                        new SimpleGrantedAuthority("ROLE_" + role.toUpperCase());
+            UsernamePasswordAuthenticationToken authToken =
+                    new UsernamePasswordAuthenticationToken(
+                            username,
+                            null,
+                            Collections.singletonList(authority)
+                    );
 
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(
-                                username,
-                                null,
-                                Collections.singletonList(authority)
-                        );
+            authToken.setDetails(
+                    new WebAuthenticationDetailsSource().buildDetails(request)
+            );
 
-                authToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
+            SecurityContextHolder.getContext().setAuthentication(authToken);
 
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-            }
-
-        } catch (Exception ex) {
+        } catch (Exception e) {
             SecurityContextHolder.clearContext();
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "JWT authentication failed");
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "JWT Failed");
             return;
         }
 
