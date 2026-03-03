@@ -36,10 +36,7 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowCredentials(true);
-
-        // ✅ allow any Vite localhost port (5173, 5174, etc.)
         config.setAllowedOriginPatterns(List.of("http://localhost:*"));
-
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
 
@@ -70,10 +67,8 @@ public class SecurityConfig {
 
                         .requestMatchers(HttpMethod.GET, "/api/customer/menu").permitAll()
 
-                        // ✅ allow menu images
                         .requestMatchers("/menu/**").permitAll()
 
-                        // ✅ QR / guest ordering
                         .requestMatchers("/api/customer/place-order").permitAll()
 
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()

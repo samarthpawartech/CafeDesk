@@ -8,5 +8,10 @@ import java.util.List;
 
 @Repository
 public interface BillRepository extends JpaRepository<Bill, Long> {
+
+    // 🔍 Find bills by customer name
     List<Bill> findByCustomerName(String customerName);
+
+    // 🔥 Used for auto invoice number generation (INV-0001)
+    Long countBy();
 }

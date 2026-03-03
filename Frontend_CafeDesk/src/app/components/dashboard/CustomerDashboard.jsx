@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   Coffee,
   ShoppingCart,
@@ -14,12 +14,10 @@ import {
   Plus,
   Minus,
 } from "lucide-react";
-import { jsPDF } from "jspdf";
 import { useAuth } from "@/app/context/AuthContext";
 import { Button } from "@/app/components/ui/button";
 import { Card } from "@/app/components/ui/card";
 import { Textarea } from "@/app/components/ui/textarea";
-import CafeDeskInvoice from "@/app/components/CafeDeskInvoice";
 
 const API_BASE = "http://localhost:8080/api";
 const IMAGE_BASE = "http://localhost:8080";
@@ -42,9 +40,6 @@ export const CustomerDashboard = () => {
   const [rating, setRating] = useState(0);
   const [remark, setRemark] = useState("");
   const [tableNumber, setTableNumber] = useState("");
-  const [invoiceBill, setInvoiceBill] = useState(null);
-
-  const invoiceRef = useRef(null);
 
   /* ================= TABLE NUMBER ================= */
   useEffect(() => {
@@ -111,7 +106,7 @@ export const CustomerDashboard = () => {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        return alert(`Failed to place order: ${err.message || res.statusText}`);
+        return alert(`Failed to place order`);
       }
 
       const bill = await res.json();
@@ -119,19 +114,32 @@ export const CustomerDashboard = () => {
       clearOrder();
       setActiveTab("bills");
     } catch {
-      alert("Failed to place order: network or server error");
+      alert("Failed to place order");
     }
   };
 
   /* ================= DOWNLOAD INVOICE ================= */
   const downloadInvoice = async (bill) => {
-    setInvoiceBill(bill);
+    try {
+      const response = await fetch(`${API_BASE}/customer/invoice/${bill.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-    setTimeout(async () => {
-      const pdf = new jsPDF("p", "pt", "a4");
-      await pdf.html(invoiceRef.current, { scale: 0.8 });
-      pdf.save(`invoice-${bill.id}.pdf`);
-    }, 300);
+      if (!response.ok) return alert("Failed to download invoice");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `invoice-${bill.id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      alert("Error downloading invoice");
+    }
   };
 
   /* ================= FEEDBACK ================= */
@@ -178,18 +186,7 @@ export const CustomerDashboard = () => {
       <div className="flex justify-center gap-2 mt-6 flex-wrap">
         {[
           ["brew", "Brew & Bites", Coffee],
-          [
-            "order",
-            <>
-              Current Order
-              {orderCount > 0 && (
-                <span className="ml-2 bg-red-600 text-white text-xs px-2 py-0.5 rounded-full">
-                  {orderCount}
-                </span>
-              )}
-            </>,
-            ShoppingCart,
-          ],
+          ["order", "Current Order", ShoppingCart],
           ["bills", "Pending Bills", FileText],
           ["history", "Order History", History],
           ["feedback", "Feedback", MessageSquare],
@@ -215,21 +212,17 @@ export const CustomerDashboard = () => {
           {activeTab === "brew" && (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
               {menuItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-white rounded-lg shadow-md overflow-hidden"
-                >
+                <div key={item.id} className="bg-white rounded-lg shadow-md">
                   <img
                     src={`${IMAGE_BASE}${item.imagePath}`}
-                    alt={item.name}
                     className="w-full h-40 object-cover"
                   />
                   <div className="p-4">
-                    <h3 className="font-semibold text-lg text-[#6B4423]">
+                    <h3 className="font-semibold text-[#6B4423]">
                       {item.name}
                     </h3>
-                    <p className="text-gray-500 text-sm">{item.description}</p>
-                    <div className="flex justify-between items-center mt-3">
+                    <p className="text-sm text-gray-500">{item.description}</p>
+                    <div className="flex justify-between mt-3">
                       <span className="font-bold text-orange-600">
                         ₹{item.price}
                       </span>
@@ -244,85 +237,78 @@ export const CustomerDashboard = () => {
           )}
 
           {/* CURRENT ORDER */}
-          {activeTab === "order" && (
-            <div>
-              {currentOrder.length === 0 ? (
-                <p className="text-center text-gray-500">No items added yet.</p>
-              ) : (
-                <>
-                  {currentOrder.map((item, index) => (
-                    <div
-                      key={index}
-                      className="flex justify-between items-center border-b py-3"
-                    >
-                      <div>
-                        <p className="font-medium">{item.name}</p>
-                        <p className="text-sm text-gray-500">₹{item.price}</p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <button onClick={() => removeFromOrder(item)}>
-                          <Minus className="w-4 h-4" />
-                        </button>
-                        <span>{item.quantity}</span>
-                        <button onClick={() => addToOrder(item)}>
-                          <Plus className="w-4 h-4" />
-                        </button>
-                      </div>
+          {activeTab === "order" &&
+            (currentOrder.length === 0 ? (
+              <p className="text-center text-gray-500">No items added yet.</p>
+            ) : (
+              <>
+                {currentOrder.map((item, i) => (
+                  <div key={i} className="flex justify-between py-2 border-b">
+                    <span>{item.name}</span>
+                    <div className="flex items-center gap-2">
+                      <Minus onClick={() => removeFromOrder(item)} />
+                      {item.quantity}
+                      <Plus onClick={() => addToOrder(item)} />
                     </div>
-                  ))}
-
-                  <div className="flex justify-between mt-4 font-bold">
-                    <span>Total</span>
-                    <span>₹{getTotalAmount()}</span>
                   </div>
-
-                  <Button className="mt-4 w-full" onClick={handlePlaceOrder}>
-                    Place Order
-                  </Button>
-                </>
-              )}
-            </div>
-          )}
+                ))}
+                <div className="flex justify-between font-bold mt-4">
+                  <span>Total</span>
+                  <span>₹{getTotalAmount()}</span>
+                </div>
+                <Button className="w-full mt-4" onClick={handlePlaceOrder}>
+                  Place Order
+                </Button>
+              </>
+            ))}
 
           {/* BILLS */}
           {activeTab === "bills" &&
-            pendingBills.map((bill) => (
-              <div key={bill.id} className="flex justify-between border-b py-2">
-                <span>INV-{bill.id}</span>
-                <div className="flex gap-2 items-center">
-                  <CheckCircle className="text-orange-600 w-4 h-4" />₹
-                  {bill.amount}
+            (pendingBills.length === 0 ? (
+              <p className="text-center text-gray-500">No pending bills 🎉</p>
+            ) : (
+              pendingBills.map((bill) => (
+                <div
+                  key={bill.id}
+                  className="flex justify-between py-2 border-b"
+                >
+                  <span>INV-{bill.id}</span>
                   <Button size="sm" onClick={() => downloadInvoice(bill)}>
                     <Download className="w-4 h-4 mr-1" /> Invoice
                   </Button>
                 </div>
-              </div>
+              ))
             ))}
 
           {/* HISTORY */}
           {activeTab === "history" &&
-            orderHistory.map((bill) => (
-              <div key={bill.id} className="flex justify-between border-b py-2">
-                <span>INV-{bill.id}</span>
-                <div className="flex gap-2 items-center">
-                  <CheckCircle className="text-green-600 w-4 h-4" />₹
-                  {bill.amount}
+            (orderHistory.length === 0 ? (
+              <p className="text-center text-gray-500">
+                No previous orders yet ☕
+              </p>
+            ) : (
+              orderHistory.map((bill) => (
+                <div
+                  key={bill.id}
+                  className="flex justify-between py-2 border-b"
+                >
+                  <span>INV-{bill.id}</span>
                   <Button size="sm" onClick={() => downloadInvoice(bill)}>
                     <Download className="w-4 h-4 mr-1" /> Invoice
                   </Button>
                 </div>
-              </div>
+              ))
             ))}
 
           {/* FEEDBACK */}
           {activeTab === "feedback" && (
-            <div className="max-w-xl mx-auto space-y-6">
+            <div className="max-w-md mx-auto space-y-4">
               <div className="flex justify-center gap-2">
                 {[1, 2, 3, 4, 5].map((n) => (
                   <Star
                     key={n}
                     onClick={() => setRating(n)}
-                    className={`w-7 h-7 cursor-pointer ${
+                    className={`cursor-pointer ${
                       rating >= n
                         ? "text-yellow-400 fill-yellow-400"
                         : "text-gray-300"
@@ -330,13 +316,11 @@ export const CustomerDashboard = () => {
                   />
                 ))}
               </div>
-
               <Textarea
-                placeholder="Write your experience..."
                 value={remark}
                 onChange={(e) => setRemark(e.target.value)}
+                placeholder="Write feedback..."
               />
-
               <Button onClick={submitFeedback} className="w-full">
                 Submit Feedback
               </Button>
@@ -344,24 +328,6 @@ export const CustomerDashboard = () => {
           )}
         </Card>
       </div>
-
-      {/* HIDDEN INVOICE */}
-      {invoiceBill && (
-        <div style={{ position: "absolute", left: "-9999px" }}>
-          <div ref={invoiceRef}>
-            <CafeDeskInvoice
-              invoiceNumber={`INV-${invoiceBill.id}`}
-              createdDate={invoiceBill.date}
-              customer={{
-                name: invoiceBill.customerName,
-                table: invoiceBill.tableNumber,
-              }}
-              items={invoiceBill.items}
-              status={invoiceBill.status} // ✅ PAID badge works
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 };
