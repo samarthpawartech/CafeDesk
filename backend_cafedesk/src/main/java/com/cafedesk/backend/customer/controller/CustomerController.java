@@ -62,12 +62,4 @@ public class CustomerController {
     ) {
         return customerService.getBills(username);
     }
-
-    @PostMapping("/feedback")
-    public ResponseEntity<Feedback> submitFeedback(
-            @RequestBody FeedbackRequest request
-    ) {
-        Feedback feedback = customerService.submitFeedback(request);
-        return ResponseEntity.ok(feedback);
-    }
 }

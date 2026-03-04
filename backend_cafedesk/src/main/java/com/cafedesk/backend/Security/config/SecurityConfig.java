@@ -78,7 +78,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").authenticated()
                         .requestMatchers("/api/employee/**").authenticated()
                         .requestMatchers("/api/customer/**").authenticated()
-
+                        .requestMatchers("/api/customer/feedback").authenticated()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex

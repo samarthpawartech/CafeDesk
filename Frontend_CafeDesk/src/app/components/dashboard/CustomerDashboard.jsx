@@ -8,7 +8,6 @@ import {
   History,
   MessageSquare,
   LogOut,
-  CheckCircle,
   Star,
   Download,
   Plus,
@@ -40,6 +39,7 @@ export const CustomerDashboard = () => {
   const [rating, setRating] = useState(0);
   const [remark, setRemark] = useState("");
   const [tableNumber, setTableNumber] = useState("");
+  const [feedbackList, setFeedbackList] = useState([]);
 
   /* ================= TABLE NUMBER ================= */
   useEffect(() => {
@@ -76,10 +76,40 @@ export const CustomerDashboard = () => {
   const pendingBills = userBills.filter((b) => b.status === "pending");
   const orderHistory = userBills.filter((b) => b.status === "paid");
 
+  /* ================= FETCH FEEDBACK ================= */
+  const fetchFeedback = async () => {
+    if (!token) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/customer/feedback`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.status === 403) {
+        alert("Forbidden ❌ You are not authorized.");
+        return;
+      }
+
+      if (!res.ok) return;
+
+      const data = await res.json();
+      setFeedbackList(Array.isArray(data) ? data.reverse() : []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "feedback") {
+      fetchFeedback();
+    }
+  }, [activeTab, token]);
+
   /* ================= PLACE ORDER ================= */
   const handlePlaceOrder = async () => {
     if (currentOrder.length === 0)
       return alert("Add items before placing order.");
+
     if (!tableNumber) return alert("Table number missing. Scan QR again.");
 
     try {
@@ -105,16 +135,20 @@ export const CustomerDashboard = () => {
       });
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        return alert(`Failed to place order`);
+        const errorText = await res.text();
+        console.log(errorText);
+        return alert("Failed to place order ❌");
       }
 
       const bill = await res.json();
       setBills((prev) => [...prev, bill]);
       clearOrder();
+
+      alert("✅ Order placed successfully! Your order is being prepared ☕");
       setActiveTab("bills");
-    } catch {
-      alert("Failed to place order");
+    } catch (error) {
+      console.error(error);
+      alert("Something went wrong while placing order ❌");
     }
   };
 
@@ -142,29 +176,50 @@ export const CustomerDashboard = () => {
     }
   };
 
-  /* ================= FEEDBACK ================= */
+  /* ================= SUBMIT FEEDBACK ================= */
   const submitFeedback = async () => {
     if (rating === 0) return alert("Please give rating ⭐");
 
+    if (!token) {
+      alert("Session expired. Please login again.");
+      return;
+    }
+
     try {
-      await fetch(`${API_BASE}/customer/feedback`, {
+      const res = await fetch(`${API_BASE}/customer/feedback`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          customerName: user.username,
-          rating,
+          customerName: user?.username,
+          rating: Number(rating),
           remark: remark || "No comment",
         }),
       });
 
+      if (res.status === 403) {
+        alert("Forbidden ❌ You are not authorized.");
+        return;
+      }
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.log(errorText);
+        return alert("Failed to submit feedback");
+      }
+
+      const savedFeedback = await res.json();
+      setFeedbackList((prev) => [savedFeedback, ...prev]);
+
       setRating(0);
       setRemark("");
-      alert("Thank you for your feedback ❤️");
-    } catch {
-      alert("Failed to submit feedback");
+
+      alert("✅ Thank you for your feedback ❤️");
+    } catch (error) {
+      console.error(error);
+      alert("Server not reachable ❌");
     }
   };
 
@@ -299,7 +354,6 @@ export const CustomerDashboard = () => {
                 </div>
               ))
             ))}
-
           {/* FEEDBACK */}
           {activeTab === "feedback" && (
             <div className="max-w-md mx-auto space-y-4">
@@ -316,14 +370,48 @@ export const CustomerDashboard = () => {
                   />
                 ))}
               </div>
+
               <Textarea
                 value={remark}
                 onChange={(e) => setRemark(e.target.value)}
                 placeholder="Write feedback..."
               />
+
               <Button onClick={submitFeedback} className="w-full">
                 Submit Feedback
               </Button>
+
+              <div className="mt-6 space-y-3">
+                <h3 className="font-semibold text-[#6B4423]">
+                  Customer Feedback
+                </h3>
+
+                {feedbackList.length === 0 ? (
+                  <p className="text-sm text-gray-500">
+                    No feedback submitted yet.
+                  </p>
+                ) : (
+                  feedbackList.map((fb) => (
+                    <div
+                      key={fb.id}
+                      className="bg-white p-3 rounded-md shadow border"
+                    >
+                      <div className="flex gap-1">
+                        {[...Array(fb.rating)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className="w-4 h-4 text-yellow-400 fill-yellow-400"
+                          />
+                        ))}
+                      </div>
+                      <p className="text-sm mt-1">{fb.remark}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {fb.date ? new Date(fb.date).toLocaleString() : ""}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           )}
         </Card>

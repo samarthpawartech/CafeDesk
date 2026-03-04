@@ -45,9 +45,9 @@ public class Bill {
             this.date = LocalDateTime.now();
         }
 
-        // Default status
+        // Default status (IMPORTANT FIX)
         if (this.status == null || this.status.isEmpty()) {
-            this.status = "PAID";
+            this.status = "pending";   // ✅ FIXED
         }
 
         // Prevent null amount
