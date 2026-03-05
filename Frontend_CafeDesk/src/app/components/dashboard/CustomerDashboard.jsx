@@ -21,7 +21,8 @@ import { Textarea } from "@/app/components/ui/textarea";
 const API_BASE = "http://localhost:8080/api";
 const IMAGE_BASE = "http://localhost:8080";
 
-export const CustomerDashboard = () => {
+export default function CustomerDashboard() {
+  // ✅ default export
   const {
     user,
     logout,
@@ -354,9 +355,11 @@ export const CustomerDashboard = () => {
                 </div>
               ))
             ))}
+
           {/* FEEDBACK */}
           {activeTab === "feedback" && (
             <div className="max-w-md mx-auto space-y-4">
+              {/* ⭐ Rating */}
               <div className="flex justify-center gap-2">
                 {[1, 2, 3, 4, 5].map((n) => (
                   <Star
@@ -371,16 +374,19 @@ export const CustomerDashboard = () => {
                 ))}
               </div>
 
+              {/* 📝 Remark */}
               <Textarea
                 value={remark}
                 onChange={(e) => setRemark(e.target.value)}
                 placeholder="Write feedback..."
               />
 
+              {/* 🚀 Submit */}
               <Button onClick={submitFeedback} className="w-full">
                 Submit Feedback
               </Button>
 
+              {/* 📋 Display Submitted Feedback */}
               <div className="mt-6 space-y-3">
                 <h3 className="font-semibold text-[#6B4423]">
                   Customer Feedback
@@ -406,7 +412,7 @@ export const CustomerDashboard = () => {
                       </div>
                       <p className="text-sm mt-1">{fb.remark}</p>
                       <p className="text-xs text-gray-400 mt-1">
-                        {fb.date ? new Date(fb.date).toLocaleString() : ""}
+                        {new Date(fb.date).toLocaleString()}
                       </p>
                     </div>
                   ))
@@ -418,4 +424,4 @@ export const CustomerDashboard = () => {
       </div>
     </div>
   );
-};
+}
