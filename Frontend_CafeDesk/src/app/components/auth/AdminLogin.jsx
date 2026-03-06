@@ -1,11 +1,13 @@
 // src/app/components/auth/AdminLogin.jsx
+
 import { useState, useEffect } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
-import { Shield, User, Eye, EyeOff } from "lucide-react";
-import { Button } from "@/app/components/ui/button";
-import { useAuth } from "@/app/context/AuthContext";
+import { Shield, Eye, EyeOff } from "lucide-react";
+import { Button } from "../ui/button";
+import { useAuth } from "../../context/AuthContext";
+import RoleSelector from "../RoleSelector";
 
-export const AdminLogin = () => {
+export default function AdminLogin() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
 
@@ -16,18 +18,23 @@ export const AdminLogin = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user?.role === "admin") navigate("/dashboard/admin");
+    if (user?.role === "admin") {
+      navigate("/dashboard/admin");
+    }
   }, [user, navigate]);
 
-  if (user && user?.role !== "admin") return <Navigate to="/" />;
+  if (user && user?.role !== "admin") {
+    return <Navigate to="/" />;
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
+
     try {
       await login(username.trim(), password.trim(), "admin");
-    } catch {
+    } catch (err) {
       setError("Invalid username or password");
     } finally {
       setLoading(false);
@@ -66,6 +73,7 @@ export const AdminLogin = () => {
                 placeholder="Password"
                 className="w-full h-12 bg-[#FDF6EC] border border-[#EAD7C3] rounded-xl px-4 pr-12 focus:ring-2 focus:ring-[#C8A97E]"
               />
+
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
@@ -87,4 +95,4 @@ export const AdminLogin = () => {
       </div>
     </div>
   );
-};
+}

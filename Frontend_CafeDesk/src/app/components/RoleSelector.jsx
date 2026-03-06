@@ -1,9 +1,9 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Coffee, User, Briefcase, Shield } from "lucide-react";
-import { Card } from "@/app/components/ui/card";
+import { Card } from "../components/ui/card";
 
-export const RoleSelector = () => {
+const RoleSelector = () => {
   const navigate = useNavigate();
 
   const roles = [
@@ -36,7 +36,6 @@ export const RoleSelector = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#FBF8F3] via-[#E8D5BF] to-[#F5E6D3] flex items-center justify-center p-4">
       <div className="w-full max-w-5xl">
-        {/* Header */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center w-24 h-24 bg-[#6B4423] rounded-3xl mb-6 shadow-2xl">
             <Coffee className="w-14 h-14 text-white" />
@@ -48,7 +47,6 @@ export const RoleSelector = () => {
           <p className="text-sm text-[#8B6F47]">Developed by Samarth Pawar</p>
         </div>
 
-        {/* Role Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {roles.map((role) => {
             const Icon = role.icon;
@@ -69,6 +67,7 @@ export const RoleSelector = () => {
                   </h2>
                   <p className="text-white/90">{role.description}</p>
                 </div>
+
                 <div className="p-6 bg-white text-center">
                   <p className="text-[#6B4423] font-medium group-hover:underline">
                     Continue as {role.name} →
@@ -79,11 +78,11 @@ export const RoleSelector = () => {
           })}
         </div>
 
-        {/* Features */}
         <Card className="p-8 border-[#E8D5BF] bg-white/80 backdrop-blur-sm">
           <h3 className="text-center text-lg font-semibold text-[#2C1810] mb-4">
             Complete Café Management Solution
           </h3>
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center text-sm text-[#8B6F47]">
             <div>✓ Digital Menu</div>
             <div>✓ Order Management</div>
@@ -99,3 +98,5 @@ export const RoleSelector = () => {
     </div>
   );
 };
+
+export default RoleSelector;

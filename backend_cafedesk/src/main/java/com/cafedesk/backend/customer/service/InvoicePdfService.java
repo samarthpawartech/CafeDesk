@@ -177,13 +177,20 @@ public class InvoicePdfService {
 
             canvas.showTextAligned(
                     new Paragraph("Thank you for visiting CafeDesk ☕")
-                            .setFontSize(10)
+                            .setFontSize(12)
                             .setFontColor(ColorConstants.DARK_GRAY),
                     pageSize.getWidth() / 2,
                     20,
                     TextAlignment.CENTER
             );
-
+            canvas.showTextAligned(
+                    new Paragraph("Developed by https://github.com/samarthpawartech with ❤️")
+                            .setFontSize(12)
+                            .setFontColor(ColorConstants.DARK_GRAY),
+                    pageSize.getWidth() / 2,
+                    20,
+                    TextAlignment.CENTER
+            );
             canvas.close();
         }
     }

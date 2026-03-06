@@ -6,7 +6,7 @@ import { User, Lock, Mail, Phone, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import axios from "@/app/api/axiosConfig";
 
-export const CustomerRegistrationForm = () => {
+export default function CustomerRegistrationForm() {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -213,4 +213,4 @@ export const CustomerRegistrationForm = () => {
       </div>
     </div>
   );
-};
+}

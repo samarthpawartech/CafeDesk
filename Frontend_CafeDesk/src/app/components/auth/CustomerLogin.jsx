@@ -2,10 +2,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Navigate, Link } from "react-router-dom";
 import { Coffee, Eye, EyeOff } from "lucide-react";
-import { Button } from "@/app/components/ui/button";
-import { useAuth } from "@/app/context/AuthContext";
+import { Button } from "../ui/button";
+import { useAuth } from "../../context/AuthContext";
 
-export const CustomerLogin = () => {
+export default function CustomerLogin() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
 
@@ -16,15 +16,20 @@ export const CustomerLogin = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user?.role === "customer") navigate("/dashboard/customer");
+    if (user?.role === "customer") {
+      navigate("/dashboard/customer");
+    }
   }, [user, navigate]);
 
-  if (user && user?.role !== "customer") return <Navigate to="/" />;
+  if (user && user?.role !== "customer") {
+    return <Navigate to="/" />;
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
+
     try {
       await login(username.trim(), password.trim(), "customer");
     } catch {
@@ -42,6 +47,7 @@ export const CustomerLogin = () => {
             <div className="w-20 h-20 bg-[#C8A97E] rounded-2xl flex items-center justify-center mb-4">
               <Coffee className="w-10 h-10 text-white" />
             </div>
+
             <h1 className="text-3xl font-bold text-[#6F4E37]">
               Customer Login
             </h1>
@@ -68,6 +74,7 @@ export const CustomerLogin = () => {
                 placeholder="Password"
                 className="w-full h-12 bg-[#FDF6EC] border border-[#EAD7C3] rounded-xl px-4 pr-12 focus:ring-2 focus:ring-[#C8A97E]"
               />
+
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
@@ -86,7 +93,7 @@ export const CustomerLogin = () => {
             </Button>
           </form>
 
-          {/* 🔹 Register Section */}
+          {/* Register Section */}
           <div className="mt-6 text-center">
             <p className="text-sm text-[#6F4E37]">
               New here?{" "}
@@ -102,4 +109,4 @@ export const CustomerLogin = () => {
       </div>
     </div>
   );
-};
+}

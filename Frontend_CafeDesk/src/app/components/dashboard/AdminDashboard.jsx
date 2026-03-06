@@ -8,7 +8,7 @@ import { BillsView } from "@/app/components/employee/BillsView";
 import { TablesView } from "@/app/components/employee/TablesView";
 import EmployeeManagement from "@/app/components/admin/EmployeeManagement";
 
-export const AdminDashboard = () => {
+export default function AdminDashboard() {
   const [currentView, setCurrentView] = useState("dashboard");
 
   const renderView = () => {
@@ -60,4 +60,4 @@ export const AdminDashboard = () => {
       </div>
     </div>
   );
-};
+}

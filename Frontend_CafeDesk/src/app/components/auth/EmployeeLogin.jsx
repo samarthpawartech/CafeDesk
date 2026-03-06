@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { Briefcase, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
-import { useAuth } from "@/app/context/AuthContext";
+import { useAuth } from "../../context/AuthContext";
+import RoleSelector from "../RoleSelector";
 
-export const EmployeeLogin = () => {
+export default function EmployeeLogin() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
 
@@ -93,4 +94,4 @@ export const EmployeeLogin = () => {
       </div>
     </div>
   );
-};
+}
