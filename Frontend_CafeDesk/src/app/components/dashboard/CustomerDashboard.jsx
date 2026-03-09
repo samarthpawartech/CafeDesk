@@ -108,51 +108,59 @@ export default function CustomerDashboard() {
 
   /* ================= PLACE ORDER ================= */
   const handlePlaceOrder = async () => {
-    if (currentOrder.length === 0)
-      return alert("Add items before placing order.");
-
-    if (!tableNumber) return alert("Table number missing. Scan QR again.");
+    if (currentOrder.length === 0) {
+      alert("Add items before placing order.");
+      return;
+    }
 
     try {
       const orderItems = currentOrder.map((item) => ({
-        id: item.id,
         name: item.name,
         price: item.price,
         quantity: item.quantity || 1,
       }));
 
-      const res = await fetch(`${API_BASE}/customer/place-order`, {
+      const finalTableNumber = tableNumber || "T01";
+
+      const orderPayload = {
+        customerName: user.username,
+        tableNumber: finalTableNumber,
+        amount: getTotalAmount(),
+        items: orderItems,
+      };
+
+      console.log("Sending Order:", orderPayload);
+
+      const response = await fetch(`${API_BASE}/customer/orders/place-order`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          customerName: user.username,
-          tableNumber,
-          amount: getTotalAmount(),
-          items: orderItems,
-        }),
+        body: JSON.stringify(orderPayload),
       });
 
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.log(errorText);
-        return alert("Failed to place order ❌");
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Server error:", errorText);
+        alert("Failed to place order ❌");
+        return;
       }
 
-      const bill = await res.json();
+      const bill = await response.json();
+
       setBills((prev) => [...prev, bill]);
+
       clearOrder();
 
       alert("✅ Order placed successfully! Your order is being prepared ☕");
+
       setActiveTab("bills");
     } catch (error) {
-      console.error(error);
+      console.error("Order failed:", error);
       alert("Something went wrong while placing order ❌");
     }
   };
-
   /* ================= DOWNLOAD INVOICE ================= */
   const downloadInvoice = async (bill) => {
     try {

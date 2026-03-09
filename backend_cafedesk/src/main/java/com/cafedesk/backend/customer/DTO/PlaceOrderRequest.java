@@ -6,10 +6,19 @@ public class PlaceOrderRequest {
 
     private String customerName;
     private String tableNumber;
-    private Double amount;
-    private List<OrderItem> items;
+    private double amount;
+    private List<OrderItemDTO> items;
 
+    // Default constructor (required for JSON deserialization)
     public PlaceOrderRequest() {
+    }
+
+    // Parameterized constructor
+    public PlaceOrderRequest(String customerName, String tableNumber, double amount, List<OrderItemDTO> items) {
+        this.customerName = customerName;
+        this.tableNumber = tableNumber;
+        this.amount = amount;
+        this.items = items;
     }
 
     public String getCustomerName() {
@@ -28,63 +37,19 @@ public class PlaceOrderRequest {
         this.tableNumber = tableNumber;
     }
 
-    public Double getAmount() {
+    public double getAmount() {
         return amount;
     }
 
-    public void setAmount(Double amount) {
+    public void setAmount(double amount) {
         this.amount = amount;
     }
 
-    public List<OrderItem> getItems() {
+    public List<OrderItemDTO> getItems() {
         return items;
     }
 
-    public void setItems(List<OrderItem> items) {
+    public void setItems(List<OrderItemDTO> items) {
         this.items = items;
-    }
-
-    /* ================= ORDER ITEM ================= */
-    public static class OrderItem {
-
-        private Long id;
-        private String name;
-        private Double price;
-        private Integer quantity;
-
-        public OrderItem() {
-        }
-
-        public Long getId() {
-            return id;
-        }
-
-        public void setId(Long id) {
-            this.id = id;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        public Double getPrice() {
-            return price;
-        }
-
-        public void setPrice(Double price) {
-            this.price = price;
-        }
-
-        public Integer getQuantity() {
-            return quantity;
-        }
-
-        public void setQuantity(Integer quantity) {
-            this.quantity = quantity;
-        }
     }
 }

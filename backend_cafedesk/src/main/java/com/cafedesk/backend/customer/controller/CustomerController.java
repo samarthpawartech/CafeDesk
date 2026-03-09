@@ -3,18 +3,16 @@ package com.cafedesk.backend.customer.controller;
 import com.cafedesk.backend.customer.DTO.PlaceOrderRequest;
 import com.cafedesk.backend.customer.DTO.CustomerLoginRequest;
 import com.cafedesk.backend.customer.DTO.CustomerRegisterRequest;
-import com.cafedesk.backend.customer.DTO.FeedbackRequest;
 import com.cafedesk.backend.customer.DTO.AuthResponse;
 import com.cafedesk.backend.customer.entity.Bill;
-import com.cafedesk.backend.customer.entity.Feedback;
 import com.cafedesk.backend.customer.entity.MenuCard;
 import com.cafedesk.backend.customer.service.CustomerService;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@SuppressWarnings("unused")
 @RestController
 @RequestMapping("/api/customer")
 @CrossOrigin(origins = "http://localhost:5173")
@@ -32,22 +30,27 @@ public class CustomerController {
     public ResponseEntity<AuthResponse> register(
             @RequestBody CustomerRegisterRequest request
     ) {
-        return ResponseEntity.ok(customerService.register(request));
+        AuthResponse response = customerService.register(request);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(
             @RequestBody CustomerLoginRequest request
     ) {
-        return ResponseEntity.ok(customerService.login(request));
+        AuthResponse response = customerService.login(request);
+        return ResponseEntity.ok(response);
     }
 
-    /* ================= DASHBOARD ================= */
+    /* ================= MENU ================= */
 
     @GetMapping("/menu")
-    public List<MenuCard> getMenu() {
-        return customerService.getMenu();
+    public ResponseEntity<List<MenuCard>> getMenu() {
+        List<MenuCard> menu = customerService.getMenu();
+        return ResponseEntity.ok(menu);
     }
+
+    /* ================= ORDER ================= */
 
     @PostMapping("/place-order")
     public ResponseEntity<Bill> placeOrder(
@@ -57,10 +60,13 @@ public class CustomerController {
         return ResponseEntity.ok(savedBill);
     }
 
+    /* ================= BILLS ================= */
+
     @GetMapping("/bills/{username}")
-    public List<Bill> getBills(
+    public ResponseEntity<List<Bill>> getBills(
             @PathVariable String username
     ) {
-        return customerService.getBills(username);
+        List<Bill> bills = customerService.getBills(username);
+        return ResponseEntity.ok(bills);
     }
 }

@@ -102,25 +102,26 @@ public class CustomerService {
 
         Bill bill = new Bill();
 
-        // 🔥 AUTO GENERATE INVOICE NUMBER
+        // Auto generate invoice number
         bill.setInvoiceNumber("INV-" + System.currentTimeMillis());
 
         bill.setCustomerName(request.getCustomerName());
         bill.setTableNumber(request.getTableNumber());
         bill.setAmount(request.getAmount());
-        bill.setStatus("PAID"); // consistent uppercase
+        bill.setStatus("PAID");
         bill.setDate(LocalDateTime.now());
 
         List<BillItem> billItems = new ArrayList<>();
 
         if (request.getItems() != null) {
-            for (PlaceOrderRequest.OrderItem item : request.getItems()) {
+
+            for (OrderItemDTO item : request.getItems()) {
 
                 BillItem billItem = new BillItem();
                 billItem.setName(item.getName());
                 billItem.setPrice(item.getPrice());
                 billItem.setQuantity(item.getQuantity());
-                billItem.setBill(bill); // IMPORTANT relationship
+                billItem.setBill(bill);
 
                 billItems.add(billItem);
             }
