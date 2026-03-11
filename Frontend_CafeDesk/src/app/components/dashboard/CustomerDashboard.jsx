@@ -246,10 +246,16 @@ export default function CustomerDashboard() {
   return (
     <div className="min-h-screen bg-[#FBF8F3]">
       {/* NAVBAR */}
-      <div className="bg-[#6B4423] text-white px-6 py-4 flex justify-between">
+      <div className="bg-[#6B4423] text-white px-6 py-4 flex justify-between items-center">
         <div className="flex gap-2 font-bold text-lg">
           <Coffee /> CafeDesk
         </div>
+
+        {/* Center Quote */}
+        <div className="text-center font-bold text-xl italic text-orange-200">
+          “A café is where stories begin.”
+        </div>
+
         <Button onClick={logout} variant="ghost" className="text-white">
           <LogOut className="w-4 h-4 mr-1" /> Logout
         </Button>
@@ -290,7 +296,7 @@ export default function CustomerDashboard() {
                   { value: "ALL", label: "All" },
                   { value: "Beverages", label: "Beverages" },
                   {
-                    value: "Brunch and Breakfast",
+                    value: "Breakfast and Brunch",
                     label: "Breakfast & Brunch",
                   },
                   { value: "Snacks", label: "Snacks" },
@@ -308,6 +314,7 @@ export default function CustomerDashboard() {
                   </Button>
                 ))}
               </div>
+
               {/* MENU GRID */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                 {filteredMenu.map((item) => (
@@ -315,22 +322,41 @@ export default function CustomerDashboard() {
                     <img
                       src={`${IMAGE_BASE}${item.imagePath}`}
                       className="w-full h-40 object-cover"
+                      alt={item.name}
                     />
 
                     <div className="p-4">
                       <h3 className="font-semibold text-[#6B4423]">
                         {item.name}
                       </h3>
+
                       <p className="text-sm text-gray-500">
                         {item.description}
                       </p>
 
-                      <div className="flex justify-between mt-3">
+                      <div className="flex justify-between items-center mt-3">
+                        {/* Price */}
                         <span className="font-bold text-orange-600">
                           ₹{item.price}
                         </span>
 
-                        <Button size="sm" onClick={() => addToOrder(item)}>
+                        {/* Availability Status */}
+                        <span
+                          className={`text-xs font-medium px-2 py-1 rounded-full ${
+                            item.availability
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {item.availability ? "Available" : "Out of Stock"}
+                        </span>
+
+                        {/* Add Button */}
+                        <Button
+                          size="sm"
+                          disabled={!item.availability}
+                          onClick={() => addToOrder(item)}
+                        >
                           Add
                         </Button>
                       </div>
@@ -340,7 +366,6 @@ export default function CustomerDashboard() {
               </div>
             </>
           )}
-
           {/* CURRENT ORDER */}
           {activeTab === "order" &&
             (currentOrder.length === 0 ? (
