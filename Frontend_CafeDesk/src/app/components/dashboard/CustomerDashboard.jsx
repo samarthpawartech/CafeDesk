@@ -41,7 +41,7 @@ export default function CustomerDashboard() {
   const [remark, setRemark] = useState("");
   const [tableNumber, setTableNumber] = useState("");
   const [feedbackList, setFeedbackList] = useState([]);
-
+  const [categoryFilter, setCategoryFilter] = useState("ALL");
   /* ================= TABLE NUMBER ================= */
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -233,6 +233,15 @@ export default function CustomerDashboard() {
   };
 
   const orderCount = currentOrder.reduce((sum, item) => sum + item.quantity, 0);
+  //Filter Logic Added Here
+  const filteredMenu =
+    categoryFilter === "ALL"
+      ? menuItems
+      : menuItems.filter(
+          (item) =>
+            item.category &&
+            item.category.toLowerCase() === categoryFilter.toLowerCase(),
+        );
 
   return (
     <div className="min-h-screen bg-[#FBF8F3]">
@@ -274,30 +283,62 @@ export default function CustomerDashboard() {
         <Card className="p-6">
           {/* BREW */}
           {activeTab === "brew" && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-              {menuItems.map((item) => (
-                <div key={item.id} className="bg-white rounded-lg shadow-md">
-                  <img
-                    src={`${IMAGE_BASE}${item.imagePath}`}
-                    className="w-full h-40 object-cover"
-                  />
-                  <div className="p-4">
-                    <h3 className="font-semibold text-[#6B4423]">
-                      {item.name}
-                    </h3>
-                    <p className="text-sm text-gray-500">{item.description}</p>
-                    <div className="flex justify-between mt-3">
-                      <span className="font-bold text-orange-600">
-                        ₹{item.price}
-                      </span>
-                      <Button size="sm" onClick={() => addToOrder(item)}>
-                        Add
-                      </Button>
+            <>
+              {/* FILTER BUTTONS */}
+              <div className="flex gap-2 mb-6 flex-wrap justify-center">
+                {[
+                  { value: "ALL", label: "All" },
+                  { value: "Beverages", label: "Beverages" },
+                  {
+                    value: "Brunch and Breakfast",
+                    label: "Breakfast & Brunch",
+                  },
+                  { value: "Snacks", label: "Snacks" },
+                  { value: "Desserts", label: "Desserts" },
+                ].map((cat) => (
+                  <Button
+                    key={cat.value}
+                    size="sm"
+                    variant={
+                      categoryFilter === cat.value ? "default" : "outline"
+                    }
+                    onClick={() => setCategoryFilter(cat.value)}
+                  >
+                    {cat.label}
+                  </Button>
+                ))}
+              </div>
+              {/* MENU GRID */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                {filteredMenu.map((item) => (
+                  <div key={item.id} className="bg-white rounded-lg shadow-md">
+                    <img
+                      src={`${IMAGE_BASE}${item.imagePath}`}
+                      className="w-full h-40 object-cover"
+                    />
+
+                    <div className="p-4">
+                      <h3 className="font-semibold text-[#6B4423]">
+                        {item.name}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        {item.description}
+                      </p>
+
+                      <div className="flex justify-between mt-3">
+                        <span className="font-bold text-orange-600">
+                          ₹{item.price}
+                        </span>
+
+                        <Button size="sm" onClick={() => addToOrder(item)}>
+                          Add
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </>
           )}
 
           {/* CURRENT ORDER */}

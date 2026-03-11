@@ -25,17 +25,23 @@ public class CustomerOrderController {
     public ResponseEntity<?> placeOrder(@RequestBody PlaceOrderRequest request) {
 
         try {
-
             Order order = orderService.placeOrder(request);
-
             return ResponseEntity.ok(order);
 
         } catch (Exception e) {
-
             e.printStackTrace();
-
-            return ResponseEntity.badRequest().body("Order failed: " + e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body("Order failed: " + e.getMessage());
         }
+    }
+
+    // ================= FETCH CUSTOMER ORDERS =================
+    @GetMapping("/customer/{username}")
+    public ResponseEntity<List<Order>> getCustomerOrders(@PathVariable String username) {
+
+        List<Order> orders = orderService.getCustomerBills(username);
+
+        return ResponseEntity.ok(orders);
     }
 
     // ================= CUSTOMER BILLS =================
