@@ -42,6 +42,7 @@ export default function CustomerDashboard() {
   const [tableNumber, setTableNumber] = useState("");
   const [feedbackList, setFeedbackList] = useState([]);
   const [categoryFilter, setCategoryFilter] = useState("ALL");
+  const [myOrders, setMyOrders] = useState([]);
   /* ================= TABLE NUMBER ================= */
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -185,6 +186,29 @@ export default function CustomerDashboard() {
     }
   };
   3;
+  /* ================= FETCH CURRENT ORDERS FROM DB ================= */
+  const fetchCurrentOrders = async () => {
+    if (!user || !token) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/customer/orders/${user.username}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) return;
+
+      const data = await res.json();
+      setMyOrders(Array.isArray(data) ? data.reverse() : []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "order") {
+      fetchCurrentOrders();
+    }
+  }, [activeTab, token]);
 
   /* ================= SUBMIT FEEDBACK ================= */
   const submitFeedback = async () => {
@@ -367,31 +391,74 @@ export default function CustomerDashboard() {
               </div>
             </>
           )}
-          {/* CURRENT ORDER */}
-          {activeTab === "order" &&
-            (currentOrder.length === 0 ? (
-              <p className="text-center text-gray-500">No items added yet.</p>
-            ) : (
-              <>
-                {currentOrder.map((item, i) => (
-                  <div key={i} className="flex justify-between py-2 border-b">
-                    <span>{item.name}</span>
-                    <div className="flex items-center gap-2">
-                      <Minus onClick={() => removeFromOrder(item)} />
-                      {item.quantity}
-                      <Plus onClick={() => addToOrder(item)} />
+          {activeTab === "order" && (
+            <>
+              {/* CURRENT CART */}
+              {currentOrder.length === 0 ? (
+                <p className="text-center text-gray-500">No items added yet.</p>
+              ) : (
+                <>
+                  {currentOrder.map((item, i) => (
+                    <div key={i} className="flex justify-between py-2 border-b">
+                      <span>{item.name}</span>
+                      <div className="flex items-center gap-2">
+                        <Minus onClick={() => removeFromOrder(item)} />
+                        {item.quantity}
+                        <Plus onClick={() => addToOrder(item)} />
+                      </div>
                     </div>
+                  ))}
+
+                  <div className="flex justify-between font-bold mt-4">
+                    <span>Total</span>
+                    <span>₹{getTotalAmount()}</span>
                   </div>
-                ))}
-                <div className="flex justify-between font-bold mt-4">
-                  <span>Total</span>
-                  <span>₹{getTotalAmount()}</span>
-                </div>
-                <Button className="w-full mt-4" onClick={handlePlaceOrder}>
-                  Place Order
-                </Button>
-              </>
-            ))}
+
+                  <Button className="w-full mt-4" onClick={handlePlaceOrder}>
+                    Place Order
+                  </Button>
+                </>
+              )}
+
+              {/* CURRENT ORDERS FROM DATABASE */}
+              <div className="mt-8">
+                <h3 className="text-lg font-semibold text-[#6B4423] mb-3">
+                  Your Current Orders
+                </h3>
+
+                {myOrders.length === 0 ? (
+                  <p className="text-gray-500 text-sm">No orders found.</p>
+                ) : (
+                  myOrders.map((order) => (
+                    <Card key={order.id} className="p-4 mb-3 border">
+                      <div className="flex justify-between">
+                        <span className="font-medium">Order #{order.id}</span>
+                        <span className="text-orange-600 font-semibold">
+                          ₹{order.amount}
+                        </span>
+                      </div>
+
+                      <div className="text-sm text-gray-500 mt-1">
+                        Table: {order.tableNumber}
+                      </div>
+
+                      <div className="mt-2">
+                        {order.items?.map((item, index) => (
+                          <div key={index} className="text-sm">
+                            {item.name} x{item.quantity}
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="text-xs text-gray-400 mt-2">
+                        {new Date(order.createdAt).toLocaleString()}
+                      </div>
+                    </Card>
+                  ))
+                )}
+              </div>
+            </>
+          )}
 
           {/* BILLS */}
           {activeTab === "bills" &&
