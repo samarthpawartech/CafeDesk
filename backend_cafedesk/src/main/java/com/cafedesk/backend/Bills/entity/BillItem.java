@@ -1,4 +1,4 @@
-package com.cafedesk.backend.customer.entity;
+package com.cafedesk.backend.Bills.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;

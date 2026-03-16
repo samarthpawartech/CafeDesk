@@ -1,7 +1,7 @@
 package com.cafedesk.backend.customer.controller;
 
-import com.cafedesk.backend.customer.entity.Bill;
-import com.cafedesk.backend.customer.repository.BillRepository;
+import com.cafedesk.backend.Bills.entity.Bill;
+import com.cafedesk.backend.Bills.Repository.BillRepository;
 import com.cafedesk.backend.customer.service.InvoicePdfService;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;

@@ -1,6 +1,6 @@
-package com.cafedesk.backend.customer.repository;
+package com.cafedesk.backend.Bills.Repository;
 
-import com.cafedesk.backend.customer.entity.Bill;
+import com.cafedesk.backend.Bills.entity.Bill;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

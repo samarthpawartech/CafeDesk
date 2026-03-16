@@ -1,7 +1,7 @@
 package com.cafedesk.backend.customer.service;
 
-import com.cafedesk.backend.customer.entity.Bill;
-import com.cafedesk.backend.customer.entity.BillItem;
+import com.cafedesk.backend.Bills.entity.Bill;
+import com.cafedesk.backend.Bills.entity.BillItem;
 import com.itextpdf.barcodes.Barcode128;
 import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.events.Event;

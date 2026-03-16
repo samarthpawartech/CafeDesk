@@ -1,5 +1,8 @@
 package com.cafedesk.backend.customer.service;
 
+import com.cafedesk.backend.Bills.Repository.BillRepository;
+import com.cafedesk.backend.Bills.entity.Bill;
+import com.cafedesk.backend.Bills.entity.BillItem;
 import com.cafedesk.backend.customer.DTO.*;
 import com.cafedesk.backend.customer.entity.*;
 import com.cafedesk.backend.customer.repository.*;

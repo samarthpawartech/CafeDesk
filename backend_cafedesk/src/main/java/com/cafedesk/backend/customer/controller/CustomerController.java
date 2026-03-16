@@ -4,7 +4,7 @@ import com.cafedesk.backend.customer.DTO.PlaceOrderRequest;
 import com.cafedesk.backend.customer.DTO.CustomerLoginRequest;
 import com.cafedesk.backend.customer.DTO.CustomerRegisterRequest;
 import com.cafedesk.backend.customer.DTO.AuthResponse;
-import com.cafedesk.backend.customer.entity.Bill;
+import com.cafedesk.backend.Bills.entity.Bill;
 import com.cafedesk.backend.customer.entity.MenuCard;
 import com.cafedesk.backend.customer.service.CustomerService;
 
