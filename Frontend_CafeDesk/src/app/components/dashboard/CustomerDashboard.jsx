@@ -62,7 +62,7 @@ export default function CustomerDashboard() {
   const fetchBills = () => {
     if (!user || !token) return;
 
-    fetch(`${API_BASE}/customer/bills/${user.username}`, {
+    fetch(`${API_BASE}/bills/customer/${user.username}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
@@ -74,9 +74,9 @@ export default function CustomerDashboard() {
     fetchBills();
   }, [user, token]);
 
-  const userBills = bills.filter((b) => b.customerName === user?.username);
-  const pendingBills = userBills.filter((b) => b.status === "pending");
-  const orderHistory = userBills.filter((b) => b.status === "paid");
+  const userBills = bills;
+  const pendingBills = userBills.filter((b) => b.status === "PENDING");
+  const orderHistory = userBills.filter((b) => b.status === "APPROVED");
 
   /* ================= FETCH FEEDBACK ================= */
   const fetchFeedback = async () => {
