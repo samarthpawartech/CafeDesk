@@ -83,7 +83,7 @@ export default function CustomerDashboard() {
     if (!token) return;
 
     try {
-      const res = await fetch(`${API_BASE}/customer/feedback`, {
+      const res = await fetch(`${API_BASE}/feedback`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
