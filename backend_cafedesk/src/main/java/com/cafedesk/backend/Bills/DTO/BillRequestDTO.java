@@ -1,8 +1,7 @@
 package com.cafedesk.backend.Bills.DTO;
 
-import com.cafedesk.backend.Bills.DTO.BillitemDTO;
-
 import java.util.List;
+
 
 public class BillRequestDTO {
 
