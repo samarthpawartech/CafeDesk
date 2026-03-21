@@ -4,6 +4,7 @@ import com.cafedesk.backend.customer.DTO.PlaceOrderRequest;
 import com.cafedesk.backend.customer.DTO.OrderItemDTO;
 import com.cafedesk.backend.customer.entity.Order;
 import com.cafedesk.backend.customer.entity.OrderItem;
+import com.cafedesk.backend.customer.entity.OrderStatus;
 import com.cafedesk.backend.customer.repository.OrderRepository;
 
 import org.springframework.stereotype.Service;
@@ -27,7 +28,7 @@ public class OrderServiceImpl extends OrderService {
         order.setCustomerName(request.getCustomerName());
         order.setTableNumber(request.getTableNumber());
         order.setAmount(request.getAmount());
-        order.setStatus("PENDING");
+        order.setStatus(OrderStatus.APPROVED);
 
         List<OrderItem> items = new ArrayList<>();
 

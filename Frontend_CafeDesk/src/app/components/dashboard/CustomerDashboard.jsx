@@ -49,6 +49,7 @@ export default function CustomerDashboard() {
     const table = params.get("table");
     setTableNumber(table || "T01");
   }, []);
+  /*=========== Handle Count ========================== */
 
   /* ================= FETCH MENU ================= */
   useEffect(() => {
@@ -69,9 +70,16 @@ export default function CustomerDashboard() {
       .then(setBills)
       .catch(console.error);
   };
-
   useEffect(() => {
-    fetchBills();
+    if (!user || !token) return;
+
+    fetchBills(); // initial
+
+    const interval = setInterval(() => {
+      fetchBills(); // refresh every 5 sec
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, [user, token]);
 
   const userBills = bills;
@@ -121,16 +129,12 @@ export default function CustomerDashboard() {
         quantity: item.quantity || 1,
       }));
 
-      const finalTableNumber = tableNumber || "T01";
-
       const orderPayload = {
         customerName: user.username,
-        tableNumber: finalTableNumber,
+        tableNumber: tableNumber || "T01",
         amount: getTotalAmount(),
         items: orderItems,
       };
-
-      console.log("Sending Order:", orderPayload);
 
       const response = await fetch(`${API_BASE}/customer/orders/place-order`, {
         method: "POST",
@@ -142,50 +146,21 @@ export default function CustomerDashboard() {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Server error:", errorText);
-        alert("Failed to place order ❌");
-        return;
+        return alert("Failed to place order ❌");
       }
 
-      const bill = await response.json();
-
-      setBills((prev) => [...prev, bill]);
+      await response.json();
 
       clearOrder();
 
-      alert("✅ Order placed successfully! Your order is being prepared ☕");
+      alert("✅ Order placed! Waiting for approval ⏳");
 
-      setActiveTab("bills");
+      setActiveTab("order"); // stay in current orders
     } catch (error) {
-      console.error("Order failed:", error);
-      alert("Something went wrong while placing order ❌");
+      console.error(error);
+      alert("Something went wrong ❌");
     }
   };
-  /* ================= DOWNLOAD INVOICE ================= */
-  const downloadInvoice = async (bill) => {
-    try {
-      const response = await fetch(`${API_BASE}/customer/invoice/${bill.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!response.ok) return alert("Failed to download invoice");
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `invoice-${bill.id}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch {
-      alert("Error downloading invoice");
-    }
-  };
-  3;
   /* ================= FETCH CURRENT ORDERS FROM DB ================= */
   const fetchCurrentOrders = async () => {
     if (!user || !token) return;
@@ -198,15 +173,26 @@ export default function CustomerDashboard() {
       if (!res.ok) return;
 
       const data = await res.json();
-      setMyOrders(Array.isArray(data) ? data.reverse() : []);
+
+      const orders = Array.isArray(data) ? data.reverse() : [];
+
+      setMyOrders(orders);
+
+      // 🔥 ADD THIS LINE (for badge count)
+      setOrderCount(orders.length);
     } catch (err) {
       console.error(err);
     }
   };
-
   useEffect(() => {
     if (activeTab === "order") {
       fetchCurrentOrders();
+
+      const interval = setInterval(() => {
+        fetchCurrentOrders();
+      }, 5000); // refresh every 5 sec
+
+      return () => clearInterval(interval);
     }
   }, [activeTab, token]);
 

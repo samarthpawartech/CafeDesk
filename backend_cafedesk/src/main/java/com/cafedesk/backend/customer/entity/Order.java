@@ -1,6 +1,7 @@
 package com.cafedesk.backend.customer.entity;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -14,10 +15,18 @@ public class Order {
     private String customerName;
     private String tableNumber;
     private double amount;
-    private String status = "PENDING";
+
+    // ✅ Better status handling
+    @Enumerated(EnumType.STRING)
+    private OrderStatus status = OrderStatus.PLACED;
+
+    // ✅ Timestamp for tracking
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     private List<OrderItem> items;
+
+    // ================= GETTERS =================
 
     public Long getId() {
         return id;
@@ -27,36 +36,42 @@ public class Order {
         return customerName;
     }
 
-    public void setCustomerName(String customerName) {
-        this.customerName = customerName;
-    }
-
     public String getTableNumber() {
         return tableNumber;
-    }
-
-    public void setTableNumber(String tableNumber) {
-        this.tableNumber = tableNumber;
     }
 
     public double getAmount() {
         return amount;
     }
 
-    public void setAmount(double amount) {
-        this.amount = amount;
-    }
-
-    public String getStatus() {
+    public OrderStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
-        this.status = status;
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
     }
 
     public List<OrderItem> getItems() {
         return items;
+    }
+
+    // ================= SETTERS =================
+
+    public void setCustomerName(String customerName) {
+        this.customerName = customerName;
+    }
+
+    public void setTableNumber(String tableNumber) {
+        this.tableNumber = tableNumber;
+    }
+
+    public void setAmount(double amount) {
+        this.amount = amount;
+    }
+
+    public void setStatus(OrderStatus status) {
+        this.status = status;
     }
 
     public void setItems(List<OrderItem> items) {
