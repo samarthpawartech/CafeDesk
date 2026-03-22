@@ -163,38 +163,55 @@ export default function CustomerDashboard() {
   };
   /* ================= FETCH CURRENT ORDERS FROM DB ================= */
   const fetchCurrentOrders = async () => {
-    if (!user || !token) return;
+    if (!user?.username || !token) return;
 
     try {
       const res = await fetch(
         `${API_BASE}/customer/orders/customer/${user.username}`,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
         },
       );
 
-      if (!res.ok) return;
+      // Handle unauthorized (401)
+      if (res.status === 401) {
+        console.error("Unauthorized - Token expired or invalid");
+        return;
+      }
+
+      if (!res.ok) {
+        console.error("Failed to fetch orders");
+        return;
+      }
 
       const data = await res.json();
 
       const orders = Array.isArray(data) ? data.reverse() : [];
-
       setMyOrders(orders);
     } catch (err) {
-      console.error(err);
+      console.error("Error fetching orders:", err);
     }
   };
+
   useEffect(() => {
-    if (activeTab === "order") {
+    let interval;
+
+    if (activeTab === "order" && token && user?.username) {
       fetchCurrentOrders();
 
-      const interval = setInterval(() => {
+      interval = setInterval(() => {
         fetchCurrentOrders();
-      }, 5000); // refresh every 5 sec
-
-      return () => clearInterval(interval);
+      }, 5000);
     }
-  }, [activeTab, token]);
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [activeTab, token, user?.username]);
 
   /* ================= SUBMIT FEEDBACK ================= */
   const submitFeedback = async () => {

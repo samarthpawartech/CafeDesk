@@ -30,16 +30,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String path = request.getServletPath();
 
+        // Allow preflight requests
         if (HttpMethod.OPTIONS.matches(request.getMethod())) {
             return true;
         }
 
-        return path.equals("/api/customer/login")
-                || path.equals("/api/customer/register")
-                || path.equals("/api/customer/menu")
-                || path.equals("/api/customer/place-order")
-                || path.equals("/api/employee/login")
-                || path.equals("/api/admin/login");
+        // Public endpoints (NO JWT required)
+        return path.startsWith("/api/customer/login")
+                || path.startsWith("/api/customer/register")
+                || path.startsWith("/api/customer/menu")
+                || path.startsWith("/api/employee/login")
+                || path.startsWith("/api/admin/login");
     }
 
     @Override
@@ -50,6 +51,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader("Authorization");
 
+        // No token → continue without authentication
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
@@ -58,29 +60,30 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String jwt = authHeader.substring(7);
 
         try {
-            if (!jwtUtil.validateToken(jwt)) {
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid JWT");
-                return;
-            }
-
+            // Extract username first
             String username = jwtUtil.extractUsername(jwt);
-            String role = jwtUtil.extractRole(jwt);
 
-            SimpleGrantedAuthority authority =
-                    new SimpleGrantedAuthority("ROLE_" + role.toUpperCase());
+            // Validate token
+            if (username != null && jwtUtil.validateToken(jwt)) {
 
-            UsernamePasswordAuthenticationToken authToken =
-                    new UsernamePasswordAuthenticationToken(
-                            username,
-                            null,
-                            Collections.singletonList(authority)
-                    );
+                String role = jwtUtil.extractRole(jwt);
 
-            authToken.setDetails(
-                    new WebAuthenticationDetailsSource().buildDetails(request)
-            );
+                SimpleGrantedAuthority authority =
+                        new SimpleGrantedAuthority("ROLE_" + role.toUpperCase());
 
-            SecurityContextHolder.getContext().setAuthentication(authToken);
+                UsernamePasswordAuthenticationToken authToken =
+                        new UsernamePasswordAuthenticationToken(
+                                username,
+                                null,
+                                Collections.singletonList(authority)
+                        );
+
+                authToken.setDetails(
+                        new WebAuthenticationDetailsSource().buildDetails(request)
+                );
+
+                SecurityContextHolder.getContext().setAuthentication(authToken);
+            }
 
         } catch (Exception e) {
             SecurityContextHolder.clearContext();
