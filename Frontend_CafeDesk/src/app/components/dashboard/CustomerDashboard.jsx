@@ -63,7 +63,7 @@ export default function CustomerDashboard() {
   const fetchBills = () => {
     if (!user || !token) return;
 
-    fetch(`${API_BASE}/bills/customer/${user.username}`, {
+    fetch(`${API_BASE}/customer/orders/bills/${user.username}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
@@ -166,9 +166,12 @@ export default function CustomerDashboard() {
     if (!user || !token) return;
 
     try {
-      const res = await fetch(`${API_BASE}/customer/orders/${user.username}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(
+        `${API_BASE}/customer/orders/customer/${user.username}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
 
       if (!res.ok) return;
 
@@ -177,9 +180,6 @@ export default function CustomerDashboard() {
       const orders = Array.isArray(data) ? data.reverse() : [];
 
       setMyOrders(orders);
-
-      // 🔥 ADD THIS LINE (for badge count)
-      setOrderCount(orders.length);
     } catch (err) {
       console.error(err);
     }
@@ -200,37 +200,25 @@ export default function CustomerDashboard() {
   const submitFeedback = async () => {
     if (rating === 0) return alert("Please give rating ⭐");
 
-    if (!token) {
-      alert("Session expired. Please login again.");
-      return;
-    }
-
     try {
       const res = await fetch(`${API_BASE}/customer/feedback`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          customerName: user?.username,
+          customerName: user?.username || "Guest",
           rating: Number(rating),
           remark: remark || "No comment",
         }),
       });
 
-      if (res.status === 403) {
-        alert("Forbidden ❌ You are not authorized.");
-        return;
-      }
-
       if (!res.ok) {
-        const errorText = await res.text();
-        console.log(errorText);
         return alert("Failed to submit feedback");
       }
 
       const savedFeedback = await res.json();
+
       setFeedbackList((prev) => [savedFeedback, ...prev]);
 
       setRating(0);

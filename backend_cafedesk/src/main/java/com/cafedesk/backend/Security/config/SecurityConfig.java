@@ -66,10 +66,11 @@ public class SecurityConfig {
                         ).permitAll()
 
                         .requestMatchers(HttpMethod.GET, "/api/customer/menu").permitAll()
-
                         .requestMatchers("/menu/**").permitAll()
-
                         .requestMatchers("/api/customer/place-order").permitAll()
+
+                        // ✅ FIX: allow feedback APIs
+                        .requestMatchers("/api/customer/feedback/**").permitAll()
 
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
@@ -78,7 +79,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").authenticated()
                         .requestMatchers("/api/employee/**").authenticated()
                         .requestMatchers("/api/customer/**").authenticated()
-                        .requestMatchers("/api/customer/feedback").authenticated()
+
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
