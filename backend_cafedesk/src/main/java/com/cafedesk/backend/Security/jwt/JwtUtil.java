@@ -46,7 +46,7 @@ public class JwtUtil {
             System.out.println("Unsupported JWT");
         } catch (MalformedJwtException e) {
             System.out.println("Malformed JWT");
-        } catch (SignatureException e) {
+        } catch (@SuppressWarnings("deprecation") SignatureException e) {
             System.out.println("Invalid signature");
         } catch (IllegalArgumentException e) {
             System.out.println("Empty JWT");
