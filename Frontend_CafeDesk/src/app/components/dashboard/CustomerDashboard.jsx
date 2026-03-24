@@ -253,10 +253,11 @@ export default function CustomerDashboard() {
   const filteredMenu =
     categoryFilter === "ALL"
       ? menuItems
-      : menuItems.filter(
-          (item) =>
-            item.category &&
-            item.category.toLowerCase() === categoryFilter.toLowerCase(),
+      : menuItems.filter((item) =>
+          item.category
+            ?.trim()
+            .toLowerCase()
+            .includes(categoryFilter.trim().toLowerCase()),
         );
 
   return (
