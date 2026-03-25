@@ -79,4 +79,5 @@ public class BillResponseDTO {
     public void setItems(List<BillitemDTO> items) {
         this.items = items;
     }
+
 }

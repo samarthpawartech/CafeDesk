@@ -1,34 +1,55 @@
 package com.cafedesk.backend.Bills.Controller;
 
-import com.cafedesk.backend.Bills.DTO.BillitemDTO;
+import com.cafedesk.backend.Bills.DTO.BillRequestDTO;
+import com.cafedesk.backend.Bills.DTO.BillResponseDTO;
+import com.cafedesk.backend.Bills.Service.BillService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-class BillResponseDTO {
+@RestController
+@RequestMapping("/api/customer/orders")
+@CrossOrigin("*")
+public class BillController {
 
-    private Long id;
-    private String invoiceNumber;
-    private String customerName;
-    private List<BillitemDTO> items;
-    private Double totalAmount;
-    private String status;
+    private final BillService billService;
 
-    // ✅ GETTERS & SETTERS
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public BillController(BillService billService) {
+        this.billService = billService;
+    }
 
-    public String getInvoiceNumber() { return invoiceNumber; }
-    public void setInvoiceNumber(String invoiceNumber) { this.invoiceNumber = invoiceNumber; }
+    // ================= GET ALL BILLS =================
+    @GetMapping("/all")
+    public ResponseEntity<List<BillResponseDTO>> getAllBills() {
+        return ResponseEntity.ok(billService.getAllBills());
+    }
 
-    public String getCustomerName() { return customerName; }
-    public void setCustomerName(String customerName) { this.customerName = customerName; }
+    // ================= CUSTOMER BILLS =================
+    @GetMapping("/bills/{username}")
+    public ResponseEntity<List<BillResponseDTO>> getCustomerBills(
+            @PathVariable String username) {
 
-    public List<BillitemDTO> getItems() { return items; }
-    public void setItems(List<BillitemDTO> items) { this.items = items; }
+        return ResponseEntity.ok(billService.getCustomerBills(username));
+    }
 
-    public Double getTotalAmount() { return totalAmount; }
-    public void setTotalAmount(Double totalAmount) { this.totalAmount = totalAmount; }
+    // ================= APPROVE BILL =================
+    @PutMapping("/approve/{id}")
+    public ResponseEntity<BillResponseDTO> approveBill(@PathVariable Long id) {
+        return ResponseEntity.ok(billService.approveBill(id));
+    }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    // ================= 💳 PAY BILL =================
+    @PutMapping("/pay/{id}")
+    public ResponseEntity<BillResponseDTO> payBill(@PathVariable Long id) {
+        return ResponseEntity.ok(billService.payBill(id));
+    }
+
+    // ================= CREATE BILL (OPTIONAL) =================
+    @PostMapping("/place-order")
+    public ResponseEntity<BillResponseDTO> createBill(
+            @RequestBody BillRequestDTO request) {
+
+        return ResponseEntity.ok(billService.createBill(request));
+    }
 }

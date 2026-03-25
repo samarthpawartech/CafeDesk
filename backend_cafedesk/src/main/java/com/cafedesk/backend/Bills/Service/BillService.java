@@ -97,4 +97,19 @@ public class BillService {
 
         return dto;
     }
+    //====================  PAY BILL ===================//
+    public BillResponseDTO payBill(Long id) {
+
+        Bill bill = billRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Bill not found"));
+
+        // Only allow payment if approved
+        if (!"APPROVED".equalsIgnoreCase(bill.getStatus())) {
+            throw new RuntimeException("Bill not approved yet");
+        }
+
+        bill.setStatus("PAID");
+
+        return mapToDTO(billRepository.save(bill));
+    }
 }

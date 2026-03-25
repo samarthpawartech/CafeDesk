@@ -96,7 +96,7 @@ public class CustomerService {
     /* ================= DASHBOARD ================= */
 
     public List<MenuCard> getMenu() {
-        return menuRepository.findByAvailableTrue();
+        return menuRepository.findAll();
     }
 
     /* ================= PLACE ORDER ================= */
@@ -111,7 +111,7 @@ public class CustomerService {
         bill.setCustomerName(request.getCustomerName());
         bill.setTableNumber(request.getTableNumber());
         bill.setAmount(request.getAmount());
-        bill.setStatus("PAID");
+        bill.setStatus("PENDING");
         bill.setDate(LocalDateTime.now());
 
         List<BillItem> billItems = new ArrayList<>();

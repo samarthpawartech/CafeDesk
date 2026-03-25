@@ -49,8 +49,43 @@ export default function CustomerDashboard() {
     const table = params.get("table");
     setTableNumber(table || "T01");
   }, []);
-  /*=========== Handle Count ========================== */
+  /*=========== Download Invoice ========================== */
+  const downloadInvoice = async (bill) => {
+    // 🚫 Restrict download
+    if (bill.status?.toUpperCase() !== "PAID") {
+      return alert("Invoice available only after payment ✅");
+    }
 
+    try {
+      const response = await fetch(`${API_BASE}/customer/invoice/${bill.id}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        return alert("Failed to download invoice ❌");
+      }
+
+      const blob = await response.blob();
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = `${bill.invoiceNumber || "invoice_" + bill.id}.pdf`;
+
+      document.body.appendChild(link);
+      link.click();
+
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error(error);
+      alert("Error downloading invoice ❌");
+    }
+  };
   /* ================= FETCH MENU ================= */
   useEffect(() => {
     fetch(`${API_BASE}/customer/menu`)
@@ -83,8 +118,15 @@ export default function CustomerDashboard() {
   }, [user, token]);
 
   const userBills = bills;
-  const pendingBills = userBills.filter((b) => b.status === "PENDING");
-  const orderHistory = userBills.filter((b) => b.status === "APPROVED");
+  const pendingBills = userBills.filter(
+    (b) => b.status?.toUpperCase() === "PENDING",
+  );
+
+  const orderHistory = userBills.filter(
+    (b) =>
+      b.status?.toUpperCase() === "APPROVED" ||
+      b.status?.toUpperCase() === "PAID",
+  );
 
   /* ================= FETCH FEEDBACK ================= */
   const fetchFeedback = async () => {
@@ -460,12 +502,46 @@ export default function CustomerDashboard() {
               pendingBills.map((bill) => (
                 <div
                   key={bill.id}
-                  className="flex justify-between py-2 border-b"
+                  className="flex justify-between items-center py-3 border-b"
                 >
-                  <span>INV-{bill.id}</span>
-                  <Button size="sm" onClick={() => downloadInvoice(bill)}>
-                    <Download className="w-4 h-4 mr-1" /> Invoice
-                  </Button>
+                  <div>
+                    <span className="font-medium">INV-{bill.id}</span>
+
+                    {/* STATUS */}
+                    <span
+                      className={`ml-2 text-xs px-2 py-1 rounded-full ${
+                        bill.status?.toUpperCase() === "PAID"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-yellow-100 text-yellow-700"
+                      }`}
+                    >
+                      {bill.status}
+                    </span>
+                  </div>
+
+                  <div className="flex gap-2">
+                    {/* 💳 PAY NOW BUTTON */}
+                    {bill.status?.toUpperCase() !== "PAID" && (
+                      <Button size="sm" onClick={() => handlePayNow(bill.id)}>
+                        💳 Pay Now
+                      </Button>
+                    )}
+
+                    {/* 📄 DOWNLOAD (ONLY IF PAID) */}
+                    <Button
+                      size="sm"
+                      disabled={bill.status?.toUpperCase() !== "PAID"}
+                      className={
+                        bill.status?.toUpperCase() !== "PAID"
+                          ? "opacity-50 cursor-not-allowed"
+                          : ""
+                      }
+                      onClick={() => downloadInvoice(bill)}
+                    >
+                      <Download className="w-4 h-4 mr-1" />
+                      Invoice
+                    </Button>
+                  </div>
                 </div>
               ))
             ))}
