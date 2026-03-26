@@ -203,6 +203,31 @@ export default function CustomerDashboard() {
       alert("Something went wrong ❌");
     }
   };
+
+  // ================= 💳 PAY NOW =================
+  const handlePayNow = async (billId) => {
+    try {
+      const res = await fetch(`${API_BASE}/bills/pay/${billId}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        alert("Payment failed ❌");
+        return;
+      }
+
+      alert("✅ Payment successful");
+
+      fetchBills(); // 🔄 refresh list
+    } catch (err) {
+      console.error(err);
+      alert("Error while paying ❌");
+    }
+  };
+
   /* ================= FETCH CURRENT ORDERS FROM DB ================= */
   const fetchCurrentOrders = async () => {
     if (!user?.username || !token) return;
@@ -504,6 +529,7 @@ export default function CustomerDashboard() {
                   key={bill.id}
                   className="flex justify-between items-center py-3 border-b"
                 >
+                  {/* LEFT SIDE */}
                   <div>
                     <span className="font-medium">INV-{bill.id}</span>
 
@@ -512,29 +538,41 @@ export default function CustomerDashboard() {
                       className={`ml-2 text-xs px-2 py-1 rounded-full ${
                         bill.status?.toUpperCase() === "PAID"
                           ? "bg-green-100 text-green-700"
-                          : "bg-yellow-100 text-yellow-700"
+                          : bill.status?.toUpperCase() === "APPROVED"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-yellow-100 text-yellow-700"
                       }`}
                     >
-                      {bill.status}
+                      {bill.status || "PENDING"}
                     </span>
+
+                    {/* AMOUNT */}
+                    <p className="text-sm text-gray-500 mt-1">
+                      ₹{bill.totalAmount ?? 0}
+                    </p>
                   </div>
 
-                  <div className="flex gap-2">
-                    {/* 💳 PAY NOW BUTTON */}
+                  {/* RIGHT SIDE BUTTONS */}
+                  <div className="flex gap-2 items-center">
+                    {/* 💳 PAY NOW */}
                     {bill.status?.toUpperCase() !== "PAID" && (
-                      <Button size="sm" onClick={() => handlePayNow(bill.id)}>
+                      <Button
+                        size="sm"
+                        onClick={() => handlePayNow(bill.id)}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
                         💳 Pay Now
                       </Button>
                     )}
 
-                    {/* 📄 DOWNLOAD (ONLY IF PAID) */}
+                    {/* 📄 DOWNLOAD INVOICE */}
                     <Button
                       size="sm"
                       disabled={bill.status?.toUpperCase() !== "PAID"}
                       className={
                         bill.status?.toUpperCase() !== "PAID"
                           ? "opacity-50 cursor-not-allowed"
-                          : ""
+                          : "bg-gray-800 hover:bg-gray-900 text-white"
                       }
                       onClick={() => downloadInvoice(bill)}
                     >
@@ -545,7 +583,6 @@ export default function CustomerDashboard() {
                 </div>
               ))
             ))}
-
           {/* HISTORY */}
           {activeTab === "history" &&
             (orderHistory.length === 0 ? (
@@ -556,12 +593,52 @@ export default function CustomerDashboard() {
               orderHistory.map((bill) => (
                 <div
                   key={bill.id}
-                  className="flex justify-between py-2 border-b"
+                  className="flex justify-between items-center py-3 border-b"
                 >
-                  <span>INV-{bill.id}</span>
-                  <Button size="sm" onClick={() => downloadInvoice(bill)}>
-                    <Download className="w-4 h-4 mr-1" /> Invoice
-                  </Button>
+                  {/* LEFT SIDE */}
+                  <div>
+                    <span className="font-medium">INV-{bill.id}</span>
+
+                    {/* STATUS */}
+                    <span
+                      className={`ml-2 text-xs px-2 py-1 rounded-full ${
+                        bill.status?.toUpperCase() === "PAID"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-blue-100 text-blue-700"
+                      }`}
+                    >
+                      {bill.status || "APPROVED"}
+                    </span>
+
+                    {/* AMOUNT */}
+                    <p className="text-sm text-gray-500 mt-1">
+                      ₹{bill.totalAmount ?? 0}
+                    </p>
+
+                    {/* DATE */}
+                    <p className="text-xs text-gray-400">
+                      {bill.createdAt
+                        ? new Date(bill.createdAt).toLocaleString()
+                        : ""}
+                    </p>
+                  </div>
+
+                  {/* RIGHT SIDE */}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      disabled={bill.status?.toUpperCase() !== "PAID"}
+                      className={
+                        bill.status?.toUpperCase() !== "PAID"
+                          ? "opacity-50 cursor-not-allowed"
+                          : "bg-gray-800 hover:bg-gray-900 text-white"
+                      }
+                      onClick={() => downloadInvoice(bill)}
+                    >
+                      <Download className="w-4 h-4 mr-1" />
+                      Invoice
+                    </Button>
+                  </div>
                 </div>
               ))
             ))}

@@ -40,16 +40,16 @@ public class CustomerOrderController {
     public ResponseEntity<List<Order>> getCustomerOrders(@PathVariable String username) {
 
         List<Order> orders = orderService.getCustomerBills(username);
-
         return ResponseEntity.ok(orders);
     }
 
     // ================= CUSTOMER BILLS =================
-    @GetMapping("/bills/{username}")
+    // ❌ REMOVED duplicate full path
+    // ✅ FIXED to avoid conflict with BillController
+    @GetMapping("/{username}/order-bills")
     public ResponseEntity<List<Order>> getCustomerBills(@PathVariable String username) {
 
         List<Order> orders = orderService.getCustomerBills(username);
-
         return ResponseEntity.ok(orders);
     }
 
@@ -58,7 +58,6 @@ public class CustomerOrderController {
     public ResponseEntity<List<Order>> getAllOrders() {
 
         List<Order> orders = orderService.getAllOrders();
-
         return ResponseEntity.ok(orders);
     }
 }
