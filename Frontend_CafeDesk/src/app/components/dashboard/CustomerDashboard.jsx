@@ -458,21 +458,44 @@ export default function CustomerDashboard() {
               ) : (
                 <>
                   {currentOrder.map((item, i) => (
-                    <div key={i} className="flex justify-between py-2 border-b">
+                    <div
+                      key={item.id || i}
+                      className="flex justify-between py-2 border-b"
+                    >
                       <span>{item.name}</span>
-                      <div className="flex items-center gap-2">
-                        <Minus onClick={() => removeFromOrder(item)} />
-                        {item.quantity}
-                        <Plus onClick={() => addToOrder(item)} />
+
+                      <div className="flex items-center gap-3">
+                        {/* ➖ REMOVE */}
+                        <button
+                          onClick={() => removeFromOrder(item)}
+                          className="bg-gray-200 px-2 rounded"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+
+                        {/* 🔢 QUANTITY FIX */}
+                        <span className="min-w-[20px] text-center">
+                          {item.quantity || 1}
+                        </span>
+
+                        {/* ➕ ADD */}
+                        <button
+                          onClick={() => addToOrder(item)}
+                          className="bg-gray-200 px-2 rounded"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
                   ))}
 
+                  {/* 💰 TOTAL */}
                   <div className="flex justify-between font-bold mt-4">
                     <span>Total</span>
                     <span>₹{getTotalAmount()}</span>
                   </div>
 
+                  {/* 🚀 PLACE ORDER */}
                   <Button className="w-full mt-4" onClick={handlePlaceOrder}>
                     Place Order
                   </Button>
