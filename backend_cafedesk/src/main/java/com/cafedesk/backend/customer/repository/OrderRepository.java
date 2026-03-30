@@ -1,11 +1,11 @@
 package com.cafedesk.backend.customer.repository;
 
-import com.cafedesk.backend.customer.entity.Order;
+import com.cafedesk.backend.customer.entity.CurrentOrder;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
-public interface OrderRepository extends JpaRepository<Order, Long> {
+public interface OrderRepository extends JpaRepository<CurrentOrder, Long> {
 
-    List<Order> findByCustomerName(String customerName);
+    List<CurrentOrder> findByCustomerName(String customerName);
 
 }

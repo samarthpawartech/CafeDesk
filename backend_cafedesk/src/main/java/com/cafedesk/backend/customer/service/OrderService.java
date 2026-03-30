@@ -2,7 +2,7 @@ package com.cafedesk.backend.customer.service;
 
 import com.cafedesk.backend.customer.DTO.PlaceOrderRequest;
 import com.cafedesk.backend.customer.DTO.OrderItemDTO;
-import com.cafedesk.backend.customer.entity.Order;
+import com.cafedesk.backend.customer.entity.CurrentOrder;
 import com.cafedesk.backend.customer.entity.OrderItem;
 import com.cafedesk.backend.customer.entity.OrderStatus;
 import com.cafedesk.backend.customer.repository.OrderRepository;
@@ -23,17 +23,17 @@ public class OrderService {
     @Autowired
     private OrderItemRepository orderItemRepository;
 
-    public Order placeOrder(PlaceOrderRequest request) {
+    public CurrentOrder placeOrder(PlaceOrderRequest request) {
 
         // Create order
-        Order order = new Order();
+        CurrentOrder order = new CurrentOrder();
         order.setCustomerName(request.getCustomerName());
         order.setTableNumber(request.getTableNumber());
         order.setAmount(request.getAmount());
         order.setStatus(OrderStatus.APPROVED);
 
         // Save order first
-        Order savedOrder = orderRepository.save(order);
+        CurrentOrder savedOrder = orderRepository.save(order);
 
         List<OrderItem> items = new ArrayList<>();
 
@@ -57,11 +57,11 @@ public class OrderService {
         return savedOrder;
     }
 
-    public List<Order> getCustomerBills(String username) {
+    public List<CurrentOrder> getCustomerBills(String username) {
         return orderRepository.findByCustomerName(username);
     }
 
-    public List<Order> getAllOrders() {
+    public List<CurrentOrder> getAllOrders() {
         return orderRepository.findAll();
     }
 }

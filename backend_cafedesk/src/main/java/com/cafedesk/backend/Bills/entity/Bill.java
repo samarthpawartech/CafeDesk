@@ -1,6 +1,6 @@
 package com.cafedesk.backend.Bills.entity;
 
-import com.cafedesk.backend.customer.entity.Order;
+import com.cafedesk.backend.customer.entity.CurrentOrder;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -15,7 +15,6 @@ public class Bill {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // ✅ Unique invoice
     @Column(unique = true, nullable = false)
     private String invoiceNumber;
 
@@ -23,15 +22,13 @@ public class Bill {
     private String tableNumber;
     private Double amount;
 
-    // ✅ Use consistent uppercase (matches frontend filter)
     private String status;
-
     private LocalDateTime date;
 
-    // ✅ Link with Order (IMPORTANT)
+    // ✅ FIXED: use CurrentOrder everywhere
     @ManyToOne
     @JoinColumn(name = "order_id")
-    private Order order;
+    private CurrentOrder order;
 
     @OneToMany(
             mappedBy = "bill",
@@ -46,22 +43,18 @@ public class Bill {
     @PrePersist
     public void prePersist() {
 
-        // ✅ Invoice number
         if (this.invoiceNumber == null || this.invoiceNumber.isEmpty()) {
             this.invoiceNumber = "INV-" + System.currentTimeMillis();
         }
 
-        // ✅ Date
         if (this.date == null) {
             this.date = LocalDateTime.now();
         }
 
-        // ✅ Status FIX (must match frontend)
         if (this.status == null || this.status.isEmpty()) {
-            this.status = "PENDING";   // 🔥 IMPORTANT (uppercase)
+            this.status = "PENDING";
         }
 
-        // ✅ Prevent null amount
         if (this.amount == null) {
             this.amount = 0.0;
         }
@@ -97,7 +90,7 @@ public class Bill {
         return date;
     }
 
-    public Order getOrder() {
+    public CurrentOrder getOrder() {   // ✅ FIXED
         return order;
     }
 
@@ -135,14 +128,13 @@ public class Bill {
         this.date = date;
     }
 
-    public void setOrder(Order order) {
+    public void setOrder(CurrentOrder order) {   // ✅ FIXED
         this.order = order;
     }
 
     public void setItems(List<BillItem> items) {
         this.items = items;
 
-        // ✅ Maintain relationship
         if (items != null) {
             for (BillItem item : items) {
                 item.setBill(this);

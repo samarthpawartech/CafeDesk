@@ -3,7 +3,6 @@ package com.cafedesk.backend.customer.entity;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "order_items")
 public class OrderItem {
 
     @Id
@@ -16,7 +15,7 @@ public class OrderItem {
 
     @ManyToOne
     @JoinColumn(name = "order_id")
-    private Order order;
+    private CurrentOrder order; // ✅ correct field name
 
     public Long getId() {
         return id;
@@ -46,11 +45,11 @@ public class OrderItem {
         this.quantity = quantity;
     }
 
-    public Order getOrder() {
-        return order;
+    public CurrentOrder getOrder() {
+        return order; // ✅ fixed
     }
 
-    public void setOrder(Order order) {
-        this.order = order;
+    public void setOrder(CurrentOrder order) {
+        this.order = order; // ✅ fixed
     }
 }

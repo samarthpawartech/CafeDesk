@@ -1,8 +1,8 @@
 package com.cafedesk.backend.customer.controller;
 
 import com.cafedesk.backend.customer.DTO.PlaceOrderRequest;
-import com.cafedesk.backend.customer.entity.Order;
-import com.cafedesk.backend.customer.service.OrderService;
+import com.cafedesk.backend.customer.entity.CurrentOrder;
+import com.cafedesk.backend.customer.service.OrderServiceImpl;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,9 +14,9 @@ import java.util.List;
 @CrossOrigin(origins = "*")
 public class CustomerOrderController {
 
-    private final OrderService orderService;
+    private final OrderServiceImpl orderService;
 
-    public CustomerOrderController(OrderService orderService) {
+    public CustomerOrderController(OrderServiceImpl orderService) {
         this.orderService = orderService;
     }
 
@@ -25,7 +25,7 @@ public class CustomerOrderController {
     public ResponseEntity<?> placeOrder(@RequestBody PlaceOrderRequest request) {
 
         try {
-            Order order = orderService.placeOrder(request);
+            CurrentOrder order = orderService.placeOrder(request);
             return ResponseEntity.ok(order);
 
         } catch (Exception e) {
@@ -37,27 +37,25 @@ public class CustomerOrderController {
 
     // ================= FETCH CUSTOMER ORDERS =================
     @GetMapping("/customer/{username}")
-    public ResponseEntity<List<Order>> getCustomerOrders(@PathVariable String username) {
+    public ResponseEntity<List<CurrentOrder>> getCustomerOrders(@PathVariable String username) {
 
-        List<Order> orders = orderService.getCustomerBills(username);
+        List<CurrentOrder> orders = orderService.getCustomerBills(username);
         return ResponseEntity.ok(orders);
     }
 
     // ================= CUSTOMER BILLS =================
-    // ❌ REMOVED duplicate full path
-    // ✅ FIXED to avoid conflict with BillController
     @GetMapping("/{username}/order-bills")
-    public ResponseEntity<List<Order>> getCustomerBills(@PathVariable String username) {
+    public ResponseEntity<List<CurrentOrder>> getCustomerBills(@PathVariable String username) {
 
-        List<Order> orders = orderService.getCustomerBills(username);
+        List<CurrentOrder> orders = orderService.getCustomerBills(username);
         return ResponseEntity.ok(orders);
     }
 
-    // ================= ALL ORDERS (ADMIN / KITCHEN) =================
+    // ================= ALL ORDERS =================
     @GetMapping("/all")
-    public ResponseEntity<List<Order>> getAllOrders() {
+    public ResponseEntity<List<CurrentOrder>> getAllOrders() {
 
-        List<Order> orders = orderService.getAllOrders();
+        List<CurrentOrder> orders = orderService.getAllOrders();
         return ResponseEntity.ok(orders);
     }
 }

@@ -5,8 +5,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "orders")
-public class Order {
+@Table(name = "Current orders")
+public class CurrentOrder {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

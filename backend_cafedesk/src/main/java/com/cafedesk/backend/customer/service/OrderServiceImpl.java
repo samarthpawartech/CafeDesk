@@ -2,7 +2,7 @@ package com.cafedesk.backend.customer.service;
 
 import com.cafedesk.backend.customer.DTO.PlaceOrderRequest;
 import com.cafedesk.backend.customer.DTO.OrderItemDTO;
-import com.cafedesk.backend.customer.entity.Order;
+import com.cafedesk.backend.customer.entity.CurrentOrder;
 import com.cafedesk.backend.customer.entity.OrderItem;
 import com.cafedesk.backend.customer.entity.OrderStatus;
 import com.cafedesk.backend.customer.repository.OrderRepository;
@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
-public class OrderServiceImpl extends OrderService {
+public class OrderServiceImpl {
 
     private final OrderRepository orderRepository;
 
@@ -21,10 +21,10 @@ public class OrderServiceImpl extends OrderService {
         this.orderRepository = orderRepository;
     }
 
-    @Override
-    public Order placeOrder(PlaceOrderRequest request) {
+    public CurrentOrder placeOrder(PlaceOrderRequest request) {
 
-        Order order = new Order();
+        // ✅ Create Order
+        CurrentOrder order = new CurrentOrder();
         order.setCustomerName(request.getCustomerName());
         order.setTableNumber(request.getTableNumber());
         order.setAmount(request.getAmount());
@@ -32,35 +32,34 @@ public class OrderServiceImpl extends OrderService {
 
         List<OrderItem> items = new ArrayList<>();
 
-        for (OrderItemDTO dto : request.getItems()) {
+        // ✅ Null safety (IMPORTANT)
+        if (request.getItems() != null) {
+            for (OrderItemDTO dto : request.getItems()) {
 
-            OrderItem item = new OrderItem();
-            item.setName(dto.getName());
-            item.setPrice(dto.getPrice());
-            item.setQuantity(dto.getQuantity());
+                OrderItem item = new OrderItem();
+                item.setName(dto.getName());
+                item.setPrice(dto.getPrice());
+                item.setQuantity(dto.getQuantity());
 
-            // Link item to order
-            item.setOrder(order);
+                // Link item to order
+                item.setOrder(order);
 
-            items.add(item);
+                items.add(item);
+            }
         }
 
-        // Attach items to order
+        // ✅ Attach items to order (required for cascade)
         order.setItems(items);
 
-        // Cascade will save items automatically
+        // ✅ Save order (items auto-saved via cascade)
         return orderRepository.save(order);
     }
 
-    @Override
-    public List<Order> getCustomerBills(String username) {
-
-        // Return only this customer's bills
+    public List<CurrentOrder> getCustomerBills(String username) {
         return orderRepository.findByCustomerName(username);
     }
 
-    @Override
-    public List<Order> getAllOrders() {
+    public List<CurrentOrder> getAllOrders() {
         return orderRepository.findAll();
     }
 }
