@@ -1,8 +1,10 @@
 package com.cafedesk.backend.customer.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 
 @Entity
+@Table(name = "order_items") // ✅ GOOD PRACTICE (explicit table name)
 public class OrderItem {
 
     @Id
@@ -13,9 +15,13 @@ public class OrderItem {
     private double price;
     private int quantity;
 
-    @ManyToOne
-    @JoinColumn(name = "order_id")
-    private CurrentOrder order; // ✅ correct field name
+    // 🔥 IMPORTANT: Prevent infinite JSON loop
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id", nullable = false)
+    @JsonBackReference
+    private CurrentOrder order;
+
+    // ================= GETTERS =================
 
     public Long getId() {
         return id;
@@ -25,31 +31,44 @@ public class OrderItem {
         return name;
     }
 
-    public void setName(String name) {
-        this.name = name;
-    }
-
     public double getPrice() {
         return price;
-    }
-
-    public void setPrice(double price) {
-        this.price = price;
     }
 
     public int getQuantity() {
         return quantity;
     }
 
-    public void setQuantity(int quantity) {
-        this.quantity = quantity;
+    public CurrentOrder getOrder() {
+        return order;
     }
 
-    public CurrentOrder getOrder() {
-        return order; // ✅ fixed
+    // ================= SETTERS =================
+
+    public void setName(String name) {
+        this.name = (name != null) ? name : ""; // ✅ null safety
+    }
+
+    public void setPrice(double price) {
+        this.price = Math.max(price, 0); // ✅ no negative price
+    }
+
+    public void setQuantity(int quantity) {
+        this.quantity = (quantity > 0) ? quantity : 1; // ✅ avoid 0
     }
 
     public void setOrder(CurrentOrder order) {
-        this.order = order; // ✅ fixed
+        this.order = order;
+    }
+
+    // ✅ DEBUG SUPPORT
+    @Override
+    public String toString() {
+        return "OrderItem{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", price=" + price +
+                ", quantity=" + quantity +
+                '}';
     }
 }

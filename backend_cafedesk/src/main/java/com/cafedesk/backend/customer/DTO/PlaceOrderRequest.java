@@ -9,17 +9,11 @@ public class PlaceOrderRequest {
     private double amount;
     private List<OrderItemDTO> items;
 
-    // Default constructor (required for JSON deserialization)
+    // ✅ Default constructor (required)
     public PlaceOrderRequest() {
     }
 
-    // Parameterized constructor
-    public PlaceOrderRequest(String customerName, String tableNumber, double amount, List<OrderItemDTO> items) {
-        this.customerName = customerName;
-        this.tableNumber = tableNumber;
-        this.amount = amount;
-        this.items = items;
-    }
+    // ✅ Getters & Setters
 
     public String getCustomerName() {
         return customerName;
@@ -51,5 +45,16 @@ public class PlaceOrderRequest {
 
     public void setItems(List<OrderItemDTO> items) {
         this.items = items;
+    }
+
+    // ✅ DEBUG SUPPORT (VERY IMPORTANT 🔥)
+    @Override
+    public String toString() {
+        return "PlaceOrderRequest{" +
+                "customerName='" + customerName + '\'' +
+                ", tableNumber='" + tableNumber + '\'' +
+                ", amount=" + amount +
+                ", items=" + items +
+                '}';
     }
 }

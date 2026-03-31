@@ -23,36 +23,50 @@ public class OrderServiceImpl {
 
     public CurrentOrder placeOrder(PlaceOrderRequest request) {
 
-        // ✅ Create Order
+        // ✅ DEBUG LOG
+        System.out.println("Incoming Order Request: " + request);
+
+        // ❌ VALIDATION
+        if (request == null || request.getItems() == null || request.getItems().isEmpty()) {
+            throw new RuntimeException("Order items cannot be empty");
+        }
+
         CurrentOrder order = new CurrentOrder();
         order.setCustomerName(request.getCustomerName());
         order.setTableNumber(request.getTableNumber());
         order.setAmount(request.getAmount());
-        order.setStatus(OrderStatus.APPROVED);
+        order.setStatus(OrderStatus.PLACED);
 
         List<OrderItem> items = new ArrayList<>();
 
-        // ✅ Null safety (IMPORTANT)
-        if (request.getItems() != null) {
-            for (OrderItemDTO dto : request.getItems()) {
+        for (OrderItemDTO i : request.getItems()) {
 
-                OrderItem item = new OrderItem();
-                item.setName(dto.getName());
-                item.setPrice(dto.getPrice());
-                item.setQuantity(dto.getQuantity());
+            if (i == null) continue;
 
-                // Link item to order
-                item.setOrder(order);
+            OrderItem item = new OrderItem();
+            item.setName(i.getName());
+            item.setPrice(i.getPrice());
+            item.setQuantity(i.getQuantity());
 
-                items.add(item);
-            }
+            // 🔥 IMPORTANT RELATION
+            item.setOrder(order);
+
+            items.add(item);
         }
 
-        // ✅ Attach items to order (required for cascade)
+        // ❌ prevent empty list crash
+        if (items.isEmpty()) {
+            throw new RuntimeException("No valid items in order");
+        }
+
         order.setItems(items);
 
-        // ✅ Save order (items auto-saved via cascade)
-        return orderRepository.save(order);
+        // ✅ SAVE
+        CurrentOrder savedOrder = orderRepository.save(order);
+
+        System.out.println("Order Saved Successfully: " + savedOrder.getId());
+
+        return savedOrder;
     }
 
     public List<CurrentOrder> getCustomerBills(String username) {

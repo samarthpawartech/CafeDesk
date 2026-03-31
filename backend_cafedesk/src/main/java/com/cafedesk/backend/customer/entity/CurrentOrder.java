@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "Current orders")
+@Table(name = "Current_orders")
 public class CurrentOrder {
 
     @Id

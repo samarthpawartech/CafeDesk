@@ -178,7 +178,7 @@ export default function CustomerDashboard() {
         items: orderItems,
       };
 
-      const response = await fetch(`${API_BASE}/customer/orders/place-order`, {
+      const response = await fetch(`${API_BASE}/bills/place-order`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -187,8 +187,11 @@ export default function CustomerDashboard() {
         body: JSON.stringify(orderPayload),
       });
 
+      // 🔥 SHOW REAL ERROR FROM BACKEND
       if (!response.ok) {
-        return alert("Failed to place order ❌");
+        const errorText = await response.text();
+        console.error("Backend Error:", errorText);
+        return alert("❌ Failed: " + errorText);
       }
 
       await response.json();
@@ -197,9 +200,9 @@ export default function CustomerDashboard() {
 
       alert("✅ Order placed! Waiting for approval ⏳");
 
-      setActiveTab("order"); // stay in current orders
+      setActiveTab("order");
     } catch (error) {
-      console.error(error);
+      console.error("Frontend Error:", error);
       alert("Something went wrong ❌");
     }
   };
