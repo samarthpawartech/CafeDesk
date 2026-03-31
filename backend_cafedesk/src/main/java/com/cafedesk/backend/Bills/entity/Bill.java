@@ -18,18 +18,27 @@ public class Bill {
     @Column(unique = true, nullable = false)
     private String invoiceNumber;
 
+    @Column(nullable = false)
     private String customerName;
+
+    @Column(nullable = false)
     private String tableNumber;
-    private Double amount;
 
+    @Column(nullable = false)
+    private Double totalAmount;
+
+    @Column(nullable = false)
     private String status;
-    private LocalDateTime date;
 
-    // ✅ FIXED: use CurrentOrder everywhere
-    @ManyToOne
-    @JoinColumn(name = "order_id")
+    @Column(nullable = false)
+    private LocalDateTime createdAt;
+
+    // ✅ OPTIONAL RELATION (safe)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id", nullable = true)
     private CurrentOrder order;
 
+    // ✅ CASCADE + SAFE FETCH
     @OneToMany(
             mappedBy = "bill",
             cascade = CascadeType.ALL,
@@ -47,16 +56,16 @@ public class Bill {
             this.invoiceNumber = "INV-" + System.currentTimeMillis();
         }
 
-        if (this.date == null) {
-            this.date = LocalDateTime.now();
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
         }
 
         if (this.status == null || this.status.isEmpty()) {
             this.status = "PENDING";
         }
 
-        if (this.amount == null) {
-            this.amount = 0.0;
+        if (this.totalAmount == null) {
+            this.totalAmount = 0.0;
         }
     }
 
@@ -78,19 +87,19 @@ public class Bill {
         return tableNumber;
     }
 
-    public Double getAmount() {
-        return amount;
+    public Double getTotalAmount() {
+        return totalAmount;
     }
 
     public String getStatus() {
         return status;
     }
 
-    public LocalDateTime getDate() {
-        return date;
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
     }
 
-    public CurrentOrder getOrder() {   // ✅ FIXED
+    public CurrentOrder getOrder() {
         return order;
     }
 
@@ -116,29 +125,28 @@ public class Bill {
         this.tableNumber = tableNumber;
     }
 
-    public void setAmount(Double amount) {
-        this.amount = amount;
+    public void setTotalAmount(Double totalAmount) {
+        this.totalAmount = totalAmount;
     }
 
     public void setStatus(String status) {
         this.status = status;
     }
 
-    public void setDate(LocalDateTime date) {
-        this.date = date;
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 
-    public void setOrder(CurrentOrder order) {   // ✅ FIXED
+    public void setOrder(CurrentOrder order) {
         this.order = order;
     }
 
     public void setItems(List<BillItem> items) {
-        this.items = items;
+        this.items = items != null ? items : new ArrayList<>();
 
-        if (items != null) {
-            for (BillItem item : items) {
-                item.setBill(this);
-            }
+        // 🔥 IMPORTANT: maintain bidirectional mapping
+        for (BillItem item : this.items) {
+            item.setBill(this);
         }
     }
 }

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 @Entity
+@Table(name = "bill_item") // ✅ GOOD PRACTICE (avoid default naming issues)
 public class BillItem {
 
     @Id
@@ -11,27 +12,58 @@ public class BillItem {
     private Long id;
 
     private String name;
+
     private Double price;
+
     private Integer quantity;
 
+    // ✅ FIX 1: make nullable true to prevent save failure
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "bill_id", nullable = false)
-    @JsonIgnore   // 🔥 BREAKS INFINITE LOOP
+    @JoinColumn(name = "bill_id", nullable = true)
+    @JsonIgnore   // 🔥 prevents infinite loop
     private Bill bill;
 
-    /* GETTERS & SETTERS */
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    /* ================= GETTERS ================= */
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    public Long getId() {
+        return id;
+    }
 
-    public Double getPrice() { return price; }
-    public void setPrice(Double price) { this.price = price; }
+    public String getName() {
+        return name;
+    }
 
-    public Integer getQuantity() { return quantity; }
-    public void setQuantity(Integer quantity) { this.quantity = quantity; }
+    public Double getPrice() {
+        return price;
+    }
 
-    public Bill getBill() { return bill; }
-    public void setBill(Bill bill) { this.bill = bill; }
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+    public Bill getBill() {
+        return bill;
+    }
+
+    /* ================= SETTERS ================= */
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setPrice(Double price) {
+        this.price = price;
+    }
+
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
+    }
+
+    public void setBill(Bill bill) {
+        this.bill = bill;
+    }
 }

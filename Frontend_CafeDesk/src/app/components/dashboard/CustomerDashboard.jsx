@@ -95,37 +95,55 @@ export default function CustomerDashboard() {
   }, []);
 
   /* ================= FETCH BILLS ================= */
-  const fetchBills = () => {
-    if (!user || !token) return;
+  const fetchBills = async () => {
+    if (!user?.username || !token) return;
 
-    fetch(`${API_BASE}/customer/orders/bills/${user.username}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then(setBills)
-      .catch(console.error);
+    try {
+      const res = await fetch(
+        `${API_BASE}/customer/bills/${user.username}`, // ✅ FIXED API
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!res.ok) {
+        console.error("Failed to fetch bills");
+        return;
+      }
+
+      const data = await res.json();
+
+      console.log("BILLS DATA 👉", data); // 🔥 DEBUG
+
+      setBills(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Error fetching bills:", err);
+    }
   };
+
   useEffect(() => {
-    if (!user || !token) return;
+    if (!user?.username || !token) return;
 
-    fetchBills(); // initial
+    fetchBills();
 
-    const interval = setInterval(() => {
-      fetchBills(); // refresh every 5 sec
-    }, 5000);
+    const interval = setInterval(fetchBills, 5000);
 
     return () => clearInterval(interval);
-  }, [user, token]);
+  }, [user?.username, token]);
 
-  const userBills = bills;
+  // ================= FILTER =================
+  const userBills = Array.isArray(bills) ? bills : [];
+
   const pendingBills = userBills.filter(
-    (b) => b.status?.toUpperCase() === "PENDING",
+    (b) => (b.status || "").toUpperCase() === "PENDING",
   );
 
-  const orderHistory = userBills.filter(
-    (b) =>
-      b.status?.toUpperCase() === "APPROVED" ||
-      b.status?.toUpperCase() === "PAID",
+  const orderHistory = userBills.filter((b) =>
+    ["APPROVED", "PAID"].includes((b.status || "").toUpperCase()),
   );
 
   /* ================= FETCH FEEDBACK ================= */
@@ -133,8 +151,13 @@ export default function CustomerDashboard() {
     if (!token) return;
 
     try {
-      const res = await fetch(`${API_BASE}/feedback`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await fetch(`${API_BASE}/customer/feedback`, {
+        // ✅ FIXED URL
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (res.status === 403) {
@@ -142,21 +165,26 @@ export default function CustomerDashboard() {
         return;
       }
 
-      if (!res.ok) return;
+      if (!res.ok) {
+        console.error("Failed to fetch feedback");
+        return;
+      }
 
       const data = await res.json();
+
+      console.log("FEEDBACK DATA 👉", data); // 🔥 DEBUG
+
       setFeedbackList(Array.isArray(data) ? data.reverse() : []);
     } catch (err) {
-      console.error(err);
+      console.error("Error fetching feedback:", err);
     }
   };
 
   useEffect(() => {
-    if (activeTab === "feedback") {
+    if (activeTab === "feedback" && token) {
       fetchFeedback();
     }
   }, [activeTab, token]);
-
   /* ================= PLACE ORDER ================= */
   const handlePlaceOrder = async () => {
     if (currentOrder.length === 0) {

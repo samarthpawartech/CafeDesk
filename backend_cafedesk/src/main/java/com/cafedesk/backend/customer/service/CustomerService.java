@@ -93,7 +93,7 @@ public class CustomerService {
         return new AuthResponse(token);
     }
 
-    /* ================= DASHBOARD ================= */
+    /* ================= MENU ================= */
 
     public List<MenuCard> getMenu() {
         return menuRepository.findAll();
@@ -105,16 +105,15 @@ public class CustomerService {
 
         Bill bill = new Bill();
 
-        // Auto generate invoice number
-        bill.setInvoiceNumber("INV-" + System.currentTimeMillis());
-
         bill.setCustomerName(request.getCustomerName());
         bill.setTableNumber(request.getTableNumber());
-        bill.setAmount(request.getAmount());
         bill.setStatus("PENDING");
-        bill.setDate(LocalDateTime.now());
+
+        // ✅ FIXED
+        bill.setCreatedAt(LocalDateTime.now());
 
         List<BillItem> billItems = new ArrayList<>();
+        double total = 0;
 
         if (request.getItems() != null) {
 
@@ -124,13 +123,19 @@ public class CustomerService {
                 billItem.setName(item.getName());
                 billItem.setPrice(item.getPrice());
                 billItem.setQuantity(item.getQuantity());
+
+                // 🔥 important relation
                 billItem.setBill(bill);
 
+                total += item.getPrice() * item.getQuantity();
                 billItems.add(billItem);
             }
         }
 
         bill.setItems(billItems);
+
+        // ✅ FIXED
+        bill.setTotalAmount(total);
 
         return billRepository.save(bill);
     }

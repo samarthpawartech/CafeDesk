@@ -4,8 +4,10 @@ import com.cafedesk.backend.Bills.DTO.*;
 import com.cafedesk.backend.Bills.entity.Bill;
 import com.cafedesk.backend.Bills.entity.BillItem;
 import com.cafedesk.backend.Bills.Repository.BillRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -35,6 +37,7 @@ public class BillService {
     }
 
     // ================= APPROVE BILL =================
+    @Transactional
     public BillResponseDTO approveBill(Long id) {
         Bill bill = billRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Bill not found"));
@@ -45,29 +48,66 @@ public class BillService {
     }
 
     // ================= CREATE BILL =================
+    @Transactional
     public BillResponseDTO createBill(BillRequestDTO request) {
 
+        if (request == null || request.getItems() == null || request.getItems().isEmpty()) {
+            throw new RuntimeException("Cannot create bill: No items found");
+        }
+
+        // ✅ STEP 1: Create Bill
         Bill bill = new Bill();
         bill.setCustomerName(request.getCustomerName());
         bill.setTableNumber(request.getTableNumber());
+        bill.setStatus("PENDING");
 
-        List<BillItem> items = request.getItems().stream().map(i -> {
+        List<BillItem> itemList = new ArrayList<>();
+
+        // ✅ STEP 2: Convert DTO → Entity safely
+        for (BillitemDTO dto : request.getItems()) {
+
             BillItem item = new BillItem();
-            item.setName(i.getName());
-            item.setPrice(i.getPrice());
-            item.setQuantity(i.getQuantity());
+            item.setName(dto.getName());
+            item.setPrice(dto.getPrice());
+            item.setQuantity(dto.getQuantity());
+
+            // 🔥 VERY IMPORTANT (relation fix)
             item.setBill(bill);
-            return item;
-        }).collect(Collectors.toList());
 
-        bill.setItems(items);
+            itemList.add(item);
+        }
 
-        // ✅ calculate total
-        double total = items.stream()
-                .mapToDouble(i -> i.getPrice() * i.getQuantity())
+        // ✅ STEP 3: Attach items
+        bill.setItems(itemList);
+
+        // ✅ STEP 4: Calculate total safely
+        double total = itemList.stream()
+                .mapToDouble(i ->
+                        (i.getPrice() != null ? i.getPrice() : 0.0) *
+                                (i.getQuantity() != null ? i.getQuantity() : 0)
+                )
                 .sum();
 
-        bill.setAmount(total);
+        bill.setTotalAmount(total);
+
+        // ✅ STEP 5: Save (cascade saves items)
+        Bill savedBill = billRepository.save(bill);
+
+        return mapToDTO(savedBill);
+    }
+
+    // ================= PAY BILL =================
+    @Transactional
+    public BillResponseDTO payBill(Long id) {
+
+        Bill bill = billRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Bill not found"));
+
+        if (!"APPROVED".equalsIgnoreCase(bill.getStatus())) {
+            throw new RuntimeException("Bill not approved yet");
+        }
+
+        bill.setStatus("PAID");
 
         return mapToDTO(billRepository.save(bill));
     }
@@ -81,35 +121,24 @@ public class BillService {
         dto.setInvoiceNumber(bill.getInvoiceNumber());
         dto.setCustomerName(bill.getCustomerName());
         dto.setTableNumber(bill.getTableNumber());
-        dto.setAmount(bill.getAmount());
+        dto.setTotalAmount(bill.getTotalAmount());
         dto.setStatus(bill.getStatus());
-        dto.setDate(bill.getDate());
+        dto.setCreatedAt(bill.getCreatedAt());
 
-        List<BillitemDTO> items = bill.getItems().stream().map(i -> {
-            BillitemDTO item = new BillitemDTO();
-            item.setName(i.getName());
-            item.setPrice(i.getPrice());
-            item.setQuantity(i.getQuantity());
-            return item;
-        }).collect(Collectors.toList());
+        List<BillitemDTO> items = new ArrayList<>();
+
+        if (bill.getItems() != null) {
+            items = bill.getItems().stream().map(i -> {
+                BillitemDTO item = new BillitemDTO();
+                item.setName(i.getName());
+                item.setPrice(i.getPrice());
+                item.setQuantity(i.getQuantity());
+                return item;
+            }).collect(Collectors.toList());
+        }
 
         dto.setItems(items);
 
         return dto;
-    }
-    //====================  PAY BILL ===================//
-    public BillResponseDTO payBill(Long id) {
-
-        Bill bill = billRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Bill not found"));
-
-        // Only allow payment if approved
-        if (!"APPROVED".equalsIgnoreCase(bill.getStatus())) {
-            throw new RuntimeException("Bill not approved yet");
-        }
-
-        bill.setStatus("PAID");
-
-        return mapToDTO(billRepository.save(bill));
     }
 }
