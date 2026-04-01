@@ -361,19 +361,38 @@ export default function CustomerDashboard() {
   return (
     <div className="min-h-screen bg-[#FBF8F3]">
       {/* NAVBAR */}
-      <div className="bg-[#6B4423] text-white px-6 py-4 flex justify-between items-center">
-        <div className="flex gap-2 font-bold text-lg">
-          <Coffee /> CafeDesk
+      <div className="bg-[#f4c8a4] px-6 py-4 flex items-center">
+        {/* ✅ LEFT LOGO */}
+        <div className="flex items-center">
+          <img
+            src="/assets/CafeDesklogo.png"
+            alt="CafeDesk Logo"
+            className="w-[220px] h-auto object-contain"
+          />
         </div>
 
-        {/* Center Quote */}
-        <div className="text-center font-bold text-xl italic text-orange-200">
+        {/* ✅ CENTER QUOTE */}
+        <div
+          className="flex-1 text-center font-bold italic text-black"
+          style={{
+            fontFamily: "Poor Richard, serif",
+            fontSize: "30px",
+            letterSpacing: "2px",
+          }}
+        >
           “A café is where stories begin.”
         </div>
 
-        <Button onClick={logout} variant="ghost" className="text-white">
-          <LogOut className="w-4 h-4 mr-1" /> Logout
-        </Button>
+        {/* ✅ RIGHT LOGOUT */}
+        <div>
+          <Button
+            onClick={logout}
+            variant="ghost"
+            className="text-black text-lg px-6 py-3"
+          >
+            <LogOut className="w-6 h-6 mr-2" /> Logout
+          </Button>
+        </div>
       </div>
 
       {/* TABS */}

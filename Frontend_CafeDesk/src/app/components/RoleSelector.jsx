@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Coffee, User, Briefcase, Shield } from "lucide-react";
+import { User, Briefcase, Shield } from "lucide-react";
 import { Card } from "../components/ui/card";
 
 const RoleSelector = () => {
@@ -37,14 +37,26 @@ const RoleSelector = () => {
     <div className="min-h-screen bg-gradient-to-br from-[#FBF8F3] via-[#E8D5BF] to-[#F5E6D3] flex items-center justify-center p-4">
       <div className="w-full max-w-5xl">
         <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-24 h-24 bg-[#6B4423] rounded-3xl mb-6 shadow-2xl">
-            <Coffee className="w-14 h-14 text-white" />
-          </div>
-          <h1 className="text-5xl font-bold text-[#2C1810] mb-3">CafeDesk</h1>
-          <p className="text-xl text-[#8B6F47] mb-2">
+          {/* ✅ LOGO ONLY (Coffee icon removed) */}
+          <img
+            src="/assets/CafeDesklogo.png"
+            alt="CafeDesk Logo"
+            className="mx-auto w-[400px] h-auto object-contain mb-3"
+          />
+
+          <p
+            className="text-3xl text-[#000000] mb-2"
+            style={{ fontFamily: "Poor Richard, serif" }}
+          >
             Modern Café Management System
           </p>
-          <p className="text-sm text-[#8B6F47]">Developed by Samarth Pawar</p>
+
+          <p
+            className="text-2xl text-[#000000]"
+            style={{ fontFamily: "Poor Richard, serif" }}
+          >
+            Developed by Samarth Pawar
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -83,7 +95,7 @@ const RoleSelector = () => {
             Complete Café Management Solution
           </h3>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center text-sm text-[#8B6F47]">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center text-lg text-[#16110a]">
             <div>✓ Digital Menu</div>
             <div>✓ Order Management</div>
             <div>✓ Inventory Tracking</div>

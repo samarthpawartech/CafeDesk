@@ -1,5 +1,6 @@
+"use client";
+
 import {
-  Coffee,
   LayoutDashboard,
   ShoppingCart,
   Package,
@@ -7,16 +8,21 @@ import {
   FileText,
   Table,
   LogOut,
+  Fingerprint,
 } from "lucide-react";
 import { useAuth } from "@/app/context/AuthContext";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 export const Sidebar = ({ currentView, setCurrentView }) => {
   const { user, logout } = useAuth();
 
+  // Normalize helper (IMPORTANT FIX)
+  const normalize = (str) =>
+    String(str).toLowerCase().replace(/\s+/g, "").trim();
+
   const adminMenuItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { id: "menu", label: "Menu Management", icon: Coffee },
+    { id: "menu", label: "Menu Management", icon: ShoppingCart },
     { id: "inventory", label: "Inventory", icon: Package },
     { id: "employees", label: "Employees", icon: Users },
     { id: "bills", label: "Bills & Payments", icon: FileText },
@@ -37,71 +43,72 @@ export const Sidebar = ({ currentView, setCurrentView }) => {
       animate={{ x: 0 }}
       exit={{ x: -300 }}
       transition={{ type: "spring", stiffness: 120 }}
-      className="w-64 bg-[#4A2C1A] text-[#F5E6D3] h-screen flex flex-col shadow-lg select-none"
+      className="w-64 bg-[#f8f7f5] text-[#2C1810] h-screen flex flex-col shadow-lg select-none"
     >
-      {/* Logo/Header */}
-      <div className="p-6 border-b border-[#F5E6D3]/10">
-        <div className="flex items-center gap-3">
-          <motion.div
-            whileHover={{ scale: 1.1, rotate: 5 }}
-            className="w-10 h-10 bg-[#2D5A3D] rounded-lg flex items-center justify-center"
-          >
-            <Coffee className="w-6 h-6 text-white" />
-          </motion.div>
-          <div>
-            <h2 className="font-semibold text-lg">CafeDesk</h2>
-            <p className="text-xs text-[#F5E6D3]/70">by Samarth Pawar</p>
-          </div>
+      {/* LOGO */}
+      <div className="p-6 border-b border-[#E8D5BF] flex justify-center">
+        <img
+          src="/assets/CafeDesklogo.png"
+          alt="CafeDesk Logo"
+          className="w-[200px] h-auto object-contain"
+        />
+      </div>
+
+      {/* USER INFO */}
+      <div className="px-6 py-4 border-b border-[#E8D5BF] flex items-center gap-3">
+        <Fingerprint className="w-5 h-5 text-[#8B6F47]" />
+        <div>
+          <p className="text-sm text-[#8B6F47]">Authenticated User</p>
+          <p className="font-bold text-xl uppercase tracking-wide">
+            {user?.name}
+          </p>
+          <p className="text-sm text-[#0c0a06] uppercase tracking-wide">
+            {user?.role}
+          </p>
         </div>
       </div>
 
-      {/* User Info */}
-      <div className="px-6 py-4 border-b border-[#F5E6D3]/10">
-        <p className="text-sm text-[#F5E6D3]/70">Signed in as</p>
-        <p className="font-medium">{user?.name}</p>
-        <p className="text-xs text-[#F5E6D3]/60 capitalize">{user?.role}</p>
-      </div>
-
-      {/* Navigation */}
+      {/* NAVIGATION */}
       <nav className="flex-1 py-4 overflow-y-auto">
         {menuItems.map((item) => {
           const Icon = item.icon;
-          const isActive = currentView === item.id;
+
+          // FIX: Normalize both sides
+          const isActive = normalize(currentView) === normalize(item.id);
 
           return (
             <motion.button
               key={item.id}
-              onClick={() => setCurrentView(item.id)}
+              onClick={() => {
+                // FIX: force new value (prevents stale state issue)
+                setCurrentView(item.id);
+              }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className={`w-full flex items-center gap-3 px-6 py-3 text-left transition-all rounded-r-md
                 ${
                   isActive
-                    ? "bg-[#2D5A3D] text-white border-l-4 border-white font-semibold shadow-inner"
-                    : "text-[#F5E6D3] hover:bg-[#6B4423]"
+                    ? "bg-[#E8D5BF] text-[#2C1810] border-l-4 border-[#6B4423] font-semibold shadow-inner"
+                    : "text-[#2C1810] hover:bg-[#F5E6D3]"
                 }`}
             >
-              <Icon
-                className={`w-5 h-5 transition-colors ${isActive ? "text-white" : ""}`}
-              />
-              <span className="transition-opacity duration-300">
-                {item.label}
-              </span>
+              <Icon className="w-5 h-5" />
+              <span>{item.label}</span>
             </motion.button>
           );
         })}
       </nav>
 
-      {/* Logout */}
-      <div className="p-4 border-t border-[#F5E6D3]/10">
+      {/* LOGOUT */}
+      <div className="p-4 border-t border-[#E8D5BF]">
         <motion.button
           onClick={logout}
-          whileHover={{ scale: 1.02, backgroundColor: "#6B4423" }}
+          whileHover={{ scale: 1.02, backgroundColor: "#F5E6D3" }}
           whileTap={{ scale: 0.98 }}
-          className="w-full flex items-center gap-3 px-4 py-3 text-[#F5E6D3] rounded-lg transition-colors"
+          className="w-full flex items-center gap-3 px-4 py-3 text-[#2C1810] rounded-lg transition-colors"
         >
           <LogOut className="w-5 h-5" />
-          <span>Logout</span>
+          <span className="text-lg">Logout</span>
         </motion.button>
       </div>
     </motion.div>
