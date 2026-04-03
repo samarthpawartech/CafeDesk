@@ -23,12 +23,20 @@ import {
 
 const API_BASE = "http://localhost:8080/api/bills";
 
+/* ✅ AUTH HEADER */
+const getAuthHeaders = () => {
+  const token = localStorage.getItem("token");
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+};
+
 export const BillsView = () => {
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  /* ---------------- FETCH ALL BILLS ON MOUNT ---------------- */
   useEffect(() => {
     fetchAllBills();
   }, []);
@@ -37,8 +45,13 @@ export const BillsView = () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(`${API_BASE}/all`);
+
+      const res = await fetch(`${API_BASE}/all`, {
+        headers: getAuthHeaders(),
+      });
+
       if (!res.ok) throw new Error(`Failed to fetch bills: ${res.status}`);
+
       const data = await res.json();
       setBills(data);
     } catch (err) {
@@ -48,13 +61,15 @@ export const BillsView = () => {
     }
   };
 
-  /* ---------------- APPROVE BILL (EMPLOYEE) ---------------- */
   const approveBill = async (bill) => {
     try {
       const res = await fetch(`${API_BASE}/approve/${bill.id}`, {
         method: "PUT",
+        headers: getAuthHeaders(),
       });
+
       if (!res.ok) throw new Error(`Approve failed: ${res.status}`);
+
       const updatedBill = await res.json();
 
       setBills((prev) =>
@@ -67,13 +82,15 @@ export const BillsView = () => {
     }
   };
 
-  /* ---------------- PAY BILL ---------------- */
   const payBill = async (bill) => {
     try {
       const res = await fetch(`${API_BASE}/pay/${bill.id}`, {
         method: "PUT",
+        headers: getAuthHeaders(),
       });
+
       if (!res.ok) throw new Error(`Pay failed: ${res.status}`);
+
       const updatedBill = await res.json();
 
       setBills((prev) =>
@@ -84,11 +101,12 @@ export const BillsView = () => {
     }
   };
 
-  /* ---------------- AUTO INVOICE ---------------- */
   const generateInvoice = (bill) => {
     const pdf = new jsPDF();
+
     pdf.setFontSize(18);
     pdf.text("CafeDesk Invoice", 20, 20);
+
     pdf.setFontSize(12);
     pdf.text(`Invoice ID: ${bill.id}`, 20, 40);
     pdf.text(`Customer: ${bill.customerName}`, 20, 50);
@@ -99,19 +117,20 @@ export const BillsView = () => {
       20,
       80,
     );
+
     pdf.save(`${bill.id}.pdf`);
   };
 
-  /* ---------------- SUMMARY CALCULATIONS ---------------- */
   const totalAmount = bills.reduce((sum, bill) => sum + (bill.amount ?? 0), 0);
+
   const pendingAmount = bills
     .filter((b) => b.status === "PENDING")
     .reduce((sum, bill) => sum + (bill.amount ?? 0), 0);
+
   const paidAmount = bills
     .filter((b) => b.status === "PAID" || b.status === "APPROVED")
     .reduce((sum, bill) => sum + (bill.amount ?? 0), 0);
 
-  /* ---------------- RENDER ---------------- */
   if (loading) {
     return (
       <div className="flex items-center justify-center h-40 text-[#8B6F47]">
@@ -178,7 +197,7 @@ export const BillsView = () => {
         </Card>
       </div>
 
-      {/* BILLS TABLE */}
+      {/* TABLE */}
       <Card className="border-[#E8D5BF]">
         <div className="p-6 border-b border-[#E8D5BF]">
           <h3 className="font-semibold text-[#2C1810] flex items-center gap-2">
@@ -209,23 +228,19 @@ export const BillsView = () => {
 
                 return (
                   <TableRow key={bill.id}>
-                    <TableCell className="font-medium">{bill.id}</TableCell>
+                    <TableCell>{bill.id}</TableCell>
                     <TableCell>{bill.orderId}</TableCell>
                     <TableCell>{bill.customerName}</TableCell>
                     <TableCell>Table {bill.tableNumber}</TableCell>
-                    <TableCell className="font-semibold text-[#6B4423]">
-                      ₹{(bill.amount ?? 0).toFixed(2)}
-                    </TableCell>
+                    <TableCell>₹{(bill.amount ?? 0).toFixed(2)}</TableCell>
 
                     <TableCell>
                       {isPaid ? (
                         <Badge className="bg-green-500 text-white">
-                          <CheckCircle className="w-3 h-3 mr-1" />
                           Approved
                         </Badge>
                       ) : (
                         <Badge className="bg-yellow-500 text-white">
-                          <Clock className="w-3 h-3 mr-1" />
                           Pending
                         </Badge>
                       )}
@@ -233,7 +248,6 @@ export const BillsView = () => {
 
                     <TableCell>
                       <div className="flex gap-2">
-                        {/* Print Invoice — only once approved */}
                         <Button
                           size="sm"
                           variant="outline"
@@ -243,25 +257,23 @@ export const BillsView = () => {
                           <Printer className="w-4 h-4" />
                         </Button>
 
-                        {/* Approve button */}
                         {isPending && (
                           <Button
                             size="sm"
-                            className="bg-green-500 hover:bg-green-600 text-white"
+                            className="bg-green-500 text-white"
                             onClick={() => approveBill(bill)}
                           >
                             Approve
                           </Button>
                         )}
 
-                        {/* Pay button — shown after approval but before payment */}
                         {bill.status === "APPROVED" && (
                           <Button
                             size="sm"
-                            className="bg-blue-500 hover:bg-blue-600 text-white"
+                            className="bg-blue-500 text-white"
                             onClick={() => payBill(bill)}
                           >
-                            Mark Paid
+                            Pay
                           </Button>
                         )}
                       </div>
@@ -272,11 +284,8 @@ export const BillsView = () => {
 
               {bills.length === 0 && (
                 <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="text-center text-[#8B6F47] py-8"
-                  >
-                    No bills found.
+                  <TableCell colSpan={7} className="text-center py-6">
+                    No bills found
                   </TableCell>
                 </TableRow>
               )}
