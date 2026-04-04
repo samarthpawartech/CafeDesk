@@ -25,21 +25,31 @@ public class CustomerInvoiceController {
     @GetMapping("/invoice/{id}")
     public ResponseEntity<byte[]> downloadInvoice(@PathVariable Long id) {
 
+        // ✅ Fetch Bill
         Bill bill = billRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Bill not found"));
+                .orElseThrow(() -> new RuntimeException("Bill not found with id: " + id));
 
-        byte[] pdf = invoicePdfService.generateInvoice(bill);
+        // ✅ Generate PDF
+        byte[] pdfBytes = invoicePdfService.generateInvoice(bill);
 
+        // ✅ Safe filename handling
+        String fileName = (bill.getInvoiceNumber() != null && !bill.getInvoiceNumber().isEmpty())
+                ? bill.getInvoiceNumber()
+                : "invoice_" + bill.getId();
+
+        // ✅ Headers
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
         headers.setContentDisposition(
                 ContentDisposition.attachment()
-                        .filename(bill.getInvoiceNumber() + ".pdf")
+                        .filename(fileName + ".pdf")
                         .build()
         );
 
-        return ResponseEntity.ok()
+        // ✅ Return Response
+        return ResponseEntity
+                .ok()
                 .headers(headers)
-                .body(pdf);
+                .body(pdfBytes);
     }
 }

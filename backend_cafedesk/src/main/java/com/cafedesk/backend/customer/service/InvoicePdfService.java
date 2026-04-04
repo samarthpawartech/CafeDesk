@@ -3,6 +3,8 @@ package com.cafedesk.backend.customer.service;
 import com.cafedesk.backend.Bills.entity.Bill;
 import com.cafedesk.backend.Bills.entity.BillItem;
 import com.itextpdf.barcodes.Barcode128;
+import com.itextpdf.io.image.ImageData;
+import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.events.Event;
 import com.itextpdf.kernel.events.IEventHandler;
@@ -34,11 +36,28 @@ public class InvoicePdfService {
 
             // ================= HEADER =================
 
-            document.add(new Paragraph("CafeDesk")
-                    .setFontSize(26)
-                    .setBold()
-                    .setTextAlignment(TextAlignment.CENTER));
+            // ================= HEADER =================
 
+            try {
+
+                ImageData imageData = ImageDataFactory.create(
+                        getClass().getResource("/assets/CafeDesklogo.png")
+                );
+
+                Image logo = new Image(imageData)
+                        .scaleToFit(120, 120)
+                        .setHorizontalAlignment(HorizontalAlignment.CENTER);
+
+                document.add(logo);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+
+                document.add(new Paragraph("CafeDesk")
+                        .setFontSize(26)
+                        .setBold()
+                        .setTextAlignment(TextAlignment.CENTER));
+            }
             document.add(new Paragraph("Premium Coffee & Bites")
                     .setFontSize(12)
                     .setFontColor(ColorConstants.DARK_GRAY)
@@ -50,7 +69,7 @@ public class InvoicePdfService {
                     .setTextAlignment(TextAlignment.CENTER));
 
             document.add(new LineSeparator(new com.itextpdf.kernel.pdf.canvas.draw.SolidLine()));
-            document.add(new Paragraph(" "));
+            document.add(new Paragraph("\n"));
 
             // ================= SAFE DATA =================
 
@@ -67,25 +86,24 @@ public class InvoicePdfService {
 
             document.add(new Paragraph("Invoice No: " + invoiceNo).setBold());
             document.add(new Paragraph("Date: " + formattedDate));
-            document.add(new Paragraph("Customer: " + customer));
-            document.add(new Paragraph("Table: " + tableNo));
-            document.add(new Paragraph("Status: " + status));
+            document.add(new Paragraph("Customer Name: " + customer));
+            document.add(new Paragraph("Table Number : " + tableNo));
+            document.add(new Paragraph("Payment Status: " + status));
 
-            document.add(new Paragraph(" "));
+            document.add(new Paragraph("\n"));
 
             // ================= BARCODE =================
 
             if (!invoiceNo.equals("N/A")) {
                 Barcode128 barcode = new Barcode128(pdfDoc);
                 barcode.setCode(invoiceNo);
-                barcode.setCodeType(Barcode128.CODE128);
 
                 Image barcodeImage = new Image(barcode.createFormXObject(pdfDoc));
-                barcodeImage.setWidth(250);
+                barcodeImage.setWidth(200);
                 barcodeImage.setHorizontalAlignment(HorizontalAlignment.CENTER);
 
                 document.add(barcodeImage);
-                document.add(new Paragraph(" "));
+                document.add(new Paragraph("\n"));
             }
 
             // ================= ITEMS TABLE =================
@@ -93,21 +111,11 @@ public class InvoicePdfService {
             Table table = new Table(UnitValue.createPercentArray(new float[]{4, 2, 2, 2}))
                     .useAllAvailableWidth();
 
-            table.addHeaderCell(new Cell().add(new Paragraph("Item"))
-                    .setBackgroundColor(ColorConstants.BLACK)
-                    .setFontColor(ColorConstants.WHITE));
-
-            table.addHeaderCell(new Cell().add(new Paragraph("Qty"))
-                    .setBackgroundColor(ColorConstants.BLACK)
-                    .setFontColor(ColorConstants.WHITE));
-
-            table.addHeaderCell(new Cell().add(new Paragraph("Price"))
-                    .setBackgroundColor(ColorConstants.BLACK)
-                    .setFontColor(ColorConstants.WHITE));
-
-            table.addHeaderCell(new Cell().add(new Paragraph("Total"))
-                    .setBackgroundColor(ColorConstants.BLACK)
-                    .setFontColor(ColorConstants.WHITE));
+            // Header Styling
+            table.addHeaderCell(createHeaderCell("Item"));
+            table.addHeaderCell(createHeaderCell("Qty"));
+            table.addHeaderCell(createHeaderCell("Price"));
+            table.addHeaderCell(createHeaderCell("Total"));
 
             if (bill.getItems() != null && !bill.getItems().isEmpty()) {
 
@@ -118,35 +126,52 @@ public class InvoicePdfService {
                     double price = item.getPrice() != null ? item.getPrice() : 0.0;
                     double total = price * qty;
 
-                    table.addCell(name);
-                    table.addCell(String.valueOf(qty));
-                    table.addCell("₹" + price);
-                    table.addCell("₹" + total);
+                    table.addCell(new Cell().add(new Paragraph(name)));
+                    table.addCell(new Cell().add(new Paragraph(String.valueOf(qty)))
+                            .setTextAlignment(TextAlignment.CENTER));
+                    table.addCell(new Cell().add(new Paragraph(formatCurrency(price)))
+                            .setTextAlignment(TextAlignment.RIGHT));
+                    table.addCell(new Cell().add(new Paragraph(formatCurrency(total)))
+                            .setTextAlignment(TextAlignment.RIGHT));
                 }
             }
 
             document.add(table);
-            document.add(new Paragraph(" "));
+            document.add(new Paragraph("\n"));
 
             // ================= TOTAL =================
 
             double amount = bill.getTotalAmount() != null ? bill.getTotalAmount() : 0.0;
 
-            document.add(new Paragraph("Grand Total: ₹" + amount)
+            document.add(new Paragraph("Grand Total: " + formatCurrency(amount))
                     .setBold()
                     .setFontSize(16)
                     .setTextAlignment(TextAlignment.RIGHT));
 
-            document.add(new Paragraph(" "));
-            document.add(new Paragraph(" "));
+            document.add(new Paragraph("\n\n"));
 
             document.close();
             return out.toByteArray();
 
         } catch (Exception e) {
-            e.printStackTrace();
             throw new RuntimeException("Error generating invoice PDF", e);
         }
+    }
+
+    // ================= HEADER CELL =================
+
+    private Cell createHeaderCell(String text) {
+        return new Cell()
+                .add(new Paragraph(text))
+                .setBackgroundColor(ColorConstants.BLACK)
+                .setFontColor(ColorConstants.WHITE)
+                .setTextAlignment(TextAlignment.CENTER);
+    }
+
+    // ================= CURRENCY FORMAT =================
+
+    private String formatCurrency(double value) {
+        return String.format("₹%.2f", value);
     }
 
     // ================= FOOTER =================
@@ -160,10 +185,9 @@ public class InvoicePdfService {
             PdfPage page = docEvent.getPage();
             Rectangle pageSize = page.getPageSize();
 
-            PdfCanvas pdfCanvas = new PdfCanvas(page);
+            PdfCanvas pdfCanvas = new PdfCanvas(page.newContentStreamAfter(), page.getResources(), docEvent.getDocument());
             Canvas canvas = new Canvas(pdfCanvas, pageSize);
 
-            // ✅ FIXED: different Y positions
             canvas.showTextAligned(
                     new Paragraph("Thank you for visiting CafeDesk ☕")
                             .setFontSize(12)
@@ -174,7 +198,7 @@ public class InvoicePdfService {
             );
 
             canvas.showTextAligned(
-                    new Paragraph("Developed by samarthpawartech ❤️")
+                    new Paragraph("Developed by SAMARTH PAWAR WITH  ❤️")
                             .setFontSize(10)
                             .setFontColor(ColorConstants.GRAY),
                     pageSize.getWidth() / 2,

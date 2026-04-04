@@ -63,7 +63,7 @@ public class BillService {
 
         List<BillItem> itemList = new ArrayList<>();
 
-        // ✅ STEP 2: Convert DTO → Entity safely
+        // ✅ STEP 2: Convert DTO → Entity
         for (BillitemDTO dto : request.getItems()) {
 
             BillItem item = new BillItem();
@@ -71,8 +71,7 @@ public class BillService {
             item.setPrice(dto.getPrice());
             item.setQuantity(dto.getQuantity());
 
-            // 🔥 VERY IMPORTANT (relation fix)
-            item.setBill(bill);
+            item.setBill(bill); // relation fix
 
             itemList.add(item);
         }
@@ -80,7 +79,7 @@ public class BillService {
         // ✅ STEP 3: Attach items
         bill.setItems(itemList);
 
-        // ✅ STEP 4: Calculate total safely
+        // ✅ STEP 4: Calculate total
         double total = itemList.stream()
                 .mapToDouble(i ->
                         (i.getPrice() != null ? i.getPrice() : 0.0) *
@@ -90,7 +89,10 @@ public class BillService {
 
         bill.setTotalAmount(total);
 
-        // ✅ STEP 5: Save (cascade saves items)
+        // ❗ OPTIONAL: If you later add order linking
+        // bill.setOrder(order);
+
+        // ✅ STEP 5: Save
         Bill savedBill = billRepository.save(bill);
 
         return mapToDTO(savedBill);
@@ -112,7 +114,7 @@ public class BillService {
         return mapToDTO(billRepository.save(bill));
     }
 
-    // ================= MAPPER =================
+    // ================= ✅ FIXED MAPPER =================
     private BillResponseDTO mapToDTO(Bill bill) {
 
         BillResponseDTO dto = new BillResponseDTO();
@@ -121,7 +123,20 @@ public class BillService {
         dto.setInvoiceNumber(bill.getInvoiceNumber());
         dto.setCustomerName(bill.getCustomerName());
         dto.setTableNumber(bill.getTableNumber());
+
+        // ✅ FIX 1: frontend expects amount
+        dto.setAmount(bill.getTotalAmount());
+
+        // ✅ FIX 2: keep backend consistency
         dto.setTotalAmount(bill.getTotalAmount());
+
+        // ✅ FIX 3: orderId mapping
+        if (bill.getOrder() != null) {
+            dto.setOrderId(bill.getOrder().getId());
+        } else {
+            dto.setOrderId(null);
+        }
+
         dto.setStatus(bill.getStatus());
         dto.setCreatedAt(bill.getCreatedAt());
 

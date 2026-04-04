@@ -8,7 +8,6 @@ import {
   CheckCircle,
   Printer,
 } from "lucide-react";
-import { jsPDF } from "jspdf";
 import { Card } from "@/app/components/ui/card";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
@@ -22,12 +21,11 @@ import {
 } from "@/app/components/ui/table";
 
 const API_BASE = "http://localhost:8080/api/bills";
+const INVOICE_API = "http://localhost:8080/api/customer/invoice";
 
-/* ✅ AUTH HEADER */
 const getAuthHeaders = () => {
   const token = localStorage.getItem("token");
   return {
-    "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
 };
@@ -76,7 +74,8 @@ export const BillsView = () => {
         prev.map((b) => (b.id === updatedBill.id ? updatedBill : b)),
       );
 
-      generateInvoice(updatedBill);
+      // ✅ Auto download invoice after approval
+      downloadInvoice(updatedBill.id);
     } catch (err) {
       alert(`Error approving bill: ${err.message}`);
     }
@@ -101,39 +100,49 @@ export const BillsView = () => {
     }
   };
 
-  const generateInvoice = (bill) => {
-    const pdf = new jsPDF();
+  // ✅ BACKEND PDF DOWNLOAD
+  const downloadInvoice = async (billId) => {
+    try {
+      const res = await fetch(`${INVOICE_API}/${billId}`, {
+        method: "GET",
+        headers: getAuthHeaders(),
+      });
 
-    pdf.setFontSize(18);
-    pdf.text("CafeDesk Invoice", 20, 20);
+      if (!res.ok) throw new Error("Failed to download invoice");
 
-    pdf.setFontSize(12);
-    pdf.text(`Invoice ID: ${bill.id}`, 20, 40);
-    pdf.text(`Customer: ${bill.customerName}`, 20, 50);
-    pdf.text(`Table: ${bill.tableNumber}`, 20, 60);
-    pdf.text(`Amount Paid: ₹${bill.amount}`, 20, 70);
-    pdf.text(
-      `Approved At: ${bill.approvedAt ?? new Date().toLocaleString()}`,
-      20,
-      80,
-    );
+      const blob = await res.blob();
 
-    pdf.save(`${bill.id}.pdf`);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `invoice_${billId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Error downloading invoice: " + err.message);
+    }
   };
 
-  const totalAmount = bills.reduce((sum, bill) => sum + (bill.amount ?? 0), 0);
+  // ✅ FIXED TOTALS
+  const totalAmount = bills.reduce(
+    (sum, bill) => sum + (bill.totalAmount ?? 0),
+    0,
+  );
 
   const pendingAmount = bills
     .filter((b) => b.status === "PENDING")
-    .reduce((sum, bill) => sum + (bill.amount ?? 0), 0);
+    .reduce((sum, bill) => sum + (bill.totalAmount ?? 0), 0);
 
   const paidAmount = bills
-    .filter((b) => b.status === "PAID" || b.status === "APPROVED")
-    .reduce((sum, bill) => sum + (bill.amount ?? 0), 0);
+    .filter((b) => b.status === "PAID")
+    .reduce((sum, bill) => sum + (bill.totalAmount ?? 0), 0);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-40 text-[#8B6F47]">
+      <div className="flex items-center justify-center h-40">
         Loading bills…
       </div>
     );
@@ -154,144 +163,117 @@ export const BillsView = () => {
     <div className="space-y-6">
       {/* SUMMARY */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-6 border-[#E8D5BF]">
+        <Card className="p-6">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-[#6B4423] rounded-lg flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-white" />
-            </div>
+            <DollarSign />
             <div>
-              <p className="text-sm text-[#8B6F47]">Total Bills</p>
-              <p className="text-2xl font-bold text-[#2C1810]">
-                ₹{totalAmount.toFixed(2)}
-              </p>
+              <p>Total</p>
+              <p>₹{totalAmount.toFixed(2)}</p>
             </div>
           </div>
         </Card>
 
-        <Card className="p-6 border-[#E8D5BF]">
+        <Card className="p-6">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-yellow-500 rounded-lg flex items-center justify-center">
-              <Clock className="w-6 h-6 text-white" />
-            </div>
+            <Clock />
             <div>
-              <p className="text-sm text-[#8B6F47]">Pending</p>
-              <p className="text-2xl font-bold text-[#2C1810]">
-                ₹{pendingAmount.toFixed(2)}
-              </p>
+              <p>Pending</p>
+              <p>₹{pendingAmount.toFixed(2)}</p>
             </div>
           </div>
         </Card>
 
-        <Card className="p-6 border-[#E8D5BF]">
+        <Card className="p-6">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
-              <CheckCircle className="w-6 h-6 text-white" />
-            </div>
+            <CheckCircle />
             <div>
-              <p className="text-sm text-[#8B6F47]">Approved</p>
-              <p className="text-2xl font-bold text-[#2C1810]">
-                ₹{paidAmount.toFixed(2)}
-              </p>
+              <p>Paid</p>
+              <p>₹{paidAmount.toFixed(2)}</p>
             </div>
           </div>
         </Card>
       </div>
 
       {/* TABLE */}
-      <Card className="border-[#E8D5BF]">
-        <div className="p-6 border-b border-[#E8D5BF]">
-          <h3 className="font-semibold text-[#2C1810] flex items-center gap-2">
-            <FileText className="w-5 h-5" />
-            Employee Bill Approval
+      <Card>
+        <div className="p-6 border-b">
+          <h3 className="flex items-center gap-2">
+            <FileText /> Employee Bill Approval
           </h3>
         </div>
 
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-[#F5E6D3]">
-                <TableHead>Bill ID</TableHead>
-                <TableHead>Order ID</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Table</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID</TableHead>
+              <TableHead>Invoice</TableHead>
+              <TableHead>Customer</TableHead>
+              <TableHead>Table</TableHead>
+              <TableHead>Amount</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
 
-            <TableBody>
-              {bills.map((bill) => {
-                const isPaid =
-                  bill.status === "PAID" || bill.status === "APPROVED";
-                const isPending = bill.status === "PENDING";
+          <TableBody>
+            {bills.map((bill) => {
+              const isApproved = bill.status === "APPROVED";
+              const isPaid = bill.status === "PAID";
 
-                return (
-                  <TableRow key={bill.id}>
-                    <TableCell>{bill.id}</TableCell>
-                    <TableCell>{bill.orderId}</TableCell>
-                    <TableCell>{bill.customerName}</TableCell>
-                    <TableCell>Table {bill.tableNumber}</TableCell>
-                    <TableCell>₹{(bill.amount ?? 0).toFixed(2)}</TableCell>
+              return (
+                <TableRow key={bill.id}>
+                  <TableCell>{bill.id}</TableCell>
+                  <TableCell>{bill.invoiceNumber}</TableCell>
+                  <TableCell>{bill.customerName}</TableCell>
+                  <TableCell>{bill.tableNumber}</TableCell>
+                  <TableCell>₹{bill.totalAmount?.toFixed(2)}</TableCell>
 
-                    <TableCell>
-                      {isPaid ? (
-                        <Badge className="bg-green-500 text-white">
-                          Approved
-                        </Badge>
-                      ) : (
-                        <Badge className="bg-yellow-500 text-white">
-                          Pending
-                        </Badge>
-                      )}
-                    </TableCell>
+                  <TableCell>
+                    {isPaid ? (
+                      <Badge className="bg-green-600 text-white">Paid</Badge>
+                    ) : isApproved ? (
+                      <Badge className="bg-blue-500 text-white">Approved</Badge>
+                    ) : (
+                      <Badge className="bg-yellow-500 text-white">
+                        Pending
+                      </Badge>
+                    )}
+                  </TableCell>
 
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={!isPaid}
-                          onClick={() => generateInvoice(bill)}
-                        >
-                          <Printer className="w-4 h-4" />
-                        </Button>
+                  <TableCell className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => downloadInvoice(bill.id)}
+                    >
+                      <Printer className="w-4 h-4" />
+                    </Button>
 
-                        {isPending && (
-                          <Button
-                            size="sm"
-                            className="bg-green-500 text-white"
-                            onClick={() => approveBill(bill)}
-                          >
-                            Approve
-                          </Button>
-                        )}
+                    {bill.status === "PENDING" && (
+                      <Button
+                        size="sm"
+                        className="bg-green-500 text-white"
+                        onClick={() => approveBill(bill)}
+                      >
+                        Approve
+                      </Button>
+                    )}
 
-                        {bill.status === "APPROVED" && (
-                          <Button
-                            size="sm"
-                            className="bg-blue-500 text-white"
-                            onClick={() => payBill(bill)}
-                          >
-                            Pay
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-
-              {bills.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-6">
-                    No bills found
+                    {isApproved && (
+                      <Button
+                        size="sm"
+                        className="bg-blue-500 text-white"
+                        onClick={() => payBill(bill)}
+                      >
+                        Pay
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+              );
+            })}
+          </TableBody>
+        </Table>
       </Card>
     </div>
   );

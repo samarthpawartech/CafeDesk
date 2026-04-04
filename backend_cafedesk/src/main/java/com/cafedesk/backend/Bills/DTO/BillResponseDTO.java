@@ -10,12 +10,14 @@ public class BillResponseDTO {
     private String customerName;
     private String tableNumber;
 
-    // ✅ FIXED NAME
-    private Double totalAmount;
+    // ✅ ADD THIS (for frontend)
+    private Long orderId;
+
+    // ✅ KEEP BOTH (safe for frontend)
+    private Double amount;        // used in React
+    private Double totalAmount;   // backend consistency
 
     private String status;
-
-    // ✅ FIXED NAME
     private LocalDateTime createdAt;
 
     private List<BillitemDTO> items;
@@ -36,6 +38,14 @@ public class BillResponseDTO {
 
     public String getTableNumber() {
         return tableNumber;
+    }
+
+    public Long getOrderId() {
+        return orderId;
+    }
+
+    public Double getAmount() {
+        return amount;
     }
 
     public Double getTotalAmount() {
@@ -70,6 +80,14 @@ public class BillResponseDTO {
 
     public void setTableNumber(String tableNumber) {
         this.tableNumber = tableNumber;
+    }
+
+    public void setOrderId(Long orderId) {
+        this.orderId = orderId;
+    }
+
+    public void setAmount(Double amount) {
+        this.amount = amount;
     }
 
     public void setTotalAmount(Double totalAmount) {
