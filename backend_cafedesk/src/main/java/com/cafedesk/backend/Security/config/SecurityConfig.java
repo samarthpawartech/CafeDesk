@@ -69,7 +69,10 @@ public class SecurityConfig {
                         .requestMatchers("/menu/**").permitAll()
                         .requestMatchers("/api/customer/place-order").permitAll()
 
-                        // ✅ FIX: allow feedback APIs
+                        // ✅ Razorpay Payment APIs (IMPORTANT)
+                        .requestMatchers("/api/payment/**").permitAll()
+
+                        // ✅ Feedback APIs
                         .requestMatchers("/api/customer/feedback/**").permitAll()
 
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()

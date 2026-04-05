@@ -83,23 +83,42 @@ export const BillsView = () => {
 
   const payBill = async (bill) => {
     try {
-      const res = await fetch(`${API_BASE}/pay/${bill.id}`, {
-        method: "PUT",
-        headers: getAuthHeaders(),
+      // 🔥 STEP 1: Create Cashfree order
+      const res = await fetch(
+        `http://localhost:8080/api/payment/create-order/${bill.id}`,
+        {
+          method: "POST",
+          headers: getAuthHeaders(),
+        },
+      );
+
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(err);
+      }
+
+      const data = await res.json();
+
+      console.log("Cashfree Response 👉", data);
+
+      // 🔥 STEP 2: Open Cashfree Checkout
+      if (!window.Cashfree) {
+        alert("Cashfree SDK not loaded ❌");
+        return;
+      }
+
+      const cashfree = new window.Cashfree({
+        mode: "sandbox", // change to production later
       });
 
-      if (!res.ok) throw new Error(`Pay failed: ${res.status}`);
-
-      const updatedBill = await res.json();
-
-      setBills((prev) =>
-        prev.map((b) => (b.id === updatedBill.id ? updatedBill : b)),
-      );
+      cashfree.checkout({
+        paymentSessionId: data.payment_session_id,
+        redirectTarget: "_modal",
+      });
     } catch (err) {
-      alert(`Error paying bill: ${err.message}`);
+      alert("Payment Error ❌ " + err.message);
     }
   };
-
   // ✅ BACKEND PDF DOWNLOAD
   const downloadInvoice = async (billId) => {
     try {

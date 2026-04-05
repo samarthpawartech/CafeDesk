@@ -238,24 +238,41 @@ export default function CustomerDashboard() {
   // ================= 💳 PAY NOW =================
   const handlePayNow = async (billId) => {
     try {
-      const res = await fetch(`${API_BASE}/bills/pay/${billId}`, {
-        method: "PUT",
+      // 🔥 STEP 1: Create order from backend
+      const res = await fetch(`${API_BASE}/payment/create-order/${billId}`, {
+        method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
       if (!res.ok) {
-        alert("Payment failed ❌");
+        const err = await res.text();
+        alert("Failed to create order ❌ " + err);
         return;
       }
 
-      alert("✅ Payment successful");
+      const data = await res.json();
 
-      fetchBills(); // 🔄 refresh list
+      console.log("Cashfree Response 👉", data);
+
+      // 🔥 STEP 2: Open Cashfree Checkout
+      if (!window.Cashfree) {
+        alert("Cashfree SDK not loaded ❌");
+        return;
+      }
+
+      const cashfree = new window.Cashfree({
+        mode: "sandbox", // change to production later
+      });
+
+      cashfree.checkout({
+        paymentSessionId: data.payment_session_id,
+        redirectTarget: "_modal",
+      });
     } catch (err) {
       console.error(err);
-      alert("Error while paying ❌");
+      alert("Payment failed ❌");
     }
   };
 

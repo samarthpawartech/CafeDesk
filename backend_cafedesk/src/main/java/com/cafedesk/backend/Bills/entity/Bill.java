@@ -33,12 +33,19 @@ public class Bill {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
-    // ✅ OPTIONAL RELATION (safe)
+    // 🔥 CASHFREE FIELDS
+    @Column(name = "cf_order_id")
+    private String cfOrderId;
+
+    @Column(name = "cf_payment_id")
+    private String cfPaymentId;
+
+    // ================= RELATIONS =================
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = true)
     private CurrentOrder order;
 
-    // ✅ CASCADE + SAFE FETCH
     @OneToMany(
             mappedBy = "bill",
             cascade = CascadeType.ALL,
@@ -107,6 +114,14 @@ public class Bill {
         return items;
     }
 
+    public String getCfOrderId() {
+        return cfOrderId;
+    }
+
+    public String getCfPaymentId() {
+        return cfPaymentId;
+    }
+
     // ================= SETTERS =================
 
     public void setId(Long id) {
@@ -144,9 +159,16 @@ public class Bill {
     public void setItems(List<BillItem> items) {
         this.items = items != null ? items : new ArrayList<>();
 
-        // 🔥 IMPORTANT: maintain bidirectional mapping
         for (BillItem item : this.items) {
             item.setBill(this);
         }
+    }
+
+    public void setCfOrderId(String cfOrderId) {
+        this.cfOrderId = cfOrderId;
+    }
+
+    public void setCfPaymentId(String cfPaymentId) {
+        this.cfPaymentId = cfPaymentId;
     }
 }
