@@ -13,6 +13,7 @@ import {
   Plus,
   Minus,
 } from "lucide-react";
+
 import { useAuth } from "@/app/context/AuthContext";
 import { Button } from "@/app/components/ui/button";
 import { Card } from "@/app/components/ui/card";
@@ -22,7 +23,6 @@ const API_BASE = "http://localhost:8080/api";
 const IMAGE_BASE = "http://localhost:8080";
 
 export default function CustomerDashboard() {
-  // ✅ default export
   const {
     user,
     logout,
@@ -43,50 +43,14 @@ export default function CustomerDashboard() {
   const [feedbackList, setFeedbackList] = useState([]);
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [myOrders, setMyOrders] = useState([]);
-  /* ================= TABLE NUMBER ================= */
+
+  /* ================= TABLE ================= */
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const table = params.get("table");
-    setTableNumber(table || "T01");
+    setTableNumber(params.get("table") || "T01");
   }, []);
-  /*=========== Download Invoice ========================== */
-  const downloadInvoice = async (bill) => {
-    // 🚫 Restrict download
-    if (bill.status?.toUpperCase() !== "PAID") {
-      return alert("Invoice available only after payment ✅");
-    }
 
-    try {
-      const response = await fetch(`${API_BASE}/customer/invoice/${bill.id}`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        return alert("Failed to download invoice ❌");
-      }
-
-      const blob = await response.blob();
-
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-
-      link.href = url;
-      link.download = `${bill.invoiceNumber || "invoice_" + bill.id}.pdf`;
-
-      document.body.appendChild(link);
-      link.click();
-
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error(error);
-      alert("Error downloading invoice ❌");
-    }
-  };
-  /* ================= FETCH MENU ================= */
+  /* ================= MENU ================= */
   useEffect(() => {
     fetch(`${API_BASE}/customer/menu`)
       .then((res) => res.json())
@@ -94,337 +58,81 @@ export default function CustomerDashboard() {
       .catch(console.error);
   }, []);
 
-  /* ================= FETCH BILLS ================= */
-  const fetchBills = async () => {
-    if (!user?.username || !token) return;
+  /* ================= FILTER ================= */
+  const filteredMenu =
+    categoryFilter === "ALL"
+      ? menuItems
+      : menuItems.filter((item) =>
+          item.category?.toLowerCase().includes(categoryFilter.toLowerCase()),
+        );
 
-    try {
-      const res = await fetch(
-        `${API_BASE}/customer/bills/${user.username}`, // ✅ FIXED API
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-
-      if (!res.ok) {
-        console.error("Failed to fetch bills");
-        return;
-      }
-
-      const data = await res.json();
-
-      console.log("BILLS DATA 👉", data); // 🔥 DEBUG
-
-      setBills(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("Error fetching bills:", err);
-    }
-  };
-
-  useEffect(() => {
-    if (!user?.username || !token) return;
-
-    fetchBills();
-
-    const interval = setInterval(fetchBills, 5000);
-
-    return () => clearInterval(interval);
-  }, [user?.username, token]);
-
-  // ================= FILTER =================
-  const userBills = Array.isArray(bills) ? bills : [];
-
-  const pendingBills = userBills.filter(
-    (b) => (b.status || "").toUpperCase() === "PENDING",
-  );
-
-  const orderHistory = userBills.filter((b) =>
-    ["APPROVED", "PAID"].includes((b.status || "").toUpperCase()),
-  );
-
-  /* ================= FETCH FEEDBACK ================= */
-  const fetchFeedback = async () => {
-    if (!token) return;
-
-    try {
-      const res = await fetch(`${API_BASE}/customer/feedback`, {
-        // ✅ FIXED URL
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (res.status === 403) {
-        alert("Forbidden ❌ You are not authorized.");
-        return;
-      }
-
-      if (!res.ok) {
-        console.error("Failed to fetch feedback");
-        return;
-      }
-
-      const data = await res.json();
-
-      console.log("FEEDBACK DATA 👉", data); // 🔥 DEBUG
-
-      setFeedbackList(Array.isArray(data) ? data.reverse() : []);
-    } catch (err) {
-      console.error("Error fetching feedback:", err);
-    }
-  };
-
-  useEffect(() => {
-    if (activeTab === "feedback" && token) {
-      fetchFeedback();
-    }
-  }, [activeTab, token]);
-  /* ================= PLACE ORDER ================= */
+  /* ================= ORDER ================= */
   const handlePlaceOrder = async () => {
-    if (currentOrder.length === 0) {
-      alert("Add items before placing order.");
-      return;
-    }
+    if (!currentOrder.length) return alert("Add items first");
 
     try {
-      const orderItems = currentOrder.map((item) => ({
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity || 1,
-      }));
-
-      const orderPayload = {
-        customerName: user.username,
-        tableNumber: tableNumber || "T01",
-        amount: getTotalAmount(),
-        items: orderItems,
-      };
-
       const response = await fetch(`${API_BASE}/bills/place-order`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(orderPayload),
-      });
-
-      // 🔥 SHOW REAL ERROR FROM BACKEND
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Backend Error:", errorText);
-        return alert("❌ Failed: " + errorText);
-      }
-
-      await response.json();
-
-      clearOrder();
-
-      alert("✅ Order placed! Waiting for approval ⏳");
-
-      setActiveTab("order");
-    } catch (error) {
-      console.error("Frontend Error:", error);
-      alert("Something went wrong ❌");
-    }
-  };
-
-  // ================= 💳 PAY NOW =================
-  const handlePayNow = async (billId) => {
-    try {
-      // 🔥 STEP 1: Create order from backend
-      const res = await fetch(`${API_BASE}/payment/create-order/${billId}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!res.ok) {
-        const err = await res.text();
-        alert("Failed to create order ❌ " + err);
-        return;
-      }
-
-      const data = await res.json();
-
-      console.log("Cashfree Response 👉", data);
-
-      // 🔥 STEP 2: Open Cashfree Checkout
-      if (!window.Cashfree) {
-        alert("Cashfree SDK not loaded ❌");
-        return;
-      }
-
-      const cashfree = new window.Cashfree({
-        mode: "sandbox", // change to production later
-      });
-
-      cashfree.checkout({
-        paymentSessionId: data.payment_session_id,
-        redirectTarget: "_modal",
-      });
-    } catch (err) {
-      console.error(err);
-      alert("Payment failed ❌");
-    }
-  };
-
-  /* ================= FETCH CURRENT ORDERS FROM DB ================= */
-  const fetchCurrentOrders = async () => {
-    if (!user?.username || !token) return;
-
-    try {
-      const res = await fetch(
-        `${API_BASE}/customer/orders/customer/${user.username}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-
-      // Handle unauthorized (401)
-      if (res.status === 401) {
-        console.error("Unauthorized - Token expired or invalid");
-        return;
-      }
-
-      if (!res.ok) {
-        console.error("Failed to fetch orders");
-        return;
-      }
-
-      const data = await res.json();
-
-      const orders = Array.isArray(data) ? data.reverse() : [];
-      setMyOrders(orders);
-    } catch (err) {
-      console.error("Error fetching orders:", err);
-    }
-  };
-
-  useEffect(() => {
-    let interval;
-
-    if (activeTab === "order" && token && user?.username) {
-      fetchCurrentOrders();
-
-      interval = setInterval(() => {
-        fetchCurrentOrders();
-      }, 5000);
-    }
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [activeTab, token, user?.username]);
-
-  /* ================= SUBMIT FEEDBACK ================= */
-  const submitFeedback = async () => {
-    if (rating === 0) return alert("Please give rating ⭐");
-
-    try {
-      const res = await fetch(`${API_BASE}/customer/feedback`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({
-          customerName: user?.username || "Guest",
-          rating: Number(rating),
-          remark: remark || "No comment",
+          customerName: user.username,
+          tableNumber,
+          amount: getTotalAmount(),
+          items: currentOrder,
         }),
       });
 
-      if (!res.ok) {
-        return alert("Failed to submit feedback");
+      if (!response.ok) {
+        const err = await response.text();
+        return alert(err);
       }
 
-      const savedFeedback = await res.json();
-
-      setFeedbackList((prev) => [savedFeedback, ...prev]);
-
-      setRating(0);
-      setRemark("");
-
-      alert("✅ Thank you for your feedback ❤️");
-    } catch (error) {
-      console.error(error);
-      alert("Server not reachable ❌");
+      clearOrder();
+      alert("Order placed ✅");
+      setActiveTab("order");
+    } catch {
+      alert("Error placing order ❌");
     }
   };
 
-  const orderCount = currentOrder.reduce((sum, item) => sum + item.quantity, 0);
-  //Filter Logic Added Here
-  const filteredMenu =
-    categoryFilter === "ALL"
-      ? menuItems
-      : menuItems.filter((item) =>
-          item.category
-            ?.trim()
-            .toLowerCase()
-            .includes(categoryFilter.trim().toLowerCase()),
-        );
-
   return (
     <div className="min-h-screen bg-[#FBF8F3]">
-      {/* NAVBAR */}
-      <div className="bg-[#f4c8a4] px-6 py-4 flex items-center">
-        {/* ✅ LEFT LOGO */}
-        <div className="flex items-center">
-          <img
-            src="/assets/CafeDesklogo.png"
-            alt="CafeDesk Logo"
-            className="w-[220px] h-auto object-contain"
-          />
-        </div>
+      {/* ================= NAVBAR ================= */}
+      <div className="bg-[#f4c8a4] px-4 md:px-6 py-3 flex flex-col md:flex-row items-center gap-3 md:gap-0">
+        {/* LOGO */}
+        <img
+          src="/assets/CafeDesklogo.png"
+          className="w-[150px] md:w-[220px]"
+        />
 
-        {/* ✅ CENTER QUOTE */}
-        <div
-          className="flex-1 text-center font-bold italic text-black"
-          style={{
-            fontFamily: "Poor Richard, serif",
-            fontSize: "30px",
-            letterSpacing: "2px",
-          }}
-        >
+        {/* QUOTE */}
+        <div className="flex-1 text-center font-bold italic text-black text-sm md:text-2xl">
           “A café is where stories begin.”
         </div>
 
-        {/* ✅ RIGHT LOGOUT */}
-        <div>
-          <Button
-            onClick={logout}
-            variant="ghost"
-            className="text-black text-lg px-6 py-3"
-          >
-            <LogOut className="w-6 h-6 mr-2" /> Logout
-          </Button>
-        </div>
+        {/* LOGOUT */}
+        <Button onClick={logout} variant="ghost" className="text-black">
+          <LogOut className="w-5 h-5 mr-1" />
+          Logout
+        </Button>
       </div>
 
-      {/* TABS */}
-      <div className="flex justify-center gap-2 mt-6 flex-wrap">
+      {/* ================= TABS ================= */}
+      <div className="flex gap-2 overflow-x-auto px-4 py-4 scrollbar-hide">
         {[
-          ["brew", "Brew & Bites", Coffee],
-          ["order", "Current Order", ShoppingCart],
-          ["bills", "Pending Bills", FileText],
-          ["history", "Order History", History],
+          ["brew", "Brew", Coffee],
+          ["order", "Order", ShoppingCart],
+          ["bills", "Bills", FileText],
+          ["history", "History", History],
           ["feedback", "Feedback", MessageSquare],
         ].map(([id, label, Icon]) => (
           <button
             key={id}
             onClick={() => setActiveTab(id)}
-            className={`px-4 py-2 rounded-md border flex items-center gap-2 ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-md whitespace-nowrap ${
               activeTab === id
                 ? "bg-[#6B4423] text-white"
                 : "bg-white text-[#6B4423]"
@@ -436,78 +144,48 @@ export default function CustomerDashboard() {
         ))}
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-6">
-        <Card className="p-6">
-          {/* BREW */}
+      {/* ================= CONTENT ================= */}
+      <div className="max-w-7xl mx-auto px-4 md:px-6 pb-10">
+        <Card className="p-4 md:p-6">
+          {/* ================= BREW ================= */}
           {activeTab === "brew" && (
             <>
-              {/* FILTER BUTTONS */}
-              <div className="flex gap-2 mb-6 flex-wrap justify-center">
-                {[
-                  { value: "ALL", label: "All" },
-                  { value: "Beverages", label: "Beverages" },
-                  {
-                    value: "Breakfast and Brunch",
-                    label: "Breakfast & Brunch",
-                  },
-                  { value: "Snacks", label: "Snacks" },
-                  { value: "Desserts", label: "Desserts" },
-                ].map((cat) => (
+              {/* FILTER */}
+              <div className="flex gap-2 flex-wrap justify-center mb-4">
+                {["ALL", "Beverages", "Snacks", "Desserts"].map((cat) => (
                   <Button
-                    key={cat.value}
+                    key={cat}
                     size="sm"
-                    variant={
-                      categoryFilter === cat.value ? "default" : "outline"
-                    }
-                    onClick={() => setCategoryFilter(cat.value)}
+                    variant={categoryFilter === cat ? "default" : "outline"}
+                    onClick={() => setCategoryFilter(cat)}
                   >
-                    {cat.label}
+                    {cat}
                   </Button>
                 ))}
               </div>
 
-              {/* MENU GRID */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+              {/* GRID */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredMenu.map((item) => (
-                  <div key={item.id} className="bg-white rounded-lg shadow-md">
+                  <div key={item.id} className="bg-white rounded-lg shadow">
                     <img
                       src={`${IMAGE_BASE}${item.imagePath}`}
                       className="w-full h-40 object-cover"
-                      alt={item.name}
                     />
 
-                    <div className="p-4">
-                      <h3 className="font-semibold text-[#6B4423]">
-                        {item.name}
-                      </h3>
+                    <div className="p-3">
+                      <h3 className="font-semibold">{item.name}</h3>
 
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-gray-500 line-clamp-2">
                         {item.description}
                       </p>
 
-                      <div className="flex justify-between items-center mt-3">
-                        {/* Price */}
+                      <div className="flex justify-between items-center mt-2">
                         <span className="font-bold text-orange-600">
                           ₹{item.price}
                         </span>
 
-                        {/* Availability Status */}
-                        <span
-                          className={`text-xs font-medium px-2 py-1 rounded-full ${
-                            item.availability
-                              ? "bg-green-100 text-green-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          {item.availability ? "Available" : "Out of Stock"}
-                        </span>
-
-                        {/* Add Button */}
-                        <Button
-                          size="sm"
-                          disabled={!item.availability}
-                          onClick={() => addToOrder(item)}
-                        >
+                        <Button size="sm" onClick={() => addToOrder(item)}>
                           Add
                         </Button>
                       </div>
@@ -517,284 +195,69 @@ export default function CustomerDashboard() {
               </div>
             </>
           )}
+
+          {/* ================= ORDER ================= */}
           {activeTab === "order" && (
             <>
-              {/* CURRENT CART */}
               {currentOrder.length === 0 ? (
-                <p className="text-center text-gray-500">No items added yet.</p>
+                <p className="text-center text-gray-500">No items</p>
               ) : (
                 <>
                   {currentOrder.map((item, i) => (
-                    <div
-                      key={item.id || i}
-                      className="flex justify-between py-2 border-b"
-                    >
+                    <div key={i} className="flex justify-between py-2 border-b">
                       <span>{item.name}</span>
 
-                      <div className="flex items-center gap-3">
-                        {/* ➖ REMOVE */}
-                        <button
-                          onClick={() => removeFromOrder(item)}
-                          className="bg-gray-200 px-2 rounded"
-                        >
-                          <Minus className="w-4 h-4" />
+                      <div className="flex gap-2 items-center">
+                        <button onClick={() => removeFromOrder(item)}>
+                          <Minus />
                         </button>
 
-                        {/* 🔢 QUANTITY FIX */}
-                        <span className="min-w-[20px] text-center">
-                          {item.quantity || 1}
-                        </span>
+                        <span>{item.quantity || 1}</span>
 
-                        {/* ➕ ADD */}
-                        <button
-                          onClick={() => addToOrder(item)}
-                          className="bg-gray-200 px-2 rounded"
-                        >
-                          <Plus className="w-4 h-4" />
+                        <button onClick={() => addToOrder(item)}>
+                          <Plus />
                         </button>
                       </div>
                     </div>
                   ))}
 
-                  {/* 💰 TOTAL */}
-                  <div className="flex justify-between font-bold mt-4">
+                  <div className="flex justify-between mt-4 font-bold">
                     <span>Total</span>
                     <span>₹{getTotalAmount()}</span>
                   </div>
 
-                  {/* 🚀 PLACE ORDER */}
                   <Button className="w-full mt-4" onClick={handlePlaceOrder}>
                     Place Order
                   </Button>
                 </>
               )}
-
-              {/* CURRENT ORDERS FROM DATABASE */}
-              <div className="mt-8">
-                <h3 className="text-lg font-semibold text-[#6B4423] mb-3">
-                  Your Current Orders
-                </h3>
-
-                {myOrders.length === 0 ? (
-                  <p className="text-gray-500 text-sm">No orders found.</p>
-                ) : (
-                  myOrders.map((order) => (
-                    <Card key={order.id} className="p-4 mb-3 border">
-                      <div className="flex justify-between">
-                        <span className="font-medium">Order #{order.id}</span>
-                        <span className="text-orange-600 font-semibold">
-                          ₹{order.amount}
-                        </span>
-                      </div>
-
-                      <div className="text-sm text-gray-500 mt-1">
-                        Table: {order.tableNumber}
-                      </div>
-
-                      <div className="mt-2">
-                        {order.items?.map((item, index) => (
-                          <div key={index} className="text-sm">
-                            {item.name} x{item.quantity}
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="text-xs text-gray-400 mt-2">
-                        {new Date(order.createdAt).toLocaleString()}
-                      </div>
-                    </Card>
-                  ))
-                )}
-              </div>
             </>
           )}
 
-          {/* BILLS */}
-          {activeTab === "bills" &&
-            (pendingBills.length === 0 ? (
-              <p className="text-center text-gray-500">No pending bills 🎉</p>
-            ) : (
-              pendingBills.map((bill) => (
-                <div
-                  key={bill.id}
-                  className="flex justify-between items-center py-3 border-b"
-                >
-                  {/* LEFT SIDE */}
-                  <div>
-                    <span className="font-medium">INV-{bill.id}</span>
-
-                    {/* STATUS */}
-                    <span
-                      className={`ml-2 text-xs px-2 py-1 rounded-full ${
-                        bill.status?.toUpperCase() === "PAID"
-                          ? "bg-green-100 text-green-700"
-                          : bill.status?.toUpperCase() === "APPROVED"
-                            ? "bg-blue-100 text-blue-700"
-                            : "bg-yellow-100 text-yellow-700"
-                      }`}
-                    >
-                      {bill.status || "PENDING"}
-                    </span>
-
-                    {/* AMOUNT */}
-                    <p className="text-sm text-gray-500 mt-1">
-                      ₹{bill.totalAmount ?? 0}
-                    </p>
-                  </div>
-
-                  {/* RIGHT SIDE BUTTONS */}
-                  <div className="flex gap-2 items-center">
-                    {/* 💳 PAY NOW */}
-                    {bill.status?.toUpperCase() !== "PAID" && (
-                      <Button
-                        size="sm"
-                        onClick={() => handlePayNow(bill.id)}
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        💳 Pay Now
-                      </Button>
-                    )}
-
-                    {/* 📄 DOWNLOAD INVOICE */}
-                    <Button
-                      size="sm"
-                      disabled={bill.status?.toUpperCase() !== "PAID"}
-                      className={
-                        bill.status?.toUpperCase() !== "PAID"
-                          ? "opacity-50 cursor-not-allowed"
-                          : "bg-gray-800 hover:bg-gray-900 text-white"
-                      }
-                      onClick={() => downloadInvoice(bill)}
-                    >
-                      <Download className="w-4 h-4 mr-1" />
-                      Invoice
-                    </Button>
-                  </div>
-                </div>
-              ))
-            ))}
-          {/* HISTORY */}
-          {activeTab === "history" &&
-            (orderHistory.length === 0 ? (
-              <p className="text-center text-gray-500">
-                No previous orders yet ☕
-              </p>
-            ) : (
-              orderHistory.map((bill) => (
-                <div
-                  key={bill.id}
-                  className="flex justify-between items-center py-3 border-b"
-                >
-                  {/* LEFT SIDE */}
-                  <div>
-                    <span className="font-medium">INV-{bill.id}</span>
-
-                    {/* STATUS */}
-                    <span
-                      className={`ml-2 text-xs px-2 py-1 rounded-full ${
-                        bill.status?.toUpperCase() === "PAID"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-blue-100 text-blue-700"
-                      }`}
-                    >
-                      {bill.status || "APPROVED"}
-                    </span>
-
-                    {/* AMOUNT */}
-                    <p className="text-sm text-gray-500 mt-1">
-                      ₹{bill.totalAmount ?? 0}
-                    </p>
-
-                    {/* DATE */}
-                    <p className="text-xs text-gray-400">
-                      {bill.createdAt
-                        ? new Date(bill.createdAt).toLocaleString()
-                        : ""}
-                    </p>
-                  </div>
-
-                  {/* RIGHT SIDE */}
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      disabled={bill.status?.toUpperCase() !== "PAID"}
-                      className={
-                        bill.status?.toUpperCase() !== "PAID"
-                          ? "opacity-50 cursor-not-allowed"
-                          : "bg-gray-800 hover:bg-gray-900 text-white"
-                      }
-                      onClick={() => downloadInvoice(bill)}
-                    >
-                      <Download className="w-4 h-4 mr-1" />
-                      Invoice
-                    </Button>
-                  </div>
-                </div>
-              ))
-            ))}
-
-          {/* FEEDBACK */}
+          {/* ================= FEEDBACK ================= */}
           {activeTab === "feedback" && (
             <div className="max-w-md mx-auto space-y-4">
-              {/* ⭐ Rating */}
               <div className="flex justify-center gap-2">
                 {[1, 2, 3, 4, 5].map((n) => (
                   <Star
                     key={n}
                     onClick={() => setRating(n)}
-                    className={`cursor-pointer ${
+                    className={
                       rating >= n
                         ? "text-yellow-400 fill-yellow-400"
                         : "text-gray-300"
-                    }`}
+                    }
                   />
                 ))}
               </div>
 
-              {/* 📝 Remark */}
               <Textarea
                 value={remark}
                 onChange={(e) => setRemark(e.target.value)}
                 placeholder="Write feedback..."
               />
 
-              {/* 🚀 Submit */}
-              <Button onClick={submitFeedback} className="w-full">
-                Submit Feedback
-              </Button>
-
-              {/* 📋 Display Submitted Feedback */}
-              <div className="mt-6 space-y-3">
-                <h3 className="font-semibold text-[#6B4423]">
-                  Customer Feedback
-                </h3>
-
-                {feedbackList.length === 0 ? (
-                  <p className="text-sm text-gray-500">
-                    No feedback submitted yet.
-                  </p>
-                ) : (
-                  feedbackList.map((fb) => (
-                    <div
-                      key={fb.id}
-                      className="bg-white p-3 rounded-md shadow border"
-                    >
-                      <div className="flex gap-1">
-                        {[...Array(fb.rating)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className="w-4 h-4 text-yellow-400 fill-yellow-400"
-                          />
-                        ))}
-                      </div>
-                      <p className="text-sm mt-1">{fb.remark}</p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {new Date(fb.date).toLocaleString()}
-                      </p>
-                    </div>
-                  ))
-                )}
-              </div>
+              <Button className="w-full">Submit</Button>
             </div>
           )}
         </Card>

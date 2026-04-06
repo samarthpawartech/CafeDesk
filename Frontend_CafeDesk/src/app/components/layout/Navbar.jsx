@@ -1,22 +1,20 @@
 "use client";
 
-import { Bell, LogOut } from "lucide-react";
+import { Bell, LogOut, Menu } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 
-export const Navbar = ({ currentView }) => {
+export const Navbar = ({ currentView, onMenuClick }) => {
   const { logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // Normalize function
   const normalize = (str) =>
     String(str || "dashboard")
       .toLowerCase()
       .replace(/\s+/g, "")
       .trim();
 
-  // Title Mapping (clean + consistent with sidebar)
   const titles = {
     dashboard: "Dashboard",
     menu: "Menu Management",
@@ -27,10 +25,8 @@ export const Navbar = ({ currentView }) => {
     orders: "Orders",
   };
 
-  // FIX: Direct calculation (NO useMemo needed)
   const pageTitle = titles[normalize(currentView)] || "Dashboard";
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -43,21 +39,29 @@ export const Navbar = ({ currentView }) => {
   }, []);
 
   return (
-    <nav className="bg-white border-b border-[#E8D5BF] px-6 py-4 shadow-sm sticky top-0 z-50">
-      {/* Center Title */}
-      <h1
-        className="absolute left-1/2 -translate-x-1/2 text-3xl md:text-4xl tracking-wide text-[#2C1810] whitespace-nowrap"
-        style={{ fontFamily: "'Lacheyard Script', cursive" }}
-      >
-        {pageTitle}
-      </h1>
+    <nav className="bg-white border-b border-[#E8D5BF] px-4 md:px-6 py-3 md:py-4 shadow-sm sticky top-0 z-50">
+      <div className="flex items-center justify-between max-w-7xl mx-auto">
+        {/* ✅ Left: Mobile Menu Button */}
+        <button
+          onClick={onMenuClick}
+          className="md:hidden p-2 hover:bg-[#FBF8F3] rounded-lg transition"
+        >
+          <Menu className="w-6 h-6 text-[#6B4423]" />
+        </button>
 
-      {/* Right Section */}
-      <div className="flex items-center justify-end max-w-7xl mx-auto">
-        <div className="flex items-center gap-4 relative">
+        {/* ✅ Title (Responsive, no absolute) */}
+        <h1
+          className="text-lg sm:text-xl md:text-3xl lg:text-4xl text-[#2C1810] tracking-wide truncate text-center flex-1"
+          style={{ fontFamily: "'Lacheyard Script', cursive" }}
+        >
+          {pageTitle}
+        </h1>
+
+        {/* ✅ Right Section */}
+        <div className="flex items-center gap-2 sm:gap-4 relative">
           {/* Notification */}
           <button className="relative p-2 hover:bg-[#FBF8F3] rounded-lg transition">
-            <Bell className="w-6 h-6 text-[#6B4423]" />
+            <Bell className="w-5 h-5 md:w-6 md:h-6 text-[#6B4423]" />
             <span className="absolute top-1 right-1 w-2 h-2 bg-[#C44536] rounded-full animate-pulse"></span>
           </button>
 
@@ -65,9 +69,9 @@ export const Navbar = ({ currentView }) => {
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setDropdownOpen((prev) => !prev)}
-              className="flex items-center gap-2 hover:bg-[#FBF8F3] p-2 rounded-lg transition"
+              className="flex items-center gap-2 hover:bg-[#FBF8F3] p-1 md:p-2 rounded-lg transition"
             >
-              <div className="w-10 h-10 rounded-full overflow-hidden shadow-md">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden shadow-md">
                 <img
                   src="/assets/login.gif"
                   alt="User Avatar"

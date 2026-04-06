@@ -10,6 +10,7 @@ import EmployeeManagement from "@/app/components/admin/EmployeeManagement";
 
 export default function AdminDashboard() {
   const [currentView, setCurrentView] = useState("dashboard");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const renderView = () => {
     switch (currentView) {
@@ -30,33 +31,45 @@ export default function AdminDashboard() {
     }
   };
 
-  const getTitle = () => {
-    switch (currentView) {
-      case "dashboard":
-        return "Dashboard Overview";
-      case "menu":
-        return "Menu Management";
-      case "inventory":
-        return "Inventory Management";
-      case "employees":
-        return "Employee Management";
-      case "bills":
-        return "Bills & Payments";
-      case "tables":
-        return "Table Management";
-      default:
-        return "Dashboard";
-    }
-  };
-
   return (
-    <div className="flex h-screen bg-[#FBF8F3]">
-      <Sidebar currentView={currentView} setCurrentView={setCurrentView} />
+    <div className="flex h-screen bg-[#FBF8F3] overflow-hidden">
+      {/* ✅ Sidebar (Desktop) */}
+      <div className="hidden md:block">
+        <Sidebar currentView={currentView} setCurrentView={setCurrentView} />
+      </div>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Navbar title={getTitle()} />
+      {/* ✅ Sidebar (Mobile Drawer) */}
+      {isSidebarOpen && (
+        <div className="fixed inset-0 z-50 flex">
+          {/* Sidebar Panel */}
+          <div className="w-64 bg-white shadow-lg">
+            <Sidebar
+              currentView={currentView}
+              setCurrentView={setCurrentView}
+              onClose={() => setIsSidebarOpen(false)} // ✅ FIXED
+            />
+          </div>
 
-        <main className="flex-1 overflow-y-auto p-6">{renderView()}</main>
+          {/* Overlay */}
+          <div
+            className="flex-1 bg-black/40"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        </div>
+      )}
+
+      {/* ✅ Main Content */}
+      <div className="flex-1 flex flex-col">
+        {/* ✅ Navbar FIXED */}
+        <Navbar
+          currentView={currentView} // ✅ IMPORTANT FIX
+          onMenuClick={() => setIsSidebarOpen(true)}
+        />
+
+        {/* ✅ Page Content */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+          {renderView()}
+        </main>
       </div>
     </div>
   );
