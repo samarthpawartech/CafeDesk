@@ -121,27 +121,29 @@ export default function CustomerDashboard() {
       </div>
 
       {/* ================= TABS ================= */}
-      <div className="flex gap-2 overflow-x-auto px-4 py-4 scrollbar-hide">
-        {[
-          ["brew", "Brew", Coffee],
-          ["order", "Order", ShoppingCart],
-          ["bills", "Bills", FileText],
-          ["history", "History", History],
-          ["feedback", "Feedback", MessageSquare],
-        ].map(([id, label, Icon]) => (
-          <button
-            key={id}
-            onClick={() => setActiveTab(id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md whitespace-nowrap ${
-              activeTab === id
-                ? "bg-[#6B4423] text-white"
-                : "bg-white text-[#6B4423]"
-            }`}
-          >
-            <Icon className="w-4 h-4" />
-            {label}
-          </button>
-        ))}
+      <div className="flex justify-center">
+        <div className="flex gap-2 overflow-x-auto px-4 py-4 scrollbar-hide">
+          {[
+            ["brew", "Brew", Coffee],
+            ["order", "Order", ShoppingCart],
+            ["bills", "Bills", FileText],
+            ["history", "History", History],
+            ["feedback", "Feedback", MessageSquare],
+          ].map(([id, label, Icon]) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md whitespace-nowrap ${
+                activeTab === id
+                  ? "bg-[#6B4423] text-white"
+                  : "bg-white text-[#6B4423]"
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ================= CONTENT ================= */}
@@ -151,13 +153,14 @@ export default function CustomerDashboard() {
           {activeTab === "brew" && (
             <>
               {/* FILTER */}
-              <div className="flex gap-2 flex-wrap justify-center mb-4">
+              <div className="flex flex-wrap justify-center items-center gap-3 mb-4 max-w-xl mx-auto">
                 {["ALL", "Beverages", "Snacks", "Desserts"].map((cat) => (
                   <Button
                     key={cat}
                     size="sm"
                     variant={categoryFilter === cat ? "default" : "outline"}
                     onClick={() => setCategoryFilter(cat)}
+                    className="px-4"
                   >
                     {cat}
                   </Button>
