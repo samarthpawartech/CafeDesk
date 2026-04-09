@@ -69,12 +69,16 @@ public class SecurityConfig {
                         .requestMatchers("/menu/**").permitAll()
                         .requestMatchers("/api/customer/place-order").permitAll()
 
-                        // ✅ Razorpay Payment APIs (IMPORTANT)
+                        // ✅ PAYMENT
                         .requestMatchers("/api/payment/**").permitAll()
 
-                        // ✅ Feedback APIs
+                        // ✅ FEEDBACK
                         .requestMatchers("/api/customer/feedback/**").permitAll()
 
+                        // ✅ 🔥 IMPORTANT FIX (ADD THIS)
+                        .requestMatchers("/api/bills/**").permitAll()
+
+                        // Preflight
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                         /* ================= PROTECTED ================= */

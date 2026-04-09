@@ -23,8 +23,12 @@ import {
 const API_BASE = "http://localhost:8080/api/bills";
 const INVOICE_API = "http://localhost:8080/api/customer/invoice";
 
+// ✅ FIXED AUTH HEADER
 const getAuthHeaders = () => {
   const token = localStorage.getItem("token");
+
+  if (!token) return {}; // 🔥 IMPORTANT FIX
+
   return {
     Authorization: `Bearer ${token}`,
   };
@@ -44,16 +48,26 @@ export const BillsView = () => {
       setLoading(true);
       setError(null);
 
+      console.log("📡 Fetching bills...");
+
       const res = await fetch(`${API_BASE}/all`, {
-        headers: getAuthHeaders(),
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
       });
 
-      if (!res.ok) throw new Error(`Failed to fetch bills: ${res.status}`);
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Error ${res.status}: ${text}`);
+      }
 
       const data = await res.json();
       setBills(data);
     } catch (err) {
-      setError(err.message);
+      console.error("❌ Fetch Error:", err);
+      setError(err.message || "Failed to fetch");
     } finally {
       setLoading(false);
     }
@@ -63,7 +77,10 @@ export const BillsView = () => {
     try {
       const res = await fetch(`${API_BASE}/approve/${bill.id}`, {
         method: "PUT",
-        headers: getAuthHeaders(),
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
       });
 
       if (!res.ok) throw new Error(`Approve failed: ${res.status}`);
@@ -74,7 +91,6 @@ export const BillsView = () => {
         prev.map((b) => (b.id === updatedBill.id ? updatedBill : b)),
       );
 
-      // ✅ Auto download invoice after approval
       downloadInvoice(updatedBill.id);
     } catch (err) {
       alert(`Error approving bill: ${err.message}`);
@@ -83,12 +99,14 @@ export const BillsView = () => {
 
   const payBill = async (bill) => {
     try {
-      // 🔥 STEP 1: Create Cashfree order
       const res = await fetch(
         `http://localhost:8080/api/payment/create-order/${bill.id}`,
         {
           method: "POST",
-          headers: getAuthHeaders(),
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeaders(),
+          },
         },
       );
 
@@ -99,16 +117,13 @@ export const BillsView = () => {
 
       const data = await res.json();
 
-      console.log("Cashfree Response 👉", data);
-
-      // 🔥 STEP 2: Open Cashfree Checkout
       if (!window.Cashfree) {
         alert("Cashfree SDK not loaded ❌");
         return;
       }
 
       const cashfree = new window.Cashfree({
-        mode: "sandbox", // change to production later
+        mode: "sandbox",
       });
 
       cashfree.checkout({
@@ -119,7 +134,7 @@ export const BillsView = () => {
       alert("Payment Error ❌ " + err.message);
     }
   };
-  // ✅ BACKEND PDF DOWNLOAD
+
   const downloadInvoice = async (billId) => {
     try {
       const res = await fetch(`${INVOICE_API}/${billId}`, {
@@ -145,7 +160,6 @@ export const BillsView = () => {
     }
   };
 
-  // ✅ FIXED TOTALS
   const totalAmount = bills.reduce(
     (sum, bill) => sum + (bill.totalAmount ?? 0),
     0,
@@ -180,7 +194,6 @@ export const BillsView = () => {
 
   return (
     <div className="space-y-6">
-      {/* SUMMARY */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-6">
           <div className="flex items-center gap-4">
@@ -213,7 +226,6 @@ export const BillsView = () => {
         </Card>
       </div>
 
-      {/* TABLE */}
       <Card>
         <div className="p-6 border-b">
           <h3 className="flex items-center gap-2">

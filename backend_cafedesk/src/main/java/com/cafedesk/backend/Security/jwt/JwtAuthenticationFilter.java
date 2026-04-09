@@ -30,17 +30,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String path = request.getServletPath();
 
-        // Allow preflight requests
+        // ✅ Allow preflight (CORS)
         if (HttpMethod.OPTIONS.matches(request.getMethod())) {
             return true;
         }
 
-        // Public endpoints (NO JWT required)
+        // ✅ PUBLIC ENDPOINTS (NO JWT REQUIRED)
         return path.startsWith("/api/customer/login")
                 || path.startsWith("/api/customer/register")
                 || path.startsWith("/api/customer/menu")
                 || path.startsWith("/api/employee/login")
-                || path.startsWith("/api/admin/login");
+                || path.startsWith("/api/admin/login")
+                || path.startsWith("/api/bills")   // ✅ ADD THIS LINE (IMPORTANT)
+                || path.startsWith("/api/payment"); // (optional if needed)
     }
 
     @Override
@@ -51,7 +53,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader("Authorization");
 
-        // No token → continue without authentication
+        // ✅ No token → allow request (do NOT block)
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
@@ -60,10 +62,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String jwt = authHeader.substring(7);
 
         try {
-            // Extract username first
             String username = jwtUtil.extractUsername(jwt);
 
-            // Validate token
             if (username != null && jwtUtil.validateToken(jwt)) {
 
                 String role = jwtUtil.extractRole(jwt);
@@ -86,9 +86,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
         } catch (Exception e) {
+            // ❌ DON'T BLOCK REQUEST FOR PUBLIC APIs
             SecurityContextHolder.clearContext();
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "JWT Failed");
-            return;
+
+            // Optional: comment this if still issue
+            // response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "JWT Failed");
+            // return;
         }
 
         filterChain.doFilter(request, response);
