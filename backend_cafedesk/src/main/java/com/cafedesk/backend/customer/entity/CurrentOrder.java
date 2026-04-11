@@ -19,7 +19,7 @@ public class CurrentOrder {
 
     // ✅ Status
     @Enumerated(EnumType.STRING)
-    private OrderStatus status = OrderStatus.PLACED;
+    private OrderStatus status = OrderStatus.PENDING;
 
     // ✅ Timestamp
     private LocalDateTime createdAt = LocalDateTime.now();

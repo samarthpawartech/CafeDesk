@@ -51,7 +51,7 @@ public class OrderService {
         order.setAmount(total);
 
         // ✅ correct initial status
-        order.setStatus(OrderStatus.PLACED);
+        order.setStatus(OrderStatus.PENDING);
 
         // ✅ SINGLE SAVE (cascade handles items)
         return orderRepository.save(order);

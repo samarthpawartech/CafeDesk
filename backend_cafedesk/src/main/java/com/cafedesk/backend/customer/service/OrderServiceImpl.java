@@ -35,7 +35,7 @@ public class OrderServiceImpl {
         order.setCustomerName(request.getCustomerName());
         order.setTableNumber(request.getTableNumber());
         order.setAmount(request.getAmount());
-        order.setStatus(OrderStatus.PLACED);
+        order.setStatus(OrderStatus.PENDING);
 
         List<OrderItem> items = new ArrayList<>();
 

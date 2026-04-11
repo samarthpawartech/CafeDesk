@@ -11,12 +11,19 @@ export const OrdersList = () => {
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
 
-  // ✅ STATUS MAP
+  // ✅ BACKEND → FRONTEND STATUS MAP (FIXED)
   const statusMap = {
-    PLACED: "pending",
+    PENDING: "pending",
     PREPARING: "preparing",
     READY: "ready",
     COMPLETED: "completed",
+  };
+
+  const reverseStatusMap = {
+    pending: "PENDING",
+    preparing: "PREPARING",
+    ready: "READY",
+    completed: "COMPLETED",
   };
 
   const statusConfig = {
@@ -34,14 +41,15 @@ export const OrdersList = () => {
         return res.json();
       })
       .then((data) => {
-        console.log("🔥 API RESPONSE:", data); // 🔥 DEBUG
+        console.log("🔥 API RESPONSE:", data);
 
         const formatted = data.map((order) => ({
           id: order.id,
-          tableNumber: order.tableNumber,
-          customerName: order.customerName,
-          timestamp: order.createdAt,
+          tableNumber: order.tableNumber || "-",
+          customerName: order.customerName || "Guest",
+          timestamp: order.createdAt || new Date(),
 
+          // ✅ FIXED STATUS
           status: statusMap[order.status] || "pending",
 
           items:
@@ -63,11 +71,13 @@ export const OrdersList = () => {
       });
   }, []);
 
-  // ✅ UPDATE STATUS
+  // ✅ UPDATE STATUS (FIXED)
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
+      const backendStatus = reverseStatusMap[newStatus];
+
       await fetch(
-        `http://localhost:8080/api/customer/orders/${orderId}/status?status=${newStatus}`,
+        `http://localhost:8080/api/customer/orders/${orderId}/status?status=${backendStatus}`,
         { method: "PUT" },
       );
 
@@ -84,7 +94,7 @@ export const OrdersList = () => {
 
   return (
     <div className="space-y-6">
-      {/* ✅ LOADING */}
+      {/* LOADING */}
       {loading && (
         <p className="text-center text-gray-500">Loading orders...</p>
       )}

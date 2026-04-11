@@ -1,7 +1,8 @@
 package com.cafedesk.backend.customer.entity;
 
 public enum OrderStatus {
-    PLACED,
+    PENDING,
     PREPARING,
-    APPROVED
+    READY,
+    COMPLETED
 }
