@@ -1,5 +1,6 @@
 package com.cafedesk.backend.customer.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -16,14 +17,16 @@ public class CurrentOrder {
     private String tableNumber;
     private double amount;
 
-    // ✅ Better status handling
+    // ✅ Status
     @Enumerated(EnumType.STRING)
     private OrderStatus status = OrderStatus.PLACED;
 
-    // ✅ Timestamp for tracking
+    // ✅ Timestamp
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
+    // 🔥 IMPORTANT FIX
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @JsonManagedReference
     private List<OrderItem> items;
 
     // ================= GETTERS =================
@@ -77,6 +80,7 @@ public class CurrentOrder {
     public void setItems(List<OrderItem> items) {
         this.items = items;
 
+        // 🔥 ENSURE BIDIRECTIONAL LINK
         if (items != null) {
             for (OrderItem item : items) {
                 item.setOrder(this);
