@@ -206,35 +206,38 @@ export default function CustomerDashboard() {
         items: orderItems,
       };
 
-      const response = await fetch(`${API_BASE}/bills/place-order`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(orderPayload),
-      });
+      console.log("Sending Order:", orderPayload);
 
-      // 🔥 SHOW REAL ERROR FROM BACKEND
+      const response = await fetch(
+        `${API_BASE}/customer/orders`, // ✅ FIXED HERE
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(orderPayload),
+        },
+      );
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error("Backend Error:", errorText);
-        return alert("❌ Failed: " + errorText);
+        alert("❌ Failed: " + errorText);
+        return;
       }
 
-      await response.json();
+      const data = await response.json();
+      console.log("Order Saved:", data);
 
       clearOrder();
-
-      alert("✅ Order placed! Waiting for approval ⏳");
-
+      alert("✅ Order placed successfully!");
       setActiveTab("order");
     } catch (error) {
       console.error("Frontend Error:", error);
       alert("Something went wrong ❌");
     }
   };
-
   // ================= 💳 PAY NOW =================
   const handlePayNow = async (billId) => {
     try {

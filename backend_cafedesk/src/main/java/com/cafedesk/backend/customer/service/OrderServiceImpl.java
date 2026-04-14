@@ -8,6 +8,7 @@ import com.cafedesk.backend.customer.entity.OrderStatus;
 import com.cafedesk.backend.customer.repository.OrderRepository;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +22,8 @@ public class OrderServiceImpl {
         this.orderRepository = orderRepository;
     }
 
+    // 🔥 FIXED: Transaction added
+    @Transactional
     public CurrentOrder placeOrder(PlaceOrderRequest request) {
 
         // ✅ DEBUG LOG
@@ -31,6 +34,7 @@ public class OrderServiceImpl {
             throw new RuntimeException("Order items cannot be empty");
         }
 
+        // ✅ CREATE ORDER
         CurrentOrder order = new CurrentOrder();
         order.setCustomerName(request.getCustomerName());
         order.setTableNumber(request.getTableNumber());
@@ -39,6 +43,7 @@ public class OrderServiceImpl {
 
         List<OrderItem> items = new ArrayList<>();
 
+        // 🔥 MAP DTO → ENTITY
         for (OrderItemDTO i : request.getItems()) {
 
             if (i == null) continue;
@@ -48,7 +53,7 @@ public class OrderServiceImpl {
             item.setPrice(i.getPrice());
             item.setQuantity(i.getQuantity());
 
-            // 🔥 IMPORTANT RELATION
+            // 🔥 VERY IMPORTANT: Set relation
             item.setOrder(order);
 
             items.add(item);
@@ -59,9 +64,13 @@ public class OrderServiceImpl {
             throw new RuntimeException("No valid items in order");
         }
 
+        // ✅ SET ITEMS (also ensures bidirectional mapping)
         order.setItems(items);
 
-        // ✅ SAVE
+        // ✅ DEBUG
+        System.out.println("Saving order with " + items.size() + " items");
+
+        // ✅ SAVE (cascade saves items automatically)
         CurrentOrder savedOrder = orderRepository.save(order);
 
         System.out.println("Order Saved Successfully: " + savedOrder.getId());

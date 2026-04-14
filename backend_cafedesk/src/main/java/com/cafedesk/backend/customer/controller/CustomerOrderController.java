@@ -5,6 +5,7 @@ import com.cafedesk.backend.customer.entity.CurrentOrder;
 import com.cafedesk.backend.customer.service.OrderServiceImpl;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,16 +22,21 @@ public class CustomerOrderController {
     }
 
     // ================= PLACE ORDER =================
-    @PostMapping("/place-order")
+    @PostMapping
     public ResponseEntity<?> placeOrder(@RequestBody PlaceOrderRequest request) {
 
         try {
+            // 🔥 DEBUG LOG
+            System.out.println("API HIT: Place Order");
+            System.out.println("Request Data: " + request);
+
             CurrentOrder order = orderService.placeOrder(request);
-            return ResponseEntity.ok(order);
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(order);
 
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.badRequest()
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Order failed: " + e.getMessage());
         }
     }
@@ -38,6 +44,8 @@ public class CustomerOrderController {
     // ================= FETCH CUSTOMER ORDERS =================
     @GetMapping("/customer/{username}")
     public ResponseEntity<List<CurrentOrder>> getCustomerOrders(@PathVariable String username) {
+
+        System.out.println("Fetching orders for: " + username);
 
         List<CurrentOrder> orders = orderService.getCustomerBills(username);
         return ResponseEntity.ok(orders);
@@ -54,6 +62,8 @@ public class CustomerOrderController {
     // ================= ALL ORDERS =================
     @GetMapping("/all")
     public ResponseEntity<List<CurrentOrder>> getAllOrders() {
+
+        System.out.println("Fetching all orders");
 
         List<CurrentOrder> orders = orderService.getAllOrders();
         return ResponseEntity.ok(orders);

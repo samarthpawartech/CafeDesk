@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "Current_orders")
+@Table(name = "current_orders") // 🔥 FIXED (lowercase for PostgreSQL)
 public class CurrentOrder {
 
     @Id
@@ -22,9 +22,10 @@ public class CurrentOrder {
     private OrderStatus status = OrderStatus.PENDING;
 
     // ✅ Timestamp
+    @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    // 🔥 IMPORTANT FIX
+    // 🔥 RELATION
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JsonManagedReference
     private List<OrderItem> items;
@@ -80,7 +81,7 @@ public class CurrentOrder {
     public void setItems(List<OrderItem> items) {
         this.items = items;
 
-        // 🔥 ENSURE BIDIRECTIONAL LINK
+        // 🔥 ENSURE BIDIRECTIONAL LINK (VERY IMPORTANT)
         if (items != null) {
             for (OrderItem item : items) {
                 item.setOrder(this);
