@@ -2,7 +2,7 @@ package com.cafedesk.backend.customer.controller;
 
 import com.cafedesk.backend.customer.DTO.PlaceOrderRequest;
 import com.cafedesk.backend.customer.entity.CurrentOrder;
-import com.cafedesk.backend.customer.service.OrderServiceImpl;
+import com.cafedesk.backend.customer.service.OrderService;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
@@ -15,9 +15,10 @@ import java.util.List;
 @CrossOrigin(origins = "*")
 public class CustomerOrderController {
 
-    private final OrderServiceImpl orderService;
+    private final OrderService orderService;
 
-    public CustomerOrderController(OrderServiceImpl orderService) {
+    // ✅ Constructor Injection (INTERFACE BASED)
+    public CustomerOrderController(OrderService orderService) {
         this.orderService = orderService;
     }
 
@@ -26,9 +27,8 @@ public class CustomerOrderController {
     public ResponseEntity<?> placeOrder(@RequestBody PlaceOrderRequest request) {
 
         try {
-            // 🔥 DEBUG LOG
-            System.out.println("API HIT: Place Order");
-            System.out.println("Request Data: " + request);
+            System.out.println("🚀 API HIT: Place Order");
+            System.out.println("📦 Request Data: " + request);
 
             CurrentOrder order = orderService.placeOrder(request);
 
@@ -36,36 +36,45 @@ public class CustomerOrderController {
 
         } catch (Exception e) {
             e.printStackTrace();
+
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Order failed: " + e.getMessage());
+                    .body("❌ Order failed: " + e.getMessage());
         }
     }
 
-    // ================= FETCH CUSTOMER ORDERS =================
-    @GetMapping("/customer/{username}")
-    public ResponseEntity<List<CurrentOrder>> getCustomerOrders(@PathVariable String username) {
-
-        System.out.println("Fetching orders for: " + username);
-
-        List<CurrentOrder> orders = orderService.getCustomerBills(username);
-        return ResponseEntity.ok(orders);
-    }
-
     // ================= CUSTOMER BILLS =================
-    @GetMapping("/{username}/order-bills")
+    @GetMapping("/bills/{username}")
     public ResponseEntity<List<CurrentOrder>> getCustomerBills(@PathVariable String username) {
 
-        List<CurrentOrder> orders = orderService.getCustomerBills(username);
-        return ResponseEntity.ok(orders);
+        try {
+            System.out.println("🧾 Fetching bills for: " + username);
+
+            List<CurrentOrder> orders = orderService.getCustomerBills(username);
+
+            return ResponseEntity.ok(orders != null ? orders : List.of());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(List.of());
+        }
     }
 
     // ================= ALL ORDERS =================
     @GetMapping("/all")
     public ResponseEntity<List<CurrentOrder>> getAllOrders() {
 
-        System.out.println("Fetching all orders");
+        try {
+            System.out.println("📊 Fetching all orders");
 
-        List<CurrentOrder> orders = orderService.getAllOrders();
-        return ResponseEntity.ok(orders);
+            List<CurrentOrder> orders = orderService.getAllOrders();
+
+            return ResponseEntity.ok(orders != null ? orders : List.of());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(List.of());
+        }
     }
 }

@@ -119,32 +119,35 @@ export default function CustomerDashboard() {
     if (!user?.username || !token) return;
 
     try {
-      const res = await fetch(
-        `${API_BASE}/customer/bills/${user.username}`, // ✅ FIXED API
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+      const res = await fetch(`${API_BASE}/customer/bills/${user.username}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-      );
+      });
 
       if (!res.ok) {
-        console.error("Failed to fetch bills");
+        console.error("❌ Failed to fetch bills");
         return;
       }
 
       const data = await res.json();
 
-      console.log("BILLS DATA 👉", data); // 🔥 DEBUG
+      console.log("🧾 RAW BILLS 👉", data);
 
-      setBills(Array.isArray(data) ? data : []);
+      // ✅ FIX: Set correct state + filter unpaid
+      const filteredBills = (Array.isArray(data) ? data : []).filter(
+        (bill) => bill.status?.toUpperCase() !== "PAID",
+      );
+
+      setPendingBills(filteredBills);
     } catch (err) {
-      console.error("Error fetching bills:", err);
+      console.error("❌ Error fetching bills:", err);
     }
   };
 
+  // ✅ AUTO REFRESH
   useEffect(() => {
     if (!user?.username || !token) return;
 
@@ -154,20 +157,17 @@ export default function CustomerDashboard() {
 
     return () => clearInterval(interval);
   }, [user?.username, token]);
-
-  // ================= FILTER =================
+  // ================= NORMALIZE BILLS =================
   const userBills = Array.isArray(bills) ? bills : [];
 
-  // 🔥 FIXED: include current orders also
-  const pendingBills = [
-    ...userBills.filter((b) => (b.status || "").toUpperCase() === "PENDING"),
-    ...myOrders.filter((o) => (o.status || "").toUpperCase() === "PENDING"),
-  ];
+  // ================= FILTER =================
+  const pendingBills = userBills.filter(
+    (b) => (b.status || "").toUpperCase() === "PENDING",
+  );
 
   const orderHistory = userBills.filter((b) =>
     ["APPROVED", "PAID"].includes((b.status || "").toUpperCase()),
   );
-
   /* ================= FETCH FEEDBACK ================= */
   const fetchFeedback = async () => {
     if (!token) return;
@@ -651,15 +651,23 @@ export default function CustomerDashboard() {
                       {bill.status || "PENDING"}
                     </span>
 
-                    {/* AMOUNT */}
+                    {/* 🧾 ITEMS (NEW FIX) */}
+                    <div className="text-sm text-gray-600 mt-1">
+                      {(bill.items || []).map((item, index) => (
+                        <div key={index}>
+                          {item.name} x{item.quantity}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* 💰 AMOUNT (FIXED) */}
                     <p className="text-sm text-gray-500 mt-1">
-                      ₹{bill.totalAmount ?? 0}
+                      ₹{bill.amount ?? 0}
                     </p>
                   </div>
 
                   {/* RIGHT SIDE BUTTONS */}
                   <div className="flex gap-2 items-center">
-                    {/* 💳 PAY NOW */}
                     {bill.status?.toUpperCase() !== "PAID" && (
                       <Button
                         size="sm"
@@ -670,7 +678,6 @@ export default function CustomerDashboard() {
                       </Button>
                     )}
 
-                    {/* 📄 DOWNLOAD INVOICE */}
                     <Button
                       size="sm"
                       disabled={bill.status?.toUpperCase() !== "PAID"}
@@ -718,9 +725,18 @@ export default function CustomerDashboard() {
                         {status === "APPROVED" ? "PAID" : status}
                       </span>
 
-                      {/* AMOUNT */}
+                      {/* 🧾 ITEMS (NEW FIX) */}
+                      <div className="text-sm text-gray-600 mt-1">
+                        {(bill.items || []).map((item, index) => (
+                          <div key={index}>
+                            {item.name} x{item.quantity}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* 💰 AMOUNT (FIXED) */}
                       <p className="text-sm text-gray-500 mt-1">
-                        ₹{bill.totalAmount ?? 0}
+                        ₹{bill.amount ?? 0}
                       </p>
 
                       {/* DATE */}

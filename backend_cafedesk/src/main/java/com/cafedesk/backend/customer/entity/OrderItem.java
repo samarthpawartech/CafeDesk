@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "order_items") // ✅ GOOD PRACTICE (explicit table name)
+@Table(name = "order_items")
 public class OrderItem {
 
     @Id
@@ -15,8 +15,8 @@ public class OrderItem {
     private double price;
     private int quantity;
 
-    // 🔥 IMPORTANT: Prevent infinite JSON loop
-    @ManyToOne(fetch = FetchType.LAZY)
+    // ✅ MANY → ONE RELATION
+    @ManyToOne
     @JoinColumn(name = "order_id", nullable = false)
     @JsonBackReference
     private CurrentOrder order;
@@ -46,29 +46,18 @@ public class OrderItem {
     // ================= SETTERS =================
 
     public void setName(String name) {
-        this.name = (name != null) ? name : ""; // ✅ null safety
+        this.name = name;
     }
 
     public void setPrice(double price) {
-        this.price = Math.max(price, 0); // ✅ no negative price
+        this.price = price;
     }
 
     public void setQuantity(int quantity) {
-        this.quantity = (quantity > 0) ? quantity : 1; // ✅ avoid 0
+        this.quantity = quantity;
     }
 
     public void setOrder(CurrentOrder order) {
         this.order = order;
-    }
-
-    // ✅ DEBUG SUPPORT
-    @Override
-    public String toString() {
-        return "OrderItem{" +
-                "id=" + id +
-                ", name='" + name + '\'' +
-                ", price=" + price +
-                ", quantity=" + quantity +
-                '}';
     }
 }
