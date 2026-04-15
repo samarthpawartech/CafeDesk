@@ -43,7 +43,6 @@ public class BillService {
                 .orElseThrow(() -> new RuntimeException("Bill not found"));
 
         bill.setStatus("APPROVED");
-
         return mapToDTO(bill);
     }
 
@@ -52,7 +51,7 @@ public class BillService {
     public BillResponseDTO createBill(BillRequestDTO request) {
 
         if (request == null || request.getItems() == null || request.getItems().isEmpty()) {
-            throw new RuntimeException("Cannot create bill: No items found");
+            throw new RuntimeException("Cannot create bill: No items found ❌");
         }
 
         Bill bill = new Bill();
@@ -60,30 +59,54 @@ public class BillService {
         bill.setTableNumber(request.getTableNumber());
         bill.setStatus("PENDING");
 
-        // 🔥 Invoice generation (INV-0001)
+        // 🔥 Invoice generation
         Long count = billRepository.countBy();
         String invoiceNumber = String.format("INV-%04d", count + 1);
         bill.setInvoiceNumber(invoiceNumber);
 
         List<BillItem> itemList = new ArrayList<>();
 
+        // ✅ FIXED LOOP (SAFE VALUES)
         for (BillitemDTO dto : request.getItems()) {
+
+            if (dto.getPrice() == null || dto.getPrice() <= 0) {
+                throw new RuntimeException("Invalid item price ❌");
+            }
+
+            if (dto.getQuantity() == null || dto.getQuantity() <= 0) {
+                dto.setQuantity(1); // 🔥 AUTO FIX
+            }
+
             BillItem item = new BillItem();
             item.setName(dto.getName());
             item.setPrice(dto.getPrice());
             item.setQuantity(dto.getQuantity());
             item.setBill(bill);
+
             itemList.add(item);
+        }
+
+        // 🔥 DEBUG LOG (VERY IMPORTANT)
+        System.out.println("===== BILL DEBUG =====");
+        for (BillItem i : itemList) {
+            System.out.println(
+                    "Item: " + i.getName() +
+                            " | Price: " + i.getPrice() +
+                            " | Qty: " + i.getQuantity()
+            );
         }
 
         bill.setItems(itemList);
 
+        // ✅ SAFE TOTAL CALCULATION
         double total = itemList.stream()
-                .mapToDouble(i ->
-                        (i.getPrice() != null ? i.getPrice() : 0.0) *
-                                (i.getQuantity() != null ? i.getQuantity() : 0)
-                )
+                .filter(i -> i.getPrice() != null && i.getQuantity() != null)
+                .mapToDouble(i -> i.getPrice() * i.getQuantity())
                 .sum();
+
+        if (total <= 0) {
+            throw new RuntimeException("Bill total cannot be zero ❌");
+        }
 
         bill.setTotalAmount(total);
 
@@ -100,11 +123,10 @@ public class BillService {
                 .orElseThrow(() -> new RuntimeException("Bill not found"));
 
         if (!"APPROVED".equalsIgnoreCase(bill.getStatus())) {
-            throw new RuntimeException("Bill not approved yet");
+            throw new RuntimeException("Bill not approved yet ❌");
         }
 
         bill.setStatus("PAID");
-
         return mapToDTO(bill);
     }
 

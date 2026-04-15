@@ -23,15 +23,9 @@ import {
 const API_BASE = "http://localhost:8080/api/bills";
 const INVOICE_API = "http://localhost:8080/api/customer/invoice";
 
-// ✅ FIXED AUTH HEADER
 const getAuthHeaders = () => {
   const token = localStorage.getItem("token");
-
-  if (!token) return {}; // 🔥 IMPORTANT FIX
-
-  return {
-    Authorization: `Bearer ${token}`,
-  };
+  return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
 export const BillsView = () => {
@@ -43,47 +37,50 @@ export const BillsView = () => {
     fetchAllBills();
   }, []);
 
+  // ✅ FIXED FETCH
   const fetchAllBills = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      console.log("📡 Fetching bills...");
-
       const res = await fetch(`${API_BASE}/all`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...getAuthHeaders(),
-        },
+        headers: getAuthHeaders(),
       });
 
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Error ${res.status}: ${text}`);
+        throw new Error("Failed to fetch bills");
       }
 
       const data = await res.json();
-      setBills(data);
+
+      console.log("✅ Bills:", data);
+
+      setBills(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("❌ Fetch Error:", err);
-      setError(err.message || "Failed to fetch");
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
+  // ✅ STATUS HELPERS
+  const getStatus = (status) => status?.toUpperCase();
+
+  const isPaidOrApproved = (status) =>
+    ["PAID", "APPROVED"].includes(getStatus(status));
+
+  const getStatusLabel = (status) =>
+    getStatus(status) === "APPROVED" ? "Paid" : getStatus(status) || "Pending";
+
   const approveBill = async (bill) => {
     try {
       const res = await fetch(`${API_BASE}/approve/${bill.id}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...getAuthHeaders(),
-        },
+        headers: getAuthHeaders(),
       });
 
-      if (!res.ok) throw new Error(`Approve failed: ${res.status}`);
+      if (!res.ok) throw new Error("Approve failed");
 
       const updatedBill = await res.json();
 
@@ -93,7 +90,7 @@ export const BillsView = () => {
 
       downloadInvoice(updatedBill.id);
     } catch (err) {
-      alert(`Error approving bill: ${err.message}`);
+      alert(err.message);
     }
   };
 
@@ -103,17 +100,9 @@ export const BillsView = () => {
         `http://localhost:8080/api/payment/create-order/${bill.id}`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...getAuthHeaders(),
-          },
+          headers: getAuthHeaders(),
         },
       );
-
-      if (!res.ok) {
-        const err = await res.text();
-        throw new Error(err);
-      }
 
       const data = await res.json();
 
@@ -122,9 +111,7 @@ export const BillsView = () => {
         return;
       }
 
-      const cashfree = new window.Cashfree({
-        mode: "sandbox",
-      });
+      const cashfree = new window.Cashfree({ mode: "sandbox" });
 
       cashfree.checkout({
         paymentSessionId: data.payment_session_id,
@@ -138,99 +125,69 @@ export const BillsView = () => {
   const downloadInvoice = async (billId) => {
     try {
       const res = await fetch(`${INVOICE_API}/${billId}`, {
-        method: "GET",
         headers: getAuthHeaders(),
       });
 
-      if (!res.ok) throw new Error("Failed to download invoice");
-
       const blob = await res.blob();
-
       const url = window.URL.createObjectURL(blob);
+
       const a = document.createElement("a");
       a.href = url;
       a.download = `invoice_${billId}.pdf`;
-      document.body.appendChild(a);
       a.click();
-
-      a.remove();
-      window.URL.revokeObjectURL(url);
     } catch (err) {
-      alert("Error downloading invoice: " + err.message);
+      alert("Download error ❌");
     }
   };
 
-  const totalAmount = bills.reduce(
-    (sum, bill) => sum + (bill.totalAmount ?? 0),
-    0,
-  );
+  // ✅ FIXED CALCULATIONS
+  const totalAmount = bills.reduce((sum, b) => sum + (b.totalAmount ?? 0), 0);
 
   const pendingAmount = bills
-    .filter((b) => b.status === "PENDING")
-    .reduce((sum, bill) => sum + (bill.totalAmount ?? 0), 0);
+    .filter((b) => getStatus(b.status) === "PENDING")
+    .reduce((sum, b) => sum + (b.totalAmount ?? 0), 0);
 
   const paidAmount = bills
-    .filter((b) => b.status === "PAID")
-    .reduce((sum, bill) => sum + (bill.totalAmount ?? 0), 0);
+    .filter((b) => isPaidOrApproved(b.status))
+    .reduce((sum, b) => sum + (b.totalAmount ?? 0), 0);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-40">
-        Loading bills…
-      </div>
-    );
+    return <div className="flex justify-center h-40">Loading bills…</div>;
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-40 gap-2">
+      <div className="text-center">
         <p className="text-red-500">{error}</p>
-        <Button variant="outline" onClick={fetchAllBills}>
-          Retry
-        </Button>
+        <Button onClick={fetchAllBills}>Retry</Button>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* SUMMARY */}
+      <div className="grid grid-cols-3 gap-4">
         <Card className="p-6">
-          <div className="flex items-center gap-4">
-            <DollarSign />
-            <div>
-              <p>Total</p>
-              <p>₹{totalAmount.toFixed(2)}</p>
-            </div>
-          </div>
+          <DollarSign />
+          <p>Total ₹{totalAmount.toFixed(2)}</p>
         </Card>
 
         <Card className="p-6">
-          <div className="flex items-center gap-4">
-            <Clock />
-            <div>
-              <p>Pending</p>
-              <p>₹{pendingAmount.toFixed(2)}</p>
-            </div>
-          </div>
+          <Clock />
+          <p>Pending ₹{pendingAmount.toFixed(2)}</p>
         </Card>
 
         <Card className="p-6">
-          <div className="flex items-center gap-4">
-            <CheckCircle />
-            <div>
-              <p>Paid</p>
-              <p>₹{paidAmount.toFixed(2)}</p>
-            </div>
-          </div>
+          <CheckCircle />
+          <p>Paid ₹{paidAmount.toFixed(2)}</p>
         </Card>
       </div>
 
+      {/* TABLE */}
       <Card>
-        <div className="p-6 border-b">
-          <h3 className="flex items-center gap-2">
-            <FileText /> Employee Bill Approval
-          </h3>
+        <div className="p-6 border-b flex gap-2 items-center">
+          <FileText /> Employee Bill Approval
         </div>
 
         <Table>
@@ -248,8 +205,7 @@ export const BillsView = () => {
 
           <TableBody>
             {bills.map((bill) => {
-              const isApproved = bill.status === "APPROVED";
-              const isPaid = bill.status === "PAID";
+              const status = getStatus(bill.status);
 
               return (
                 <TableRow key={bill.id}>
@@ -259,18 +215,20 @@ export const BillsView = () => {
                   <TableCell>{bill.tableNumber}</TableCell>
                   <TableCell>₹{bill.totalAmount?.toFixed(2)}</TableCell>
 
+                  {/* ✅ FIXED STATUS */}
                   <TableCell>
-                    {isPaid ? (
-                      <Badge className="bg-green-600 text-white">Paid</Badge>
-                    ) : isApproved ? (
-                      <Badge className="bg-blue-500 text-white">Approved</Badge>
-                    ) : (
-                      <Badge className="bg-yellow-500 text-white">
-                        Pending
-                      </Badge>
-                    )}
+                    <Badge
+                      className={
+                        isPaidOrApproved(status)
+                          ? "bg-green-600 text-white"
+                          : "bg-yellow-500 text-white"
+                      }
+                    >
+                      {getStatusLabel(status)}
+                    </Badge>
                   </TableCell>
 
+                  {/* ACTIONS */}
                   <TableCell className="flex gap-2">
                     <Button
                       size="sm"
@@ -280,7 +238,7 @@ export const BillsView = () => {
                       <Printer className="w-4 h-4" />
                     </Button>
 
-                    {bill.status === "PENDING" && (
+                    {status === "PENDING" && (
                       <Button
                         size="sm"
                         className="bg-green-500 text-white"
@@ -290,7 +248,7 @@ export const BillsView = () => {
                       </Button>
                     )}
 
-                    {isApproved && (
+                    {status === "APPROVED" && (
                       <Button
                         size="sm"
                         className="bg-blue-500 text-white"
