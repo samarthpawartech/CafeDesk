@@ -17,7 +17,7 @@ public class CustomerOrderController {
 
     private final OrderService orderService;
 
-    // ✅ Constructor Injection (INTERFACE BASED)
+    // ✅ Constructor Injection
     public CustomerOrderController(OrderService orderService) {
         this.orderService = orderService;
     }
@@ -39,6 +39,25 @@ public class CustomerOrderController {
 
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("❌ Order failed: " + e.getMessage());
+        }
+    }
+
+    // ================= CUSTOMER ORDERS (FIXED) =================
+    // ✅ This fixes your error: /api/customer/orders/customer/test1
+    @GetMapping("/customer/{username}")
+    public ResponseEntity<List<CurrentOrder>> getOrdersByCustomer(@PathVariable String username) {
+
+        try {
+            System.out.println("📦 Fetching orders for: " + username);
+
+            List<CurrentOrder> orders = orderService.getCustomerBills(username);
+
+            return ResponseEntity.ok(orders != null ? orders : List.of());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(List.of());
         }
     }
 

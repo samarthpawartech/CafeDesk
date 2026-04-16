@@ -119,13 +119,16 @@ export default function CustomerDashboard() {
     if (!user?.username || !token) return;
 
     try {
-      const res = await fetch(`${API_BASE}/customer/bills/${user.username}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const res = await fetch(
+        `${API_BASE}/customer/orders/bills/${user.username}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       if (!res.ok) {
         console.error("❌ Failed to fetch bills");
@@ -136,12 +139,8 @@ export default function CustomerDashboard() {
 
       console.log("🧾 RAW BILLS 👉", data);
 
-      // ✅ FIX: Set correct state + filter unpaid
-      const filteredBills = (Array.isArray(data) ? data : []).filter(
-        (bill) => bill.status?.toUpperCase() !== "PAID",
-      );
-
-      setPendingBills(filteredBills);
+      // ✅ FIX: store ALL bills
+      setBills(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("❌ Error fetching bills:", err);
     }
