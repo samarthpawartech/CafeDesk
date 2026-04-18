@@ -146,16 +146,9 @@ export default function CustomerDashboard() {
     }
   };
 
-  // ✅ AUTO REFRESH
   useEffect(() => {
-    if (!user?.username || !token) return;
-
     fetchBills();
-
-    const interval = setInterval(fetchBills, 5000);
-
-    return () => clearInterval(interval);
-  }, [user?.username, token]);
+  }, []);
   // ================= NORMALIZE BILLS =================
   const userBills = Array.isArray(bills) ? bills : [];
 

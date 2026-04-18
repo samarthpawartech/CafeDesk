@@ -11,7 +11,6 @@ export const OrdersList = () => {
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
 
-  // ✅ BACKEND → FRONTEND STATUS MAP (FIXED)
   const statusMap = {
     PENDING: "pending",
     PREPARING: "preparing",
@@ -49,9 +48,10 @@ export const OrdersList = () => {
           customerName: order.customerName || "Guest",
           timestamp: order.createdAt || new Date(),
 
-          // ✅ FIXED STATUS
+          // ✅ STATUS
           status: statusMap[order.status] || "pending",
 
+          // ✅ CORRECT FIELD (items)
           items:
             order.items?.map((item) => ({
               itemName: item.name,
@@ -59,6 +59,7 @@ export const OrdersList = () => {
               price: item.price,
             })) || [],
 
+          // ✅ CORRECT FIELD (amount)
           total: order.amount || 0,
         }));
 
@@ -71,7 +72,7 @@ export const OrdersList = () => {
       });
   }, []);
 
-  // ✅ UPDATE STATUS (FIXED)
+  // ✅ UPDATE STATUS
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
       const backendStatus = reverseStatusMap[newStatus];
@@ -94,12 +95,11 @@ export const OrdersList = () => {
 
   return (
     <div className="space-y-6">
-      {/* LOADING */}
       {loading && (
         <p className="text-center text-gray-500">Loading orders...</p>
       )}
 
-      {/* ================= STATS ================= */}
+      {/* STATS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {Object.entries(statusConfig).map(([status, config]) => {
           const Icon = config.icon;
@@ -127,7 +127,7 @@ export const OrdersList = () => {
         })}
       </div>
 
-      {/* ================= FILTER ================= */}
+      {/* FILTER */}
       <div className="flex gap-2 flex-wrap">
         <Button onClick={() => setFilter("all")}>All Orders</Button>
 
@@ -138,7 +138,7 @@ export const OrdersList = () => {
         ))}
       </div>
 
-      {/* ================= ORDERS ================= */}
+      {/* ORDERS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {filteredOrders.map((order) => {
           const StatusIcon = statusConfig[order.status]?.icon;
