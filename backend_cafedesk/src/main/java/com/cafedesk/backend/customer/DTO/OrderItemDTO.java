@@ -9,9 +9,17 @@ public class OrderItemDTO {
     // ✅ Default constructor
     public OrderItemDTO() {}
 
-    // ✅ Getters
+    // ✅ Optional: Parameterized constructor (useful)
+    public OrderItemDTO(String name, Double price, Integer quantity) {
+        this.name = name;
+        this.price = price;
+        this.quantity = quantity;
+    }
+
+    // ================= GETTERS =================
+
     public String getName() {
-        return name;
+        return name != null ? name : "";
     }
 
     public Double getPrice() {
@@ -22,7 +30,8 @@ public class OrderItemDTO {
         return quantity != null ? quantity : 1;
     }
 
-    // ✅ Setters
+    // ================= SETTERS =================
+
     public void setName(String name) {
         this.name = name;
     }

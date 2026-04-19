@@ -1,6 +1,5 @@
 package com.cafedesk.backend.customer.entity;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -25,16 +24,16 @@ public class CurrentOrder {
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    // ✅ RELATION FIXED
+    // ✅ FIXED: removed JsonManagedReference
     @OneToMany(
             mappedBy = "order",
             cascade = CascadeType.ALL,
-            orphanRemoval = true
+            orphanRemoval = true,
+            fetch = FetchType.EAGER   // 🔥 ensures items are fetched
     )
-    @JsonManagedReference
     private List<OrderItem> items = new ArrayList<>();
 
-    // ✅ HELPER METHOD (BEST PRACTICE)
+    // ✅ HELPER METHOD
     public void addItem(OrderItem item) {
         item.setOrder(this);
         this.items.add(item);
@@ -97,7 +96,7 @@ public class CurrentOrder {
         this.items.clear();
         if (items != null) {
             for (OrderItem item : items) {
-                addItem(item); // ✅ ensures FK is set
+                addItem(item); // ensures FK is set
             }
         }
     }
