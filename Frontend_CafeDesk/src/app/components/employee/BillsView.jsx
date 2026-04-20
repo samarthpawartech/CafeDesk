@@ -37,7 +37,7 @@ export const BillsView = () => {
     fetchAllBills();
   }, []);
 
-  // ✅ FIXED FETCH
+  // ✅ FETCH
   const fetchAllBills = async () => {
     try {
       setLoading(true);
@@ -47,14 +47,9 @@ export const BillsView = () => {
         headers: getAuthHeaders(),
       });
 
-      if (!res.ok) {
-        throw new Error("Failed to fetch bills");
-      }
+      if (!res.ok) throw new Error("Failed to fetch bills");
 
       const data = await res.json();
-
-      console.log("✅ Bills:", data);
-
       setBills(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("❌ Fetch Error:", err);
@@ -64,7 +59,7 @@ export const BillsView = () => {
     }
   };
 
-  // ✅ STATUS HELPERS
+  // ✅ HELPERS
   const getStatus = (status) => status?.toUpperCase();
 
   const isPaidOrApproved = (status) =>
@@ -73,6 +68,7 @@ export const BillsView = () => {
   const getStatusLabel = (status) =>
     getStatus(status) === "APPROVED" ? "Paid" : getStatus(status) || "Pending";
 
+  // ✅ FIXED APPROVE
   const approveBill = async (bill) => {
     try {
       const res = await fetch(`${API_BASE}/approve/${bill.id}`, {
@@ -82,18 +78,16 @@ export const BillsView = () => {
 
       if (!res.ok) throw new Error("Approve failed");
 
-      const updatedBill = await res.json();
+      // 🔥 ALWAYS REFRESH FROM DB
+      await fetchAllBills();
 
-      setBills((prev) =>
-        prev.map((b) => (b.id === updatedBill.id ? updatedBill : b)),
-      );
-
-      downloadInvoice(updatedBill.id);
+      downloadInvoice(bill.id);
     } catch (err) {
       alert(err.message);
     }
   };
 
+  // ✅ FIXED PAY
   const payBill = async (bill) => {
     try {
       const res = await fetch(
@@ -117,11 +111,17 @@ export const BillsView = () => {
         paymentSessionId: data.payment_session_id,
         redirectTarget: "_modal",
       });
+
+      // 🔥 AUTO REFRESH AFTER PAYMENT (simple approach)
+      setTimeout(() => {
+        fetchAllBills();
+      }, 4000);
     } catch (err) {
       alert("Payment Error ❌ " + err.message);
     }
   };
 
+  // ✅ DOWNLOAD
   const downloadInvoice = async (billId) => {
     try {
       const res = await fetch(`${INVOICE_API}/${billId}`, {
@@ -140,7 +140,7 @@ export const BillsView = () => {
     }
   };
 
-  // ✅ FIXED CALCULATIONS
+  // ✅ CALCULATIONS
   const totalAmount = bills.reduce((sum, b) => sum + (b.totalAmount ?? 0), 0);
 
   const pendingAmount = bills
@@ -215,7 +215,6 @@ export const BillsView = () => {
                   <TableCell>{bill.tableNumber}</TableCell>
                   <TableCell>₹{bill.totalAmount?.toFixed(2)}</TableCell>
 
-                  {/* ✅ FIXED STATUS */}
                   <TableCell>
                     <Badge
                       className={
@@ -228,7 +227,6 @@ export const BillsView = () => {
                     </Badge>
                   </TableCell>
 
-                  {/* ACTIONS */}
                   <TableCell className="flex gap-2">
                     <Button
                       size="sm"

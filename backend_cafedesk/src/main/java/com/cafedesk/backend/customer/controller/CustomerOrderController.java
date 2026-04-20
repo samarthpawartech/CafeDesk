@@ -42,8 +42,7 @@ public class CustomerOrderController {
         }
     }
 
-    // ================= CUSTOMER ORDERS (FIXED) =================
-    // ✅ This fixes your error: /api/customer/orders/customer/test1
+    // ================= CUSTOMER ORDERS =================
     @GetMapping("/customer/{username}")
     public ResponseEntity<List<CurrentOrder>> getOrdersByCustomer(@PathVariable String username) {
 
@@ -79,7 +78,7 @@ public class CustomerOrderController {
         }
     }
 
-    // ================= ALL ORDERS =================
+    // ================= ALL ORDERS (EMPLOYEE USES THIS) =================
     @GetMapping("/all")
     public ResponseEntity<List<CurrentOrder>> getAllOrders() {
 
@@ -94,6 +93,26 @@ public class CustomerOrderController {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(List.of());
+        }
+    }
+
+    // ================= 🔥 UPDATE ORDER STATUS (NEW FIX) =================
+    @PutMapping("/{orderId}/status")
+    public ResponseEntity<?> updateOrderStatus(
+            @PathVariable Long orderId,
+            @RequestParam String status) {
+
+        try {
+            System.out.println("🔄 Updating order " + orderId + " to " + status);
+
+            orderService.updateOrderStatus(orderId, status);
+
+            return ResponseEntity.ok("✅ Status updated");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("❌ Failed to update status: " + e.getMessage());
         }
     }
 }

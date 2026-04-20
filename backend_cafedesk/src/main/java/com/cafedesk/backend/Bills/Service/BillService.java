@@ -43,7 +43,11 @@ public class BillService {
                 .orElseThrow(() -> new RuntimeException("Bill not found"));
 
         bill.setStatus("APPROVED");
-        return mapToDTO(bill);
+
+        // 🔥 IMPORTANT FIX
+        Bill updated = billRepository.save(bill);
+
+        return mapToDTO(updated);
     }
 
     // ================= CREATE BILL =================
@@ -66,7 +70,6 @@ public class BillService {
 
         List<BillItem> itemList = new ArrayList<>();
 
-        // ✅ FIXED LOOP (SAFE VALUES)
         for (BillitemDTO dto : request.getItems()) {
 
             if (dto.getPrice() == null || dto.getPrice() <= 0) {
@@ -74,7 +77,7 @@ public class BillService {
             }
 
             if (dto.getQuantity() == null || dto.getQuantity() <= 0) {
-                dto.setQuantity(1); // 🔥 AUTO FIX
+                dto.setQuantity(1);
             }
 
             BillItem item = new BillItem();
@@ -86,19 +89,8 @@ public class BillService {
             itemList.add(item);
         }
 
-        // 🔥 DEBUG LOG (VERY IMPORTANT)
-        System.out.println("===== BILL DEBUG =====");
-        for (BillItem i : itemList) {
-            System.out.println(
-                    "Item: " + i.getName() +
-                            " | Price: " + i.getPrice() +
-                            " | Qty: " + i.getQuantity()
-            );
-        }
-
         bill.setItems(itemList);
 
-        // ✅ SAFE TOTAL CALCULATION
         double total = itemList.stream()
                 .filter(i -> i.getPrice() != null && i.getQuantity() != null)
                 .mapToDouble(i -> i.getPrice() * i.getQuantity())
@@ -127,7 +119,11 @@ public class BillService {
         }
 
         bill.setStatus("PAID");
-        return mapToDTO(bill);
+
+        // 🔥 IMPORTANT FIX
+        Bill updated = billRepository.save(bill);
+
+        return mapToDTO(updated);
     }
 
     // ================= DTO MAPPER =================

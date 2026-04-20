@@ -32,9 +32,9 @@ export const OrdersList = () => {
     completed: { label: "Completed", color: "bg-gray-500", icon: CheckCircle },
   };
 
-  // ✅ FETCH
+  // ✅ FETCH (FIXED)
   useEffect(() => {
-    fetch("http://localhost:8080/api/customer/orders/all")
+    fetch("http://localhost:8080/api/customer/orders/all") // ✅ CORRECT API
       .then((res) => {
         if (!res.ok) throw new Error("API failed");
         return res.json();
@@ -48,10 +48,9 @@ export const OrdersList = () => {
           customerName: order.customerName || "Guest",
           timestamp: order.createdAt || new Date(),
 
-          // ✅ STATUS
-          status: statusMap[order.status] || "pending",
+          // ✅ FIXED STATUS HANDLING
+          status: statusMap[order.status?.toUpperCase()] || "pending",
 
-          // ✅ CORRECT FIELD (items)
           items:
             order.items?.map((item) => ({
               itemName: item.name,
@@ -59,7 +58,6 @@ export const OrdersList = () => {
               price: item.price,
             })) || [],
 
-          // ✅ CORRECT FIELD (amount)
           total: order.amount || 0,
         }));
 
@@ -72,21 +70,22 @@ export const OrdersList = () => {
       });
   }, []);
 
-  // ✅ UPDATE STATUS
+  // ✅ UPDATE STATUS (FIXED)
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
       const backendStatus = reverseStatusMap[newStatus];
 
       await fetch(
-        `http://localhost:8080/api/customer/orders/${orderId}/status?status=${backendStatus}`,
+        `http://localhost:8080/api/customer/orders/${orderId}/status?status=${backendStatus}`, // ✅ CORRECT API
         { method: "PUT" },
       );
 
+      // update UI instantly
       setOrders((prev) =>
         prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o)),
       );
     } catch (err) {
-      console.error(err);
+      console.error("❌ Status Update Error:", err);
     }
   };
 
