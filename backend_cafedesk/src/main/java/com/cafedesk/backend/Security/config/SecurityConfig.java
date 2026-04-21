@@ -36,7 +36,7 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowCredentials(true);
-        config.setAllowedOriginPatterns(List.of("*")); // 🔥 allow all origins (safe for dev)
+        config.setAllowedOriginPatterns(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
 
@@ -71,10 +71,11 @@ public class SecurityConfig {
                         .requestMatchers("/api/customer/place-order").permitAll()
                         .requestMatchers("/api/payment/**").permitAll()
                         .requestMatchers("/api/customer/feedback/**").permitAll()
+
+                        // ✅ IMPORTANT: Bills fully open
                         .requestMatchers("/api/bills/**").permitAll()
 
-                        // 🔥 DEBUG FIX (IMPORTANT)
-                        // Allow orders temporarily to confirm backend works
+                        // DEBUG
                         .requestMatchers("/api/customer/orders/**").permitAll()
 
                         // Preflight
@@ -84,8 +85,6 @@ public class SecurityConfig {
 
                         .requestMatchers("/api/admin/**").authenticated()
                         .requestMatchers("/api/employee/**").authenticated()
-
-                        // keep this LAST
                         .requestMatchers("/api/customer/**").authenticated()
 
                         .anyRequest().authenticated()
@@ -97,6 +96,7 @@ public class SecurityConfig {
                         )
                 )
 
+                // ✅ KEEP JWT FILTER
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

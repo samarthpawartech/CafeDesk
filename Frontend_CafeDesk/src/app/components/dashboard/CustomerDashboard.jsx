@@ -116,7 +116,10 @@ export default function CustomerDashboard() {
 
   /* ================= FETCH BILLS ================= */
   const fetchBills = async () => {
-    if (!user?.username || !token) return;
+    if (!user?.username || !token) {
+      console.warn("⛔ Skipping fetchBills - missing user/token");
+      return;
+    }
 
     try {
       const res = await fetch(
@@ -124,31 +127,50 @@ export default function CustomerDashboard() {
         {
           method: "GET",
           headers: {
-            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
         },
       );
 
       if (!res.ok) {
-        console.error("❌ Failed to fetch bills");
+        const errText = await res.text();
+        console.error("❌ Failed to fetch bills:", errText);
         return;
       }
 
       const data = await res.json();
 
-      console.log("🧾 RAW BILLS 👉", data);
+      console.log("🧾 UPDATED BILLS 👉", data);
 
-      // ✅ FIX: store ALL bills
       setBills(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("❌ Error fetching bills:", err);
     }
   };
 
+  /* ✅ FIXED useEffect */
   useEffect(() => {
-    fetchBills();
-  }, []);
+    if (user?.username && token) {
+      fetchBills();
+    }
+  }, [user?.username, token]);
+
+  /* ✅ OPTIONAL AUTO REFRESH (VERY IMPORTANT) */
+  useEffect(() => {
+    let interval;
+
+    if (activeTab === "bills" && user?.username && token) {
+      fetchBills();
+
+      interval = setInterval(() => {
+        fetchBills();
+      }, 5000); // refresh every 5 sec
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [activeTab, user?.username, token]);
   // ================= NORMALIZE BILLS =================
   const userBills = Array.isArray(bills) ? bills : [];
 
@@ -207,7 +229,6 @@ export default function CustomerDashboard() {
     }
 
     try {
-      // 🔥 FIX: Ensure correct numeric values
       const orderItems = currentOrder.map((item) => {
         const price = Number(item.price);
         const quantity = Number(item.quantity ?? 1);
@@ -219,11 +240,10 @@ export default function CustomerDashboard() {
         return {
           name: item.name,
           price: price,
-          quantity: quantity > 0 ? quantity : 1, // 🔥 force min 1
+          quantity: quantity > 0 ? quantity : 1,
         };
       });
 
-      // 🔥 FIX: calculate total safely
       const totalAmount = orderItems.reduce(
         (sum, item) => sum + item.price * item.quantity,
         0,
@@ -237,14 +257,14 @@ export default function CustomerDashboard() {
       const orderPayload = {
         customerName: user.username,
         tableNumber: tableNumber || "T01",
-        amount: totalAmount, // 🔥 use calculated total
+        amount: totalAmount,
         items: orderItems,
       };
 
-      // 🔥 DEBUG (VERY IMPORTANT)
       console.log("🚀 FINAL ORDER PAYLOAD 👉", orderPayload);
 
-      const response = await fetch(`${API_BASE}/customer/orders`, {
+      // ================= 1️⃣ SAVE ORDER =================
+      const orderResponse = await fetch(`${API_BASE}/customer/orders`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -253,24 +273,42 @@ export default function CustomerDashboard() {
         body: JSON.stringify(orderPayload),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("❌ Backend Error:", errorText);
-        alert("❌ Failed: " + errorText);
+      if (!orderResponse.ok) {
+        const errorText = await orderResponse.text();
+        console.error("❌ Order Error:", errorText);
+        alert("❌ Order Failed: " + errorText);
         return;
       }
 
-      const data = await response.json();
-      console.log("✅ Order Saved:", data);
+      const orderData = await orderResponse.json();
+      console.log("✅ Order Saved:", orderData);
 
-      // ✅ CLEAR CART
+      // ================= 2️⃣ CREATE BILL =================
+      const billResponse = await fetch(`${API_BASE}/bills/place-order`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(orderPayload),
+      });
+
+      if (!billResponse.ok) {
+        const errorText = await billResponse.text();
+        console.error("❌ Bill Error:", errorText);
+        alert("⚠️ Order saved but Bill failed: " + errorText);
+      } else {
+        const billData = await billResponse.json();
+        console.log("🧾 Bill Created:", billData);
+      }
+
+      // ================= CLEANUP =================
       clearOrder();
 
-      // 🔥 REFRESH
       await fetchCurrentOrders();
       await fetchBills();
 
-      alert("✅ Order placed successfully!");
+      alert("✅ Order placed & Bill generated!");
 
       setActiveTab("bills");
     } catch (error) {
@@ -280,28 +318,44 @@ export default function CustomerDashboard() {
   };
   // ================= 💳 PAY NOW =================
   const handlePayNow = async (billId) => {
+    if (!billId) {
+      alert("Invalid Bill ID ❌");
+      return;
+    }
+
     try {
+      // 🔒 Optional: prevent multiple clicks
+      console.log("💳 Paying Bill ID:", billId);
+
       const res = await fetch(`${API_BASE}/bills/pay/${billId}`, {
         method: "PUT",
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
       });
 
+      // 🔥 Handle non-200 responses properly
       if (!res.ok) {
-        alert("Payment failed ❌");
+        const errorText = await res.text();
+        console.error("❌ Payment Error:", errorText);
+        alert(errorText || "Payment failed ❌");
         return;
       }
 
+      // ✅ Parse response safely
+      const data = await res.json();
+      console.log("✅ Payment Success:", data);
+
       alert("✅ Payment successful");
 
-      fetchBills(); // 🔄 refresh list
+      // 🔄 Refresh UI
+      await fetchBills();
     } catch (err) {
-      console.error(err);
-      alert("Error while paying ❌");
+      console.error("❌ Payment Exception:", err);
+      alert("Server error while processing payment ❌");
     }
   };
-
   /* ================= FETCH CURRENT ORDERS FROM DB ================= */
   const fetchCurrentOrders = async () => {
     if (!user?.username || !token) return;

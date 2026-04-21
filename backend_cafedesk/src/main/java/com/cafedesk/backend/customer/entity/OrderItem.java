@@ -15,49 +15,31 @@ public class OrderItem {
     private double price;
     private int quantity;
 
-    // ✅ MANY → ONE RELATION
-    @ManyToOne
+    // ✅ MANY → ONE (keep LAZY by default)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
     @JsonBackReference
     private CurrentOrder order;
 
     // ================= GETTERS =================
 
-    public Long getId() {
-        return id;
-    }
+    public Long getId() { return id; }
 
-    public String getName() {
-        return name;
-    }
+    public String getName() { return name; }
 
-    public double getPrice() {
-        return price;
-    }
+    public double getPrice() { return price; }
 
-    public int getQuantity() {
-        return quantity;
-    }
+    public int getQuantity() { return quantity; }
 
-    public CurrentOrder getOrder() {
-        return order;
-    }
+    public CurrentOrder getOrder() { return order; }
 
     // ================= SETTERS =================
 
-    public void setName(String name) {
-        this.name = name;
-    }
+    public void setName(String name) { this.name = name; }
 
-    public void setPrice(double price) {
-        this.price = price;
-    }
+    public void setPrice(double price) { this.price = price; }
 
-    public void setQuantity(int quantity) {
-        this.quantity = quantity;
-    }
+    public void setQuantity(int quantity) { this.quantity = quantity; }
 
-    public void setOrder(CurrentOrder order) {
-        this.order = order;
-    }
+    public void setOrder(CurrentOrder order) { this.order = order; }
 }

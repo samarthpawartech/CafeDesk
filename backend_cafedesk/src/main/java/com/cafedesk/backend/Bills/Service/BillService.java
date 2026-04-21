@@ -22,16 +22,19 @@ public class BillService {
 
     // ================= FETCH ALL =================
     public List<BillResponseDTO> getAllBills() {
-        return billRepository.findAllWithItems()
-                .stream()
+        List<Bill> bills = billRepository.findAll();
+
+        return bills.stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
     }
 
     // ================= CUSTOMER BILLS =================
     public List<BillResponseDTO> getCustomerBills(String name) {
-        return billRepository.findByCustomerNameWithItems(name)
-                .stream()
+
+        List<Bill> bills = billRepository.findByCustomerName(name);
+
+        return bills.stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
     }
@@ -39,12 +42,12 @@ public class BillService {
     // ================= APPROVE BILL =================
     @Transactional
     public BillResponseDTO approveBill(Long id) {
+
         Bill bill = billRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Bill not found"));
+                .orElseThrow(() -> new RuntimeException("Bill not found ❌"));
 
         bill.setStatus("APPROVED");
 
-        // 🔥 IMPORTANT FIX
         Bill updated = billRepository.save(bill);
 
         return mapToDTO(updated);
@@ -55,7 +58,7 @@ public class BillService {
     public BillResponseDTO createBill(BillRequestDTO request) {
 
         if (request == null || request.getItems() == null || request.getItems().isEmpty()) {
-            throw new RuntimeException("Cannot create bill: No items found ❌");
+            throw new RuntimeException("Cannot create bill: No items ❌");
         }
 
         Bill bill = new Bill();
@@ -63,17 +66,15 @@ public class BillService {
         bill.setTableNumber(request.getTableNumber());
         bill.setStatus("PENDING");
 
-        // 🔥 Invoice generation
-        Long count = billRepository.countBy();
-        String invoiceNumber = String.format("INV-%04d", count + 1);
-        bill.setInvoiceNumber(invoiceNumber);
+        // ✅ UNIQUE INVOICE
+        bill.setInvoiceNumber("INV-" + System.currentTimeMillis());
 
         List<BillItem> itemList = new ArrayList<>();
 
         for (BillitemDTO dto : request.getItems()) {
 
             if (dto.getPrice() == null || dto.getPrice() <= 0) {
-                throw new RuntimeException("Invalid item price ❌");
+                throw new RuntimeException("Invalid price ❌");
             }
 
             if (dto.getQuantity() == null || dto.getQuantity() <= 0) {
@@ -92,12 +93,11 @@ public class BillService {
         bill.setItems(itemList);
 
         double total = itemList.stream()
-                .filter(i -> i.getPrice() != null && i.getQuantity() != null)
                 .mapToDouble(i -> i.getPrice() * i.getQuantity())
                 .sum();
 
         if (total <= 0) {
-            throw new RuntimeException("Bill total cannot be zero ❌");
+            throw new RuntimeException("Total cannot be zero ❌");
         }
 
         bill.setTotalAmount(total);
@@ -112,15 +112,14 @@ public class BillService {
     public BillResponseDTO payBill(Long id) {
 
         Bill bill = billRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Bill not found"));
+                .orElseThrow(() -> new RuntimeException("Bill not found ❌"));
 
         if (!"APPROVED".equalsIgnoreCase(bill.getStatus())) {
-            throw new RuntimeException("Bill not approved yet ❌");
+            throw new RuntimeException("Bill not approved ❌");
         }
 
         bill.setStatus("PAID");
 
-        // 🔥 IMPORTANT FIX
         Bill updated = billRepository.save(bill);
 
         return mapToDTO(updated);
@@ -138,9 +137,7 @@ public class BillService {
 
         dto.setAmount(bill.getTotalAmount());
         dto.setTotalAmount(bill.getTotalAmount());
-
-        dto.setOrderId(bill.getOrder() != null ? bill.getOrder().getId() : null);
-
+        
         dto.setStatus(bill.getStatus());
         dto.setCreatedAt(bill.getCreatedAt());
 

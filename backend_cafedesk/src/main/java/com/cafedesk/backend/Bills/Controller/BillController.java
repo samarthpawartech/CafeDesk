@@ -26,7 +26,7 @@ public class BillController {
     }
 
     // ================= CUSTOMER BILLS =================
-    @GetMapping("/{username}")
+    @GetMapping("/user/{username}")
     public ResponseEntity<List<BillResponseDTO>> getCustomerBills(
             @PathVariable String username) {
 
@@ -50,24 +50,15 @@ public class BillController {
     public ResponseEntity<BillResponseDTO> createBill(
             @RequestBody BillRequestDTO request) {
 
-        // 🔥 DEBUG LOGS (remove later if needed)
-        System.out.println("===== BILL REQUEST =====");
-        System.out.println("Customer: " + request.getCustomerName());
-        System.out.println("Table: " + request.getTableNumber());
-
         if (request.getItems() == null || request.getItems().isEmpty()) {
-            throw new RuntimeException("Items list cannot be empty");
+            return ResponseEntity.badRequest().build();
         }
 
-        request.getItems().forEach(item -> {
-            System.out.println("Item: " + item.getName());
-            System.out.println("Price: " + item.getPrice());
-            System.out.println("Qty: " + item.getQuantity());
-
+        for (var item : request.getItems()) {
             if (item.getPrice() == null || item.getQuantity() == null) {
-                throw new RuntimeException("Price or Quantity cannot be null");
+                return ResponseEntity.badRequest().build();
             }
-        });
+        }
 
         return ResponseEntity.ok(billService.createBill(request));
     }

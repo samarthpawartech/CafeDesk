@@ -11,8 +11,7 @@ public class BillResponseDTO {
     private String customerName;
     private String tableNumber;
 
-    // ✅ Optional order reference
-    private Long orderId;
+    // ❌ REMOVED orderId (no longer used)
 
     // ✅ Keep both for frontend compatibility
     private Double amount;
@@ -41,16 +40,12 @@ public class BillResponseDTO {
         return tableNumber;
     }
 
-    public Long getOrderId() {
-        return orderId;
-    }
-
     public Double getAmount() {
-        return amount != null ? amount : 0.0; // ✅ safe
+        return amount != null ? amount : 0.0;
     }
 
     public Double getTotalAmount() {
-        return totalAmount != null ? totalAmount : 0.0; // ✅ safe
+        return totalAmount != null ? totalAmount : 0.0;
     }
 
     public String getStatus() {
@@ -83,19 +78,15 @@ public class BillResponseDTO {
         this.tableNumber = tableNumber;
     }
 
-    public void setOrderId(Long orderId) {
-        this.orderId = orderId;
-    }
-
     // 🔥 IMPORTANT: keep both fields in sync
     public void setTotalAmount(Double totalAmount) {
         this.totalAmount = totalAmount;
-        this.amount = totalAmount; // ✅ sync for frontend
+        this.amount = totalAmount;
     }
 
     public void setAmount(Double amount) {
         this.amount = amount;
-        this.totalAmount = amount; // ✅ sync for backend
+        this.totalAmount = amount;
     }
 
     public void setStatus(String status) {

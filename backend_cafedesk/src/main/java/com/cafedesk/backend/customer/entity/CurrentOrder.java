@@ -24,16 +24,16 @@ public class CurrentOrder {
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    // ✅ FIXED: removed JsonManagedReference
+    // ✅ FIX: LAZY (not EAGER)
     @OneToMany(
             mappedBy = "order",
             cascade = CascadeType.ALL,
             orphanRemoval = true,
-            fetch = FetchType.EAGER   // 🔥 ensures items are fetched
+            fetch = FetchType.LAZY
     )
     private List<OrderItem> items = new ArrayList<>();
 
-    // ✅ HELPER METHOD
+    // ✅ HELPER METHODS
     public void addItem(OrderItem item) {
         item.setOrder(this);
         this.items.add(item);
@@ -46,57 +46,35 @@ public class CurrentOrder {
 
     // ================= GETTERS =================
 
-    public Long getId() {
-        return id;
-    }
+    public Long getId() { return id; }
 
-    public String getCustomerName() {
-        return customerName;
-    }
+    public String getCustomerName() { return customerName; }
 
-    public String getTableNumber() {
-        return tableNumber;
-    }
+    public String getTableNumber() { return tableNumber; }
 
-    public double getAmount() {
-        return amount;
-    }
+    public double getAmount() { return amount; }
 
-    public OrderStatus getStatus() {
-        return status;
-    }
+    public OrderStatus getStatus() { return status; }
 
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
+    public LocalDateTime getCreatedAt() { return createdAt; }
 
-    public List<OrderItem> getItems() {
-        return items;
-    }
+    public List<OrderItem> getItems() { return items; }
 
     // ================= SETTERS =================
 
-    public void setCustomerName(String customerName) {
-        this.customerName = customerName;
-    }
+    public void setCustomerName(String customerName) { this.customerName = customerName; }
 
-    public void setTableNumber(String tableNumber) {
-        this.tableNumber = tableNumber;
-    }
+    public void setTableNumber(String tableNumber) { this.tableNumber = tableNumber; }
 
-    public void setAmount(double amount) {
-        this.amount = amount;
-    }
+    public void setAmount(double amount) { this.amount = amount; }
 
-    public void setStatus(OrderStatus status) {
-        this.status = status;
-    }
+    public void setStatus(OrderStatus status) { this.status = status; }
 
     public void setItems(List<OrderItem> items) {
         this.items.clear();
         if (items != null) {
             for (OrderItem item : items) {
-                addItem(item); // ensures FK is set
+                addItem(item);
             }
         }
     }
