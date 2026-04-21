@@ -22,19 +22,16 @@ public class BillService {
 
     // ================= FETCH ALL =================
     public List<BillResponseDTO> getAllBills() {
-        List<Bill> bills = billRepository.findAll();
-
-        return bills.stream()
+        return billRepository.findAllWithItems()
+                .stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
     }
 
     // ================= CUSTOMER BILLS =================
     public List<BillResponseDTO> getCustomerBills(String name) {
-
-        List<Bill> bills = billRepository.findByCustomerName(name);
-
-        return bills.stream()
+        return billRepository.findByCustomerNameWithItems(name)
+                .stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
     }
@@ -42,15 +39,12 @@ public class BillService {
     // ================= APPROVE BILL =================
     @Transactional
     public BillResponseDTO approveBill(Long id) {
-
         Bill bill = billRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Bill not found ❌"));
+                .orElseThrow(() -> new RuntimeException("Bill not found"));
 
         bill.setStatus("APPROVED");
 
-        Bill updated = billRepository.save(bill);
-
-        return mapToDTO(updated);
+        return mapToDTO(bill);
     }
 
     // ================= CREATE BILL =================
@@ -58,7 +52,7 @@ public class BillService {
     public BillResponseDTO createBill(BillRequestDTO request) {
 
         if (request == null || request.getItems() == null || request.getItems().isEmpty()) {
-            throw new RuntimeException("Cannot create bill: No items ❌");
+            throw new RuntimeException("Cannot create bill: No items found");
         }
 
         Bill bill = new Bill();
@@ -66,39 +60,30 @@ public class BillService {
         bill.setTableNumber(request.getTableNumber());
         bill.setStatus("PENDING");
 
-        // ✅ UNIQUE INVOICE
-        bill.setInvoiceNumber("INV-" + System.currentTimeMillis());
+        // 🔥 Invoice generation (INV-0001)
+        Long count = billRepository.countBy();
+        String invoiceNumber = String.format("INV-%04d", count + 1);
+        bill.setInvoiceNumber(invoiceNumber);
 
         List<BillItem> itemList = new ArrayList<>();
 
         for (BillitemDTO dto : request.getItems()) {
-
-            if (dto.getPrice() == null || dto.getPrice() <= 0) {
-                throw new RuntimeException("Invalid price ❌");
-            }
-
-            if (dto.getQuantity() == null || dto.getQuantity() <= 0) {
-                dto.setQuantity(1);
-            }
-
             BillItem item = new BillItem();
             item.setName(dto.getName());
             item.setPrice(dto.getPrice());
             item.setQuantity(dto.getQuantity());
             item.setBill(bill);
-
             itemList.add(item);
         }
 
         bill.setItems(itemList);
 
         double total = itemList.stream()
-                .mapToDouble(i -> i.getPrice() * i.getQuantity())
+                .mapToDouble(i ->
+                        (i.getPrice() != null ? i.getPrice() : 0.0) *
+                                (i.getQuantity() != null ? i.getQuantity() : 0)
+                )
                 .sum();
-
-        if (total <= 0) {
-            throw new RuntimeException("Total cannot be zero ❌");
-        }
 
         bill.setTotalAmount(total);
 
@@ -112,17 +97,15 @@ public class BillService {
     public BillResponseDTO payBill(Long id) {
 
         Bill bill = billRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Bill not found ❌"));
+                .orElseThrow(() -> new RuntimeException("Bill not found"));
 
         if (!"APPROVED".equalsIgnoreCase(bill.getStatus())) {
-            throw new RuntimeException("Bill not approved ❌");
+            throw new RuntimeException("Bill not approved yet");
         }
 
         bill.setStatus("PAID");
 
-        Bill updated = billRepository.save(bill);
-
-        return mapToDTO(updated);
+        return mapToDTO(bill);
     }
 
     // ================= DTO MAPPER =================
@@ -137,7 +120,9 @@ public class BillService {
 
         dto.setAmount(bill.getTotalAmount());
         dto.setTotalAmount(bill.getTotalAmount());
-        
+
+        dto.setOrderId(bill.getOrder() != null ? bill.getOrder().getId() : null);
+
         dto.setStatus(bill.getStatus());
         dto.setCreatedAt(bill.getCreatedAt());
 

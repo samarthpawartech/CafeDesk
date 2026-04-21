@@ -94,87 +94,50 @@ export default function CustomerDashboard() {
       .catch(console.error);
   }, []);
 
-  // 🔥 STATUS HELPER (MAIN FIX)
-  const getStatusLabel = (status) => {
-    const s = status?.toUpperCase();
-    if (s === "APPROVED") return "PAID";
-    return s || "PENDING";
-  };
-
-  const getStatusStyle = (status) => {
-    const s = status?.toUpperCase();
-    if (s === "PAID" || s === "APPROVED") return "bg-green-100 text-green-700";
-    if (s === "PENDING") return "bg-yellow-100 text-yellow-700";
-    return "bg-gray-100 text-gray-700";
-  };
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const table = params.get("table");
-    setTableNumber(table || "T01");
-  }, []);
-
   /* ================= FETCH BILLS ================= */
   const fetchBills = async () => {
-    if (!user?.username || !token) {
-      console.warn("⛔ Skipping fetchBills - missing user/token");
-      return;
-    }
+    if (!user?.username || !token) return;
 
     try {
       const res = await fetch(
-        `${API_BASE}/customer/orders/bills/${user.username}`,
+        `${API_BASE}/customer/bills/${user.username}`, // ✅ FIXED API
         {
           method: "GET",
           headers: {
+            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
         },
       );
 
       if (!res.ok) {
-        const errText = await res.text();
-        console.error("❌ Failed to fetch bills:", errText);
+        console.error("Failed to fetch bills");
         return;
       }
 
       const data = await res.json();
 
-      console.log("🧾 UPDATED BILLS 👉", data);
+      console.log("BILLS DATA 👉", data); // 🔥 DEBUG
 
       setBills(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("❌ Error fetching bills:", err);
+      console.error("Error fetching bills:", err);
     }
   };
 
-  /* ✅ FIXED useEffect */
   useEffect(() => {
-    if (user?.username && token) {
-      fetchBills();
-    }
+    if (!user?.username || !token) return;
+
+    fetchBills();
+
+    const interval = setInterval(fetchBills, 5000);
+
+    return () => clearInterval(interval);
   }, [user?.username, token]);
 
-  /* ✅ OPTIONAL AUTO REFRESH (VERY IMPORTANT) */
-  useEffect(() => {
-    let interval;
-
-    if (activeTab === "bills" && user?.username && token) {
-      fetchBills();
-
-      interval = setInterval(() => {
-        fetchBills();
-      }, 5000); // refresh every 5 sec
-    }
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [activeTab, user?.username, token]);
-  // ================= NORMALIZE BILLS =================
+  // ================= FILTER =================
   const userBills = Array.isArray(bills) ? bills : [];
 
-  // ================= FILTER =================
   const pendingBills = userBills.filter(
     (b) => (b.status || "").toUpperCase() === "PENDING",
   );
@@ -182,6 +145,7 @@ export default function CustomerDashboard() {
   const orderHistory = userBills.filter((b) =>
     ["APPROVED", "PAID"].includes((b.status || "").toUpperCase()),
   );
+
   /* ================= FETCH FEEDBACK ================= */
   const fetchFeedback = async () => {
     if (!token) return;
@@ -223,48 +187,26 @@ export default function CustomerDashboard() {
   }, [activeTab, token]);
   /* ================= PLACE ORDER ================= */
   const handlePlaceOrder = async () => {
-    if (!currentOrder || currentOrder.length === 0) {
+    if (currentOrder.length === 0) {
       alert("Add items before placing order.");
       return;
     }
 
     try {
-      const orderItems = currentOrder.map((item) => {
-        const price = Number(item.price);
-        const quantity = Number(item.quantity ?? 1);
-
-        if (!price || price <= 0) {
-          throw new Error(`Invalid price for item: ${item.name}`);
-        }
-
-        return {
-          name: item.name,
-          price: price,
-          quantity: quantity > 0 ? quantity : 1,
-        };
-      });
-
-      const totalAmount = orderItems.reduce(
-        (sum, item) => sum + item.price * item.quantity,
-        0,
-      );
-
-      if (totalAmount <= 0) {
-        alert("Total amount cannot be zero ❌");
-        return;
-      }
+      const orderItems = currentOrder.map((item) => ({
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity || 1,
+      }));
 
       const orderPayload = {
         customerName: user.username,
         tableNumber: tableNumber || "T01",
-        amount: totalAmount,
+        amount: getTotalAmount(),
         items: orderItems,
       };
 
-      console.log("🚀 FINAL ORDER PAYLOAD 👉", orderPayload);
-
-      // ================= 1️⃣ SAVE ORDER =================
-      const orderResponse = await fetch(`${API_BASE}/customer/orders`, {
+      const response = await fetch(`${API_BASE}/bills/place-order`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -273,89 +215,50 @@ export default function CustomerDashboard() {
         body: JSON.stringify(orderPayload),
       });
 
-      if (!orderResponse.ok) {
-        const errorText = await orderResponse.text();
-        console.error("❌ Order Error:", errorText);
-        alert("❌ Order Failed: " + errorText);
-        return;
+      // 🔥 SHOW REAL ERROR FROM BACKEND
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Backend Error:", errorText);
+        return alert("❌ Failed: " + errorText);
       }
 
-      const orderData = await orderResponse.json();
-      console.log("✅ Order Saved:", orderData);
+      await response.json();
 
-      // ================= 2️⃣ CREATE BILL =================
-      const billResponse = await fetch(`${API_BASE}/bills/place-order`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(orderPayload),
-      });
-
-      if (!billResponse.ok) {
-        const errorText = await billResponse.text();
-        console.error("❌ Bill Error:", errorText);
-        alert("⚠️ Order saved but Bill failed: " + errorText);
-      } else {
-        const billData = await billResponse.json();
-        console.log("🧾 Bill Created:", billData);
-      }
-
-      // ================= CLEANUP =================
       clearOrder();
 
-      await fetchCurrentOrders();
-      await fetchBills();
+      alert("✅ Order placed! Waiting for approval ⏳");
 
-      alert("✅ Order placed & Bill generated!");
-
-      setActiveTab("bills");
+      setActiveTab("order");
     } catch (error) {
-      console.error("❌ Frontend Error:", error);
-      alert(error.message || "Something went wrong ❌");
+      console.error("Frontend Error:", error);
+      alert("Something went wrong ❌");
     }
   };
+
   // ================= 💳 PAY NOW =================
   const handlePayNow = async (billId) => {
-    if (!billId) {
-      alert("Invalid Bill ID ❌");
-      return;
-    }
-
     try {
-      // 🔒 Optional: prevent multiple clicks
-      console.log("💳 Paying Bill ID:", billId);
-
       const res = await fetch(`${API_BASE}/bills/pay/${billId}`, {
         method: "PUT",
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
       });
 
-      // 🔥 Handle non-200 responses properly
       if (!res.ok) {
-        const errorText = await res.text();
-        console.error("❌ Payment Error:", errorText);
-        alert(errorText || "Payment failed ❌");
+        alert("Payment failed ❌");
         return;
       }
 
-      // ✅ Parse response safely
-      const data = await res.json();
-      console.log("✅ Payment Success:", data);
-
       alert("✅ Payment successful");
 
-      // 🔄 Refresh UI
-      await fetchBills();
+      fetchBills(); // 🔄 refresh list
     } catch (err) {
-      console.error("❌ Payment Exception:", err);
-      alert("Server error while processing payment ❌");
+      console.error(err);
+      alert("Error while paying ❌");
     }
   };
+
   /* ================= FETCH CURRENT ORDERS FROM DB ================= */
   const fetchCurrentOrders = async () => {
     if (!user?.username || !token) return;
@@ -697,23 +600,15 @@ export default function CustomerDashboard() {
                       {bill.status || "PENDING"}
                     </span>
 
-                    {/* 🧾 ITEMS (NEW FIX) */}
-                    <div className="text-sm text-gray-600 mt-1">
-                      {(bill.items || []).map((item, index) => (
-                        <div key={index}>
-                          {item.name} x{item.quantity}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* 💰 AMOUNT (FIXED) */}
+                    {/* AMOUNT */}
                     <p className="text-sm text-gray-500 mt-1">
-                      ₹{bill.amount ?? 0}
+                      ₹{bill.totalAmount ?? 0}
                     </p>
                   </div>
 
                   {/* RIGHT SIDE BUTTONS */}
                   <div className="flex gap-2 items-center">
+                    {/* 💳 PAY NOW */}
                     {bill.status?.toUpperCase() !== "PAID" && (
                       <Button
                         size="sm"
@@ -724,6 +619,7 @@ export default function CustomerDashboard() {
                       </Button>
                     )}
 
+                    {/* 📄 DOWNLOAD INVOICE */}
                     <Button
                       size="sm"
                       disabled={bill.status?.toUpperCase() !== "PAID"}
@@ -748,71 +644,59 @@ export default function CustomerDashboard() {
                 No previous orders yet ☕
               </p>
             ) : (
-              orderHistory.map((bill) => {
-                const status = bill.status?.toUpperCase();
+              orderHistory.map((bill) => (
+                <div
+                  key={bill.id}
+                  className="flex justify-between items-center py-3 border-b"
+                >
+                  {/* LEFT SIDE */}
+                  <div>
+                    <span className="font-medium">INV-{bill.id}</span>
 
-                return (
-                  <div
-                    key={bill.id}
-                    className="flex justify-between items-center py-3 border-b"
-                  >
-                    {/* LEFT SIDE */}
-                    <div>
-                      <span className="font-medium">INV-{bill.id}</span>
+                    {/* STATUS */}
+                    <span
+                      className={`ml-2 text-xs px-2 py-1 rounded-full ${
+                        bill.status?.toUpperCase() === "PAID"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-blue-100 text-blue-700"
+                      }`}
+                    >
+                      {bill.status || "APPROVED"}
+                    </span>
 
-                      {/* STATUS */}
-                      <span
-                        className={`ml-2 text-xs px-2 py-1 rounded-full ${
-                          ["PAID", "APPROVED"].includes(status)
-                            ? "bg-green-100 text-green-700"
-                            : "bg-yellow-100 text-yellow-700"
-                        }`}
-                      >
-                        {status === "APPROVED" ? "PAID" : status}
-                      </span>
+                    {/* AMOUNT */}
+                    <p className="text-sm text-gray-500 mt-1">
+                      ₹{bill.totalAmount ?? 0}
+                    </p>
 
-                      {/* 🧾 ITEMS (NEW FIX) */}
-                      <div className="text-sm text-gray-600 mt-1">
-                        {(bill.items || []).map((item, index) => (
-                          <div key={index}>
-                            {item.name} x{item.quantity}
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* 💰 AMOUNT (FIXED) */}
-                      <p className="text-sm text-gray-500 mt-1">
-                        ₹{bill.amount ?? 0}
-                      </p>
-
-                      {/* DATE */}
-                      <p className="text-xs text-gray-400">
-                        {bill.createdAt
-                          ? new Date(bill.createdAt).toLocaleString()
-                          : ""}
-                      </p>
-                    </div>
-
-                    {/* RIGHT SIDE */}
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        disabled={!["PAID", "APPROVED"].includes(status)}
-                        className={
-                          !["PAID", "APPROVED"].includes(status)
-                            ? "opacity-50 cursor-not-allowed"
-                            : "bg-gray-800 hover:bg-gray-900 text-white"
-                        }
-                        onClick={() => downloadInvoice(bill)}
-                      >
-                        <Download className="w-4 h-4 mr-1" />
-                        Invoice
-                      </Button>
-                    </div>
+                    {/* DATE */}
+                    <p className="text-xs text-gray-400">
+                      {bill.createdAt
+                        ? new Date(bill.createdAt).toLocaleString()
+                        : ""}
+                    </p>
                   </div>
-                );
-              })
+
+                  {/* RIGHT SIDE */}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      disabled={bill.status?.toUpperCase() !== "PAID"}
+                      className={
+                        bill.status?.toUpperCase() !== "PAID"
+                          ? "opacity-50 cursor-not-allowed"
+                          : "bg-gray-800 hover:bg-gray-900 text-white"
+                      }
+                      onClick={() => downloadInvoice(bill)}
+                    >
+                      <Download className="w-4 h-4 mr-1" />
+                      Invoice
+                    </Button>
+                  </div>
+                </div>
+              ))
             ))}
+
           {/* FEEDBACK */}
           {activeTab === "feedback" && (
             <div className="max-w-md mx-auto space-y-4">

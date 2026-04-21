@@ -1,7 +1,6 @@
 package com.cafedesk.backend.Bills.DTO;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 public class BillResponseDTO {
@@ -11,16 +10,17 @@ public class BillResponseDTO {
     private String customerName;
     private String tableNumber;
 
-    // ❌ REMOVED orderId (no longer used)
+    // ✅ ADD THIS (for frontend)
+    private Long orderId;
 
-    // ✅ Keep both for frontend compatibility
-    private Double amount;
-    private Double totalAmount;
+    // ✅ KEEP BOTH (safe for frontend)
+    private Double amount;        // used in React
+    private Double totalAmount;   // backend consistency
 
     private String status;
     private LocalDateTime createdAt;
 
-    private List<BillitemDTO> items = new ArrayList<>();
+    private List<BillitemDTO> items;
 
     // ================= GETTERS =================
 
@@ -40,12 +40,16 @@ public class BillResponseDTO {
         return tableNumber;
     }
 
+    public Long getOrderId() {
+        return orderId;
+    }
+
     public Double getAmount() {
-        return amount != null ? amount : 0.0;
+        return amount;
     }
 
     public Double getTotalAmount() {
-        return totalAmount != null ? totalAmount : 0.0;
+        return totalAmount;
     }
 
     public String getStatus() {
@@ -78,15 +82,16 @@ public class BillResponseDTO {
         this.tableNumber = tableNumber;
     }
 
-    // 🔥 IMPORTANT: keep both fields in sync
-    public void setTotalAmount(Double totalAmount) {
-        this.totalAmount = totalAmount;
-        this.amount = totalAmount;
+    public void setOrderId(Long orderId) {
+        this.orderId = orderId;
     }
 
     public void setAmount(Double amount) {
         this.amount = amount;
-        this.totalAmount = amount;
+    }
+
+    public void setTotalAmount(Double totalAmount) {
+        this.totalAmount = totalAmount;
     }
 
     public void setStatus(String status) {
@@ -98,6 +103,6 @@ public class BillResponseDTO {
     }
 
     public void setItems(List<BillitemDTO> items) {
-        this.items = items != null ? items : new ArrayList<>();
+        this.items = items;
     }
 }

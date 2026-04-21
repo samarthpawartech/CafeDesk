@@ -1,5 +1,6 @@
 package com.cafedesk.backend.Bills.entity;
 
+import com.cafedesk.backend.customer.entity.CurrentOrder;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -32,23 +33,28 @@ public class Bill {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
-    // ✅ KEEP CASHFREE FIELDS
+    // 🔥 CASHFREE FIELDS
     @Column(name = "cf_order_id")
     private String cfOrderId;
 
     @Column(name = "cf_payment_id")
     private String cfPaymentId;
 
-    // ✅ ITEMS ONLY (NO ORDER RELATION)
+    // ================= RELATIONS =================
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id", nullable = true)
+    private CurrentOrder order;
+
     @OneToMany(
             mappedBy = "bill",
             cascade = CascadeType.ALL,
             orphanRemoval = true,
-            fetch = FetchType.LAZY
+            fetch = FetchType.EAGER
     )
     private List<BillItem> items = new ArrayList<>();
 
-    // ================= AUTO =================
+    // ================= AUTO GENERATION =================
 
     @PrePersist
     public void prePersist() {
@@ -72,44 +78,87 @@ public class Bill {
 
     // ================= GETTERS =================
 
-    public Long getId() { return id; }
+    public Long getId() {
+        return id;
+    }
 
-    public String getInvoiceNumber() { return invoiceNumber; }
+    public String getInvoiceNumber() {
+        return invoiceNumber;
+    }
 
-    public String getCustomerName() { return customerName; }
+    public String getCustomerName() {
+        return customerName;
+    }
 
-    public String getTableNumber() { return tableNumber; }
+    public String getTableNumber() {
+        return tableNumber;
+    }
 
-    public Double getTotalAmount() { return totalAmount; }
+    public Double getTotalAmount() {
+        return totalAmount;
+    }
 
-    public String getStatus() { return status; }
+    public String getStatus() {
+        return status;
+    }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
 
-    public List<BillItem> getItems() { return items; }
+    public CurrentOrder getOrder() {
+        return order;
+    }
 
-    public String getCfOrderId() { return cfOrderId; }
+    public List<BillItem> getItems() {
+        return items;
+    }
 
-    public String getCfPaymentId() { return cfPaymentId; }
+    public String getCfOrderId() {
+        return cfOrderId;
+    }
+
+    public String getCfPaymentId() {
+        return cfPaymentId;
+    }
 
     // ================= SETTERS =================
 
-    public void setId(Long id) { this.id = id; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public void setInvoiceNumber(String invoiceNumber) { this.invoiceNumber = invoiceNumber; }
+    public void setInvoiceNumber(String invoiceNumber) {
+        this.invoiceNumber = invoiceNumber;
+    }
 
-    public void setCustomerName(String customerName) { this.customerName = customerName; }
+    public void setCustomerName(String customerName) {
+        this.customerName = customerName;
+    }
 
-    public void setTableNumber(String tableNumber) { this.tableNumber = tableNumber; }
+    public void setTableNumber(String tableNumber) {
+        this.tableNumber = tableNumber;
+    }
 
-    public void setTotalAmount(Double totalAmount) { this.totalAmount = totalAmount; }
+    public void setTotalAmount(Double totalAmount) {
+        this.totalAmount = totalAmount;
+    }
 
-    public void setStatus(String status) { this.status = status; }
+    public void setStatus(String status) {
+        this.status = status;
+    }
 
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public void setOrder(CurrentOrder order) {
+        this.order = order;
+    }
 
     public void setItems(List<BillItem> items) {
         this.items = items != null ? items : new ArrayList<>();
+
         for (BillItem item : this.items) {
             item.setBill(this);
         }

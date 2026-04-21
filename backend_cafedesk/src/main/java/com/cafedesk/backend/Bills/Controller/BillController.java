@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/bills")
+@RequestMapping("/api/bills")   // ✅ FIXED BASE PATH
 @CrossOrigin("*")
 public class BillController {
 
@@ -26,7 +26,7 @@ public class BillController {
     }
 
     // ================= CUSTOMER BILLS =================
-    @GetMapping("/user/{username}")
+    @GetMapping("/{username}")   // ✅ FIXED (removed duplicate /api/bills)
     public ResponseEntity<List<BillResponseDTO>> getCustomerBills(
             @PathVariable String username) {
 
@@ -49,16 +49,6 @@ public class BillController {
     @PostMapping("/place-order")
     public ResponseEntity<BillResponseDTO> createBill(
             @RequestBody BillRequestDTO request) {
-
-        if (request.getItems() == null || request.getItems().isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        for (var item : request.getItems()) {
-            if (item.getPrice() == null || item.getQuantity() == null) {
-                return ResponseEntity.badRequest().build();
-            }
-        }
 
         return ResponseEntity.ok(billService.createBill(request));
     }

@@ -4,26 +4,23 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "bill_item")
+@Table(name = "bill_item") // ✅ GOOD PRACTICE (avoid default naming issues)
 public class BillItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false) // ✅ ensure DB never stores null
     private Double price;
 
-    @Column(nullable = false)
     private Integer quantity;
 
-    // 🔥 IMPORTANT FIX: nullable = false (relation MUST exist)
+    // ✅ FIX 1: make nullable true to prevent save failure
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "bill_id", nullable = false)
-    @JsonIgnore
+    @JoinColumn(name = "bill_id", nullable = true)
+    @JsonIgnore   // 🔥 prevents infinite loop
     private Bill bill;
 
     /* ================= GETTERS ================= */

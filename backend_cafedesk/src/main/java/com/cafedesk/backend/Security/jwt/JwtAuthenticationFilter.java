@@ -30,22 +30,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String path = request.getServletPath();
 
-        // ✅ Allow preflight
+        // ✅ Allow preflight (CORS)
         if (HttpMethod.OPTIONS.matches(request.getMethod())) {
             return true;
         }
 
-        // ✅ PUBLIC APIs
+        // ✅ PUBLIC ENDPOINTS (NO JWT REQUIRED)
         return path.startsWith("/api/customer/login")
                 || path.startsWith("/api/customer/register")
                 || path.startsWith("/api/customer/menu")
-                || path.startsWith("/api/customer/place-order")
-                || path.startsWith("/api/customer/orders") // 🔥 ADD THIS (IMPORTANT)
                 || path.startsWith("/api/employee/login")
                 || path.startsWith("/api/admin/login")
-                || path.startsWith("/api/bills")
-                || path.startsWith("/api/payment")
-                || path.startsWith("/api/customer/feedback");
+                || path.startsWith("/api/bills")   // ✅ ADD THIS LINE (IMPORTANT)
+                || path.startsWith("/api/payment"); // (optional if needed)
     }
 
     @Override
@@ -56,7 +53,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader("Authorization");
 
-        // 🔥 If no token → just continue (Spring will decide access)
+        // ✅ No token → allow request (do NOT block)
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
@@ -89,8 +86,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
         } catch (Exception e) {
-            // 🔥 DO NOT block request here
+            // ❌ DON'T BLOCK REQUEST FOR PUBLIC APIs
             SecurityContextHolder.clearContext();
+
+            // Optional: comment this if still issue
+            // response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "JWT Failed");
+            // return;
         }
 
         filterChain.doFilter(request, response);
