@@ -10,7 +10,6 @@ import com.cafedesk.backend.customer.repository.OrderRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -19,17 +18,16 @@ public class OrderService {
     @Autowired
     private OrderRepository orderRepository;
 
+    // ================= PLACE ORDER =================
     public CurrentOrder placeOrder(PlaceOrderRequest request) {
 
-        // ✅ Create order
         CurrentOrder order = new CurrentOrder();
         order.setCustomerName(request.getCustomerName());
         order.setTableNumber(request.getTableNumber());
 
         double total = 0;
-        List<OrderItem> items = new ArrayList<>();
 
-        // ✅ Create items + link to order
+        // 🔥 IMPORTANT: USE addItem() instead of setItems()
         for (OrderItemDTO dto : request.getItems()) {
 
             OrderItem item = new OrderItem();
@@ -37,31 +35,42 @@ public class OrderService {
             item.setPrice(dto.getPrice());
             item.setQuantity(dto.getQuantity());
 
-            // 🔥 VERY IMPORTANT
-            item.setOrder(order);
+            order.addItem(item); // ✅ FIXED
 
             total += dto.getPrice() * dto.getQuantity();
-            items.add(item);
         }
 
-        // ✅ attach items to order
-        order.setItems(items);
-
-        // ✅ set calculated total
         order.setAmount(total);
-
-        // ✅ correct initial status
         order.setStatus(OrderStatus.PENDING);
 
-        // ✅ SINGLE SAVE (cascade handles items)
-        return orderRepository.save(order);
+        CurrentOrder saved = orderRepository.save(order);
+
+        System.out.println("✅ ORDER SAVED WITH ID: " + saved.getId());
+
+        return saved;
     }
 
+    // ================= GET CUSTOMER ORDERS =================
     public List<CurrentOrder> getCustomerBills(String username) {
         return orderRepository.findByCustomerName(username);
     }
 
+    // ================= GET ALL ORDERS =================
     public List<CurrentOrder> getAllOrders() {
-        return orderRepository.findAll();
+        List<CurrentOrder> orders = orderRepository.findAll();
+        System.out.println("🔥 TOTAL ORDERS IN DB: " + orders.size());
+        return orders;
+    }
+
+    // ================= UPDATE STATUS =================
+    public void updateOrderStatus(Long orderId, String status) {
+
+        CurrentOrder order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        OrderStatus newStatus = OrderStatus.valueOf(status.toUpperCase());
+        order.setStatus(newStatus);
+
+        orderRepository.save(order);
     }
 }

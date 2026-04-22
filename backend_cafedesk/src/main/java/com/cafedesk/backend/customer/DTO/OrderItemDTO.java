@@ -3,56 +3,44 @@ package com.cafedesk.backend.customer.DTO;
 public class OrderItemDTO {
 
     private String name;
-    private double price;
-    private int quantity;
+    private Double price;
+    private Integer quantity;
 
-    // ✅ Default constructor (required for JSON)
-    public OrderItemDTO() {
-    }
+    // ✅ Default constructor
+    public OrderItemDTO() {}
 
-    // ✅ Parameterized constructor
-    public OrderItemDTO(String name, double price, int quantity) {
+    // ✅ Optional: Parameterized constructor (useful)
+    public OrderItemDTO(String name, Double price, Integer quantity) {
         this.name = name;
         this.price = price;
         this.quantity = quantity;
     }
 
-    // ✅ Getters & Setters
+    // ================= GETTERS =================
 
     public String getName() {
-        return name;
+        return name != null ? name : "";
     }
+
+    public Double getPrice() {
+        return price != null ? price : 0.0;
+    }
+
+    public Integer getQuantity() {
+        return quantity != null ? quantity : 1;
+    }
+
+    // ================= SETTERS =================
 
     public void setName(String name) {
-        // 🔥 prevent null issues
-        this.name = (name != null) ? name : "";
+        this.name = name;
     }
 
-    public double getPrice() {
-        return price;
+    public void setPrice(Double price) {
+        this.price = price;
     }
 
-    public void setPrice(double price) {
-        // 🔥 prevent negative values
-        this.price = Math.max(price, 0);
-    }
-
-    public int getQuantity() {
-        return quantity;
-    }
-
-    public void setQuantity(int quantity) {
-        // 🔥 prevent 0 or negative quantity
-        this.quantity = (quantity > 0) ? quantity : 1;
-    }
-
-    // ✅ DEBUG SUPPORT (VERY IMPORTANT)
-    @Override
-    public String toString() {
-        return "OrderItemDTO{" +
-                "name='" + name + '\'' +
-                ", price=" + price +
-                ", quantity=" + quantity +
-                '}';
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
     }
 }

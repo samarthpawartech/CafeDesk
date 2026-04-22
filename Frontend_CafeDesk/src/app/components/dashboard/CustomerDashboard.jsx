@@ -94,13 +94,33 @@ export default function CustomerDashboard() {
       .catch(console.error);
   }, []);
 
+  // 🔥 STATUS HELPER (MAIN FIX)
+  const getStatusLabel = (status) => {
+    const s = status?.toUpperCase();
+    if (s === "APPROVED") return "PAID";
+    return s || "PENDING";
+  };
+
+  const getStatusStyle = (status) => {
+    const s = status?.toUpperCase();
+    if (s === "PAID" || s === "APPROVED") return "bg-green-100 text-green-700";
+    if (s === "PENDING") return "bg-yellow-100 text-yellow-700";
+    return "bg-gray-100 text-gray-700";
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const table = params.get("table");
+    setTableNumber(table || "T01");
+  }, []);
+
   /* ================= FETCH BILLS ================= */
   const fetchBills = async () => {
     if (!user?.username || !token) return;
 
     try {
       const res = await fetch(
-        `${API_BASE}/customer/bills/${user.username}`, // ✅ FIXED API
+        `${API_BASE}/customer/orders/bills/${user.username}`,
         {
           method: "GET",
           headers: {
@@ -111,33 +131,28 @@ export default function CustomerDashboard() {
       );
 
       if (!res.ok) {
-        console.error("Failed to fetch bills");
+        console.error("❌ Failed to fetch bills");
         return;
       }
 
       const data = await res.json();
 
-      console.log("BILLS DATA 👉", data); // 🔥 DEBUG
+      console.log("🧾 RAW BILLS 👉", data);
 
+      // ✅ FIX: store ALL bills
       setBills(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("Error fetching bills:", err);
+      console.error("❌ Error fetching bills:", err);
     }
   };
 
   useEffect(() => {
-    if (!user?.username || !token) return;
-
     fetchBills();
-
-    const interval = setInterval(fetchBills, 5000);
-
-    return () => clearInterval(interval);
-  }, [user?.username, token]);
-
-  // ================= FILTER =================
+  }, []);
+  // ================= NORMALIZE BILLS =================
   const userBills = Array.isArray(bills) ? bills : [];
 
+  // ================= FILTER =================
   const pendingBills = userBills.filter(
     (b) => (b.status || "").toUpperCase() === "PENDING",
   );
@@ -145,7 +160,6 @@ export default function CustomerDashboard() {
   const orderHistory = userBills.filter((b) =>
     ["APPROVED", "PAID"].includes((b.status || "").toUpperCase()),
   );
-
   /* ================= FETCH FEEDBACK ================= */
   const fetchFeedback = async () => {
     if (!token) return;
@@ -187,26 +201,50 @@ export default function CustomerDashboard() {
   }, [activeTab, token]);
   /* ================= PLACE ORDER ================= */
   const handlePlaceOrder = async () => {
-    if (currentOrder.length === 0) {
+    if (!currentOrder || currentOrder.length === 0) {
       alert("Add items before placing order.");
       return;
     }
 
     try {
-      const orderItems = currentOrder.map((item) => ({
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity || 1,
-      }));
+      // 🔥 FIX: Ensure correct numeric values
+      const orderItems = currentOrder.map((item) => {
+        const price = Number(item.price);
+        const quantity = Number(item.quantity ?? 1);
+
+        if (!price || price <= 0) {
+          throw new Error(`Invalid price for item: ${item.name}`);
+        }
+
+        return {
+          name: item.name,
+          price: price,
+          quantity: quantity > 0 ? quantity : 1, // 🔥 force min 1
+        };
+      });
+
+      // 🔥 FIX: calculate total safely
+      const totalAmount = orderItems.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0,
+      );
+
+      if (totalAmount <= 0) {
+        alert("Total amount cannot be zero ❌");
+        return;
+      }
 
       const orderPayload = {
         customerName: user.username,
         tableNumber: tableNumber || "T01",
-        amount: getTotalAmount(),
+        amount: totalAmount, // 🔥 use calculated total
         items: orderItems,
       };
 
-      const response = await fetch(`${API_BASE}/bills/place-order`, {
+      // 🔥 DEBUG (VERY IMPORTANT)
+      console.log("🚀 FINAL ORDER PAYLOAD 👉", orderPayload);
+
+      const response = await fetch(`${API_BASE}/customer/orders`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -215,26 +253,31 @@ export default function CustomerDashboard() {
         body: JSON.stringify(orderPayload),
       });
 
-      // 🔥 SHOW REAL ERROR FROM BACKEND
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("Backend Error:", errorText);
-        return alert("❌ Failed: " + errorText);
+        console.error("❌ Backend Error:", errorText);
+        alert("❌ Failed: " + errorText);
+        return;
       }
 
-      await response.json();
+      const data = await response.json();
+      console.log("✅ Order Saved:", data);
 
+      // ✅ CLEAR CART
       clearOrder();
 
-      alert("✅ Order placed! Waiting for approval ⏳");
+      // 🔥 REFRESH
+      await fetchCurrentOrders();
+      await fetchBills();
 
-      setActiveTab("order");
+      alert("✅ Order placed successfully!");
+
+      setActiveTab("bills");
     } catch (error) {
-      console.error("Frontend Error:", error);
-      alert("Something went wrong ❌");
+      console.error("❌ Frontend Error:", error);
+      alert(error.message || "Something went wrong ❌");
     }
   };
-
   // ================= 💳 PAY NOW =================
   const handlePayNow = async (billId) => {
     try {
@@ -600,15 +643,23 @@ export default function CustomerDashboard() {
                       {bill.status || "PENDING"}
                     </span>
 
-                    {/* AMOUNT */}
+                    {/* 🧾 ITEMS (NEW FIX) */}
+                    <div className="text-sm text-gray-600 mt-1">
+                      {(bill.items || []).map((item, index) => (
+                        <div key={index}>
+                          {item.name} x{item.quantity}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* 💰 AMOUNT (FIXED) */}
                     <p className="text-sm text-gray-500 mt-1">
-                      ₹{bill.totalAmount ?? 0}
+                      ₹{bill.amount ?? 0}
                     </p>
                   </div>
 
                   {/* RIGHT SIDE BUTTONS */}
                   <div className="flex gap-2 items-center">
-                    {/* 💳 PAY NOW */}
                     {bill.status?.toUpperCase() !== "PAID" && (
                       <Button
                         size="sm"
@@ -619,7 +670,6 @@ export default function CustomerDashboard() {
                       </Button>
                     )}
 
-                    {/* 📄 DOWNLOAD INVOICE */}
                     <Button
                       size="sm"
                       disabled={bill.status?.toUpperCase() !== "PAID"}
@@ -644,59 +694,71 @@ export default function CustomerDashboard() {
                 No previous orders yet ☕
               </p>
             ) : (
-              orderHistory.map((bill) => (
-                <div
-                  key={bill.id}
-                  className="flex justify-between items-center py-3 border-b"
-                >
-                  {/* LEFT SIDE */}
-                  <div>
-                    <span className="font-medium">INV-{bill.id}</span>
+              orderHistory.map((bill) => {
+                const status = bill.status?.toUpperCase();
 
-                    {/* STATUS */}
-                    <span
-                      className={`ml-2 text-xs px-2 py-1 rounded-full ${
-                        bill.status?.toUpperCase() === "PAID"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-blue-100 text-blue-700"
-                      }`}
-                    >
-                      {bill.status || "APPROVED"}
-                    </span>
+                return (
+                  <div
+                    key={bill.id}
+                    className="flex justify-between items-center py-3 border-b"
+                  >
+                    {/* LEFT SIDE */}
+                    <div>
+                      <span className="font-medium">INV-{bill.id}</span>
 
-                    {/* AMOUNT */}
-                    <p className="text-sm text-gray-500 mt-1">
-                      ₹{bill.totalAmount ?? 0}
-                    </p>
+                      {/* STATUS */}
+                      <span
+                        className={`ml-2 text-xs px-2 py-1 rounded-full ${
+                          ["PAID", "APPROVED"].includes(status)
+                            ? "bg-green-100 text-green-700"
+                            : "bg-yellow-100 text-yellow-700"
+                        }`}
+                      >
+                        {status === "APPROVED" ? "PAID" : status}
+                      </span>
 
-                    {/* DATE */}
-                    <p className="text-xs text-gray-400">
-                      {bill.createdAt
-                        ? new Date(bill.createdAt).toLocaleString()
-                        : ""}
-                    </p>
+                      {/* 🧾 ITEMS (NEW FIX) */}
+                      <div className="text-sm text-gray-600 mt-1">
+                        {(bill.items || []).map((item, index) => (
+                          <div key={index}>
+                            {item.name} x{item.quantity}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* 💰 AMOUNT (FIXED) */}
+                      <p className="text-sm text-gray-500 mt-1">
+                        ₹{bill.amount ?? 0}
+                      </p>
+
+                      {/* DATE */}
+                      <p className="text-xs text-gray-400">
+                        {bill.createdAt
+                          ? new Date(bill.createdAt).toLocaleString()
+                          : ""}
+                      </p>
+                    </div>
+
+                    {/* RIGHT SIDE */}
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        disabled={!["PAID", "APPROVED"].includes(status)}
+                        className={
+                          !["PAID", "APPROVED"].includes(status)
+                            ? "opacity-50 cursor-not-allowed"
+                            : "bg-gray-800 hover:bg-gray-900 text-white"
+                        }
+                        onClick={() => downloadInvoice(bill)}
+                      >
+                        <Download className="w-4 h-4 mr-1" />
+                        Invoice
+                      </Button>
+                    </div>
                   </div>
-
-                  {/* RIGHT SIDE */}
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      disabled={bill.status?.toUpperCase() !== "PAID"}
-                      className={
-                        bill.status?.toUpperCase() !== "PAID"
-                          ? "opacity-50 cursor-not-allowed"
-                          : "bg-gray-800 hover:bg-gray-900 text-white"
-                      }
-                      onClick={() => downloadInvoice(bill)}
-                    >
-                      <Download className="w-4 h-4 mr-1" />
-                      Invoice
-                    </Button>
-                  </div>
-                </div>
-              ))
+                );
+              })
             ))}
-
           {/* FEEDBACK */}
           {activeTab === "feedback" && (
             <div className="max-w-md mx-auto space-y-4">

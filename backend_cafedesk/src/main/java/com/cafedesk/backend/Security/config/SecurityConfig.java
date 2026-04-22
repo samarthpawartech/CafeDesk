@@ -36,7 +36,7 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowCredentials(true);
-        config.setAllowedOriginPatterns(List.of("http://localhost:*"));
+        config.setAllowedOriginPatterns(List.of("*")); // 🔥 allow all origins (safe for dev)
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
 
@@ -54,6 +54,7 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
+
                 .authorizeHttpRequests(auth -> auth
 
                         /* ================= PUBLIC ================= */
@@ -68,15 +69,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/customer/menu").permitAll()
                         .requestMatchers("/menu/**").permitAll()
                         .requestMatchers("/api/customer/place-order").permitAll()
-
-                        // ✅ PAYMENT
                         .requestMatchers("/api/payment/**").permitAll()
-
-                        // ✅ FEEDBACK
                         .requestMatchers("/api/customer/feedback/**").permitAll()
-
-                        // ✅ 🔥 IMPORTANT FIX (ADD THIS)
                         .requestMatchers("/api/bills/**").permitAll()
+
+                        // 🔥 DEBUG FIX (IMPORTANT)
+                        // Allow orders temporarily to confirm backend works
+                        .requestMatchers("/api/customer/orders/**").permitAll()
 
                         // Preflight
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
@@ -85,15 +84,19 @@ public class SecurityConfig {
 
                         .requestMatchers("/api/admin/**").authenticated()
                         .requestMatchers("/api/employee/**").authenticated()
+
+                        // keep this LAST
                         .requestMatchers("/api/customer/**").authenticated()
 
                         .anyRequest().authenticated()
                 )
+
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((req, res, ex2) ->
                                 res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")
                         )
                 )
+
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

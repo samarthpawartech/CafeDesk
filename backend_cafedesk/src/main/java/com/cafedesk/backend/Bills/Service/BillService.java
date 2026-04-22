@@ -44,7 +44,10 @@ public class BillService {
 
         bill.setStatus("APPROVED");
 
-        return mapToDTO(bill);
+        // 🔥 IMPORTANT FIX
+        Bill updated = billRepository.save(bill);
+
+        return mapToDTO(updated);
     }
 
     // ================= CREATE BILL =================
@@ -52,7 +55,7 @@ public class BillService {
     public BillResponseDTO createBill(BillRequestDTO request) {
 
         if (request == null || request.getItems() == null || request.getItems().isEmpty()) {
-            throw new RuntimeException("Cannot create bill: No items found");
+            throw new RuntimeException("Cannot create bill: No items found ❌");
         }
 
         Bill bill = new Bill();
@@ -60,7 +63,7 @@ public class BillService {
         bill.setTableNumber(request.getTableNumber());
         bill.setStatus("PENDING");
 
-        // 🔥 Invoice generation (INV-0001)
+        // 🔥 Invoice generation
         Long count = billRepository.countBy();
         String invoiceNumber = String.format("INV-%04d", count + 1);
         bill.setInvoiceNumber(invoiceNumber);
@@ -68,22 +71,34 @@ public class BillService {
         List<BillItem> itemList = new ArrayList<>();
 
         for (BillitemDTO dto : request.getItems()) {
+
+            if (dto.getPrice() == null || dto.getPrice() <= 0) {
+                throw new RuntimeException("Invalid item price ❌");
+            }
+
+            if (dto.getQuantity() == null || dto.getQuantity() <= 0) {
+                dto.setQuantity(1);
+            }
+
             BillItem item = new BillItem();
             item.setName(dto.getName());
             item.setPrice(dto.getPrice());
             item.setQuantity(dto.getQuantity());
             item.setBill(bill);
+
             itemList.add(item);
         }
 
         bill.setItems(itemList);
 
         double total = itemList.stream()
-                .mapToDouble(i ->
-                        (i.getPrice() != null ? i.getPrice() : 0.0) *
-                                (i.getQuantity() != null ? i.getQuantity() : 0)
-                )
+                .filter(i -> i.getPrice() != null && i.getQuantity() != null)
+                .mapToDouble(i -> i.getPrice() * i.getQuantity())
                 .sum();
+
+        if (total <= 0) {
+            throw new RuntimeException("Bill total cannot be zero ❌");
+        }
 
         bill.setTotalAmount(total);
 
@@ -100,12 +115,15 @@ public class BillService {
                 .orElseThrow(() -> new RuntimeException("Bill not found"));
 
         if (!"APPROVED".equalsIgnoreCase(bill.getStatus())) {
-            throw new RuntimeException("Bill not approved yet");
+            throw new RuntimeException("Bill not approved yet ❌");
         }
 
         bill.setStatus("PAID");
 
-        return mapToDTO(bill);
+        // 🔥 IMPORTANT FIX
+        Bill updated = billRepository.save(bill);
+
+        return mapToDTO(updated);
     }
 
     // ================= DTO MAPPER =================

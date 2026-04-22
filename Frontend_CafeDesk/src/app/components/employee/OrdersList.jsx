@@ -11,7 +11,6 @@ export const OrdersList = () => {
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
 
-  // ✅ BACKEND → FRONTEND STATUS MAP (FIXED)
   const statusMap = {
     PENDING: "pending",
     PREPARING: "preparing",
@@ -33,9 +32,9 @@ export const OrdersList = () => {
     completed: { label: "Completed", color: "bg-gray-500", icon: CheckCircle },
   };
 
-  // ✅ FETCH
+  // ✅ FETCH (FIXED)
   useEffect(() => {
-    fetch("http://localhost:8080/api/customer/orders/all")
+    fetch("http://localhost:8080/api/customer/orders/all") // ✅ CORRECT API
       .then((res) => {
         if (!res.ok) throw new Error("API failed");
         return res.json();
@@ -49,8 +48,8 @@ export const OrdersList = () => {
           customerName: order.customerName || "Guest",
           timestamp: order.createdAt || new Date(),
 
-          // ✅ FIXED STATUS
-          status: statusMap[order.status] || "pending",
+          // ✅ FIXED STATUS HANDLING
+          status: statusMap[order.status?.toUpperCase()] || "pending",
 
           items:
             order.items?.map((item) => ({
@@ -77,15 +76,16 @@ export const OrdersList = () => {
       const backendStatus = reverseStatusMap[newStatus];
 
       await fetch(
-        `http://localhost:8080/api/customer/orders/${orderId}/status?status=${backendStatus}`,
+        `http://localhost:8080/api/customer/orders/${orderId}/status?status=${backendStatus}`, // ✅ CORRECT API
         { method: "PUT" },
       );
 
+      // update UI instantly
       setOrders((prev) =>
         prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o)),
       );
     } catch (err) {
-      console.error(err);
+      console.error("❌ Status Update Error:", err);
     }
   };
 
@@ -94,12 +94,11 @@ export const OrdersList = () => {
 
   return (
     <div className="space-y-6">
-      {/* LOADING */}
       {loading && (
         <p className="text-center text-gray-500">Loading orders...</p>
       )}
 
-      {/* ================= STATS ================= */}
+      {/* STATS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {Object.entries(statusConfig).map(([status, config]) => {
           const Icon = config.icon;
@@ -127,7 +126,7 @@ export const OrdersList = () => {
         })}
       </div>
 
-      {/* ================= FILTER ================= */}
+      {/* FILTER */}
       <div className="flex gap-2 flex-wrap">
         <Button onClick={() => setFilter("all")}>All Orders</Button>
 
@@ -138,7 +137,7 @@ export const OrdersList = () => {
         ))}
       </div>
 
-      {/* ================= ORDERS ================= */}
+      {/* ORDERS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {filteredOrders.map((order) => {
           const StatusIcon = statusConfig[order.status]?.icon;

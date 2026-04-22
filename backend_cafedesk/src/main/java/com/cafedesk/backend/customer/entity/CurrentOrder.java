@@ -1,12 +1,13 @@
 package com.cafedesk.backend.customer.entity;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
+
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "Current_orders")
+@Table(name = "current_orders")
 public class CurrentOrder {
 
     @Id
@@ -17,17 +18,31 @@ public class CurrentOrder {
     private String tableNumber;
     private double amount;
 
-    // ✅ Status
     @Enumerated(EnumType.STRING)
     private OrderStatus status = OrderStatus.PENDING;
 
-    // ✅ Timestamp
+    @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    // 🔥 IMPORTANT FIX
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @JsonManagedReference
-    private List<OrderItem> items;
+    // ✅ FIXED: removed JsonManagedReference
+    @OneToMany(
+            mappedBy = "order",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.EAGER   // 🔥 ensures items are fetched
+    )
+    private List<OrderItem> items = new ArrayList<>();
+
+    // ✅ HELPER METHOD
+    public void addItem(OrderItem item) {
+        item.setOrder(this);
+        this.items.add(item);
+    }
+
+    public void removeItem(OrderItem item) {
+        item.setOrder(null);
+        this.items.remove(item);
+    }
 
     // ================= GETTERS =================
 
@@ -78,12 +93,10 @@ public class CurrentOrder {
     }
 
     public void setItems(List<OrderItem> items) {
-        this.items = items;
-
-        // 🔥 ENSURE BIDIRECTIONAL LINK
+        this.items.clear();
         if (items != null) {
             for (OrderItem item : items) {
-                item.setOrder(this);
+                addItem(item); // ensures FK is set
             }
         }
     }
