@@ -207,7 +207,6 @@ export default function CustomerDashboard() {
     }
 
     try {
-      // 🔥 FIX: Ensure correct numeric values
       const orderItems = currentOrder.map((item) => {
         const price = Number(item.price);
         const quantity = Number(item.quantity ?? 1);
@@ -218,33 +217,21 @@ export default function CustomerDashboard() {
 
         return {
           name: item.name,
-          price: price,
-          quantity: quantity > 0 ? quantity : 1, // 🔥 force min 1
+          price,
+          quantity: quantity > 0 ? quantity : 1,
         };
       });
-
-      // 🔥 FIX: calculate total safely
-      const totalAmount = orderItems.reduce(
-        (sum, item) => sum + item.price * item.quantity,
-        0,
-      );
-
-      if (totalAmount <= 0) {
-        alert("Total amount cannot be zero ❌");
-        return;
-      }
 
       const orderPayload = {
         customerName: user.username,
         tableNumber: tableNumber || "T01",
-        amount: totalAmount, // 🔥 use calculated total
         items: orderItems,
       };
 
-      // 🔥 DEBUG (VERY IMPORTANT)
-      console.log("🚀 FINAL ORDER PAYLOAD 👉", orderPayload);
+      console.log("🚀 FINAL PAYLOAD 👉", orderPayload);
 
-      const response = await fetch(`${API_BASE}/customer/orders`, {
+      // ✅ FIXED URL (removed extra /api)
+      const orderResponse = await fetch(`${API_BASE}/customer/orders`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -253,25 +240,39 @@ export default function CustomerDashboard() {
         body: JSON.stringify(orderPayload),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("❌ Backend Error:", errorText);
-        alert("❌ Failed: " + errorText);
+      if (!orderResponse.ok) {
+        const errorText = await orderResponse.text();
+        alert("❌ Order failed: " + errorText);
         return;
       }
 
-      const data = await response.json();
-      console.log("✅ Order Saved:", data);
+      const orderData = await orderResponse.json();
+      console.log("✅ Order Saved:", orderData);
 
-      // ✅ CLEAR CART
+      // ✅ FIXED URL (removed extra /api)
+      const billResponse = await fetch(`${API_BASE}/bills/place-order`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(orderPayload),
+      });
+
+      if (!billResponse.ok) {
+        const errorText = await billResponse.text();
+        alert("❌ Bill failed: " + errorText);
+        return;
+      }
+
+      const billData = await billResponse.json();
+      console.log("✅ Bill Saved:", billData);
+
       clearOrder();
-
-      // 🔥 REFRESH
       await fetchCurrentOrders();
       await fetchBills();
 
-      alert("✅ Order placed successfully!");
-
+      alert("✅ Order + Bill placed successfully!");
       setActiveTab("bills");
     } catch (error) {
       console.error("❌ Frontend Error:", error);

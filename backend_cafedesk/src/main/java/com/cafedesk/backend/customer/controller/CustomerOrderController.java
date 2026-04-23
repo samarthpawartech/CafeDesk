@@ -27,9 +27,6 @@ public class CustomerOrderController {
     public ResponseEntity<?> placeOrder(@RequestBody PlaceOrderRequest request) {
 
         try {
-            System.out.println("🚀 API HIT: Place Order");
-            System.out.println("📦 Request Data: " + request);
-
             CurrentOrder order = orderService.placeOrder(request);
 
             return ResponseEntity.status(HttpStatus.CREATED).body(order);
@@ -47,8 +44,6 @@ public class CustomerOrderController {
     public ResponseEntity<List<CurrentOrder>> getOrdersByCustomer(@PathVariable String username) {
 
         try {
-            System.out.println("📦 Fetching orders for: " + username);
-
             List<CurrentOrder> orders = orderService.getCustomerBills(username);
 
             return ResponseEntity.ok(orders != null ? orders : List.of());
@@ -65,7 +60,6 @@ public class CustomerOrderController {
     public ResponseEntity<List<CurrentOrder>> getCustomerBills(@PathVariable String username) {
 
         try {
-            System.out.println("🧾 Fetching bills for: " + username);
 
             List<CurrentOrder> orders = orderService.getCustomerBills(username);
 
@@ -83,8 +77,6 @@ public class CustomerOrderController {
     public ResponseEntity<List<CurrentOrder>> getAllOrders() {
 
         try {
-            System.out.println("📊 Fetching all orders");
-
             List<CurrentOrder> orders = orderService.getAllOrders();
 
             return ResponseEntity.ok(orders != null ? orders : List.of());
@@ -103,8 +95,7 @@ public class CustomerOrderController {
             @RequestParam String status) {
 
         try {
-            System.out.println("🔄 Updating order " + orderId + " to " + status);
-
+            
             orderService.updateOrderStatus(orderId, status);
 
             return ResponseEntity.ok("✅ Status updated");

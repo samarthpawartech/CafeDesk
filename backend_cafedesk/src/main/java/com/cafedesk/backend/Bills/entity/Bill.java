@@ -1,8 +1,5 @@
 package com.cafedesk.backend.Bills.entity;
-
-import com.cafedesk.backend.customer.entity.CurrentOrder;
 import jakarta.persistence.*;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,11 +37,11 @@ public class Bill {
     @Column(name = "cf_payment_id")
     private String cfPaymentId;
 
-    // ================= RELATIONS =================
+    // 🔥 OPTIONAL BILLING ID
+    @Column(name = "billing_id", unique = true)
+    private String billingId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id", nullable = true)
-    private CurrentOrder order;
+    // ================= RELATIONS =================
 
     @OneToMany(
             mappedBy = "bill",
@@ -73,6 +70,13 @@ public class Bill {
 
         if (this.totalAmount == null) {
             this.totalAmount = 0.0;
+        }
+    }
+
+    @PostPersist
+    public void generateBillingId() {
+        if (this.billingId == null) {
+            this.billingId = "BILL-" + this.id;
         }
     }
 
@@ -106,10 +110,6 @@ public class Bill {
         return createdAt;
     }
 
-    public CurrentOrder getOrder() {
-        return order;
-    }
-
     public List<BillItem> getItems() {
         return items;
     }
@@ -120,6 +120,10 @@ public class Bill {
 
     public String getCfPaymentId() {
         return cfPaymentId;
+    }
+
+    public String getBillingId() {
+        return billingId;
     }
 
     // ================= SETTERS =================
@@ -152,10 +156,6 @@ public class Bill {
         this.createdAt = createdAt;
     }
 
-    public void setOrder(CurrentOrder order) {
-        this.order = order;
-    }
-
     public void setItems(List<BillItem> items) {
         this.items = items != null ? items : new ArrayList<>();
 
@@ -170,5 +170,9 @@ public class Bill {
 
     public void setCfPaymentId(String cfPaymentId) {
         this.cfPaymentId = cfPaymentId;
+    }
+
+    public void setBillingId(String billingId) {
+        this.billingId = billingId;
     }
 }

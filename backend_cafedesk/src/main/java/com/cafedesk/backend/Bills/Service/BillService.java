@@ -39,12 +39,12 @@ public class BillService {
     // ================= APPROVE BILL =================
     @Transactional
     public BillResponseDTO approveBill(Long id) {
+
         Bill bill = billRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Bill not found"));
 
         bill.setStatus("APPROVED");
 
-        // 🔥 IMPORTANT FIX
         Bill updated = billRepository.save(bill);
 
         return mapToDTO(updated);
@@ -63,7 +63,7 @@ public class BillService {
         bill.setTableNumber(request.getTableNumber());
         bill.setStatus("PENDING");
 
-        // 🔥 Invoice generation
+        // Invoice generation
         Long count = billRepository.countBy();
         String invoiceNumber = String.format("INV-%04d", count + 1);
         bill.setInvoiceNumber(invoiceNumber);
@@ -120,7 +120,6 @@ public class BillService {
 
         bill.setStatus("PAID");
 
-        // 🔥 IMPORTANT FIX
         Bill updated = billRepository.save(bill);
 
         return mapToDTO(updated);
@@ -132,14 +131,13 @@ public class BillService {
         BillResponseDTO dto = new BillResponseDTO();
 
         dto.setId(bill.getId());
+        dto.setBillingId(bill.getBillingId());
         dto.setInvoiceNumber(bill.getInvoiceNumber());
         dto.setCustomerName(bill.getCustomerName());
         dto.setTableNumber(bill.getTableNumber());
 
         dto.setAmount(bill.getTotalAmount());
         dto.setTotalAmount(bill.getTotalAmount());
-
-        dto.setOrderId(bill.getOrder() != null ? bill.getOrder().getId() : null);
 
         dto.setStatus(bill.getStatus());
         dto.setCreatedAt(bill.getCreatedAt());

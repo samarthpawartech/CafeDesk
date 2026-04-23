@@ -8,7 +8,6 @@ public class BackendCafedeskApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(BackendCafedeskApplication.class, args);
-        System.out.println("Run Successfully");
 	}
 
 }

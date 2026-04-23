@@ -7,12 +7,10 @@ import java.util.List;
 public class BillResponseDTO {
 
     private Long id;
+    private String billingId;
     private String invoiceNumber;
     private String customerName;
     private String tableNumber;
-
-    // ✅ Optional order reference
-    private Long orderId;
 
     // ✅ Keep both for frontend compatibility
     private Double amount;
@@ -29,6 +27,10 @@ public class BillResponseDTO {
         return id;
     }
 
+    public String getBillingId() {
+        return billingId;
+    }
+
     public String getInvoiceNumber() {
         return invoiceNumber;
     }
@@ -41,16 +43,12 @@ public class BillResponseDTO {
         return tableNumber;
     }
 
-    public Long getOrderId() {
-        return orderId;
-    }
-
     public Double getAmount() {
-        return amount != null ? amount : 0.0; // ✅ safe
+        return amount != null ? amount : 0.0;
     }
 
     public Double getTotalAmount() {
-        return totalAmount != null ? totalAmount : 0.0; // ✅ safe
+        return totalAmount != null ? totalAmount : 0.0;
     }
 
     public String getStatus() {
@@ -71,6 +69,10 @@ public class BillResponseDTO {
         this.id = id;
     }
 
+    public void setBillingId(String billingId) {
+        this.billingId = billingId;
+    }
+
     public void setInvoiceNumber(String invoiceNumber) {
         this.invoiceNumber = invoiceNumber;
     }
@@ -83,19 +85,15 @@ public class BillResponseDTO {
         this.tableNumber = tableNumber;
     }
 
-    public void setOrderId(Long orderId) {
-        this.orderId = orderId;
-    }
-
     // 🔥 IMPORTANT: keep both fields in sync
     public void setTotalAmount(Double totalAmount) {
         this.totalAmount = totalAmount;
-        this.amount = totalAmount; // ✅ sync for frontend
+        this.amount = totalAmount;
     }
 
     public void setAmount(Double amount) {
         this.amount = amount;
-        this.totalAmount = amount; // ✅ sync for backend
+        this.totalAmount = amount;
     }
 
     public void setStatus(String status) {

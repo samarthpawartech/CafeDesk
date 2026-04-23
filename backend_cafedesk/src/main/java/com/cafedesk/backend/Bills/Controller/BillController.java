@@ -10,7 +10,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/bills")
-@CrossOrigin("*")
+@CrossOrigin(origins = "*")
 public class BillController {
 
     private final BillService billService;
@@ -25,7 +25,7 @@ public class BillController {
         return ResponseEntity.ok(billService.getAllBills());
     }
 
-    // ================= CUSTOMER BILLS =================
+    // ================= GET CUSTOMER BILLS =================
     @GetMapping("/{username}")
     public ResponseEntity<List<BillResponseDTO>> getCustomerBills(
             @PathVariable String username) {
@@ -39,7 +39,7 @@ public class BillController {
         return ResponseEntity.ok(billService.approveBill(id));
     }
 
-    // ================= 💳 PAY BILL =================
+    // ================= PAY BILL =================
     @PutMapping("/pay/{id}")
     public ResponseEntity<BillResponseDTO> payBill(@PathVariable Long id) {
         return ResponseEntity.ok(billService.payBill(id));
@@ -50,24 +50,21 @@ public class BillController {
     public ResponseEntity<BillResponseDTO> createBill(
             @RequestBody BillRequestDTO request) {
 
-        // 🔥 DEBUG LOGS (remove later if needed)
-        System.out.println("===== BILL REQUEST =====");
-        System.out.println("Customer: " + request.getCustomerName());
-        System.out.println("Table: " + request.getTableNumber());
+        if (request == null) {
+            throw new RuntimeException("Request body cannot be null");
+        }
+
+        if (request.getCustomerName() == null || request.getCustomerName().isBlank()) {
+            throw new RuntimeException("Customer name is required");
+        }
+
+        if (request.getTableNumber() == null || request.getTableNumber().isBlank()) {
+            throw new RuntimeException("Table number is required");
+        }
 
         if (request.getItems() == null || request.getItems().isEmpty()) {
             throw new RuntimeException("Items list cannot be empty");
         }
-
-        request.getItems().forEach(item -> {
-            System.out.println("Item: " + item.getName());
-            System.out.println("Price: " + item.getPrice());
-            System.out.println("Qty: " + item.getQuantity());
-
-            if (item.getPrice() == null || item.getQuantity() == null) {
-                throw new RuntimeException("Price or Quantity cannot be null");
-            }
-        });
 
         return ResponseEntity.ok(billService.createBill(request));
     }
