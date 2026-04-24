@@ -35,11 +35,7 @@ public class InvoicePdfService {
             pdfDoc.addEventHandler(PdfDocumentEvent.END_PAGE, new FooterHandler());
 
             // ================= HEADER =================
-
-            // ================= HEADER =================
-
             try {
-
                 ImageData imageData = ImageDataFactory.create(
                         getClass().getResource("/assets/CafeDesklogo.png")
                 );
@@ -51,13 +47,12 @@ public class InvoicePdfService {
                 document.add(logo);
 
             } catch (Exception e) {
-                e.printStackTrace();
-
                 document.add(new Paragraph("CafeDesk")
                         .setFontSize(26)
                         .setBold()
                         .setTextAlignment(TextAlignment.CENTER));
             }
+
             document.add(new Paragraph("Premium Coffee & Bites")
                     .setFontSize(12)
                     .setFontColor(ColorConstants.DARK_GRAY)
@@ -74,9 +69,12 @@ public class InvoicePdfService {
             // ================= SAFE DATA =================
 
             String invoiceNo = bill.getInvoiceNumber() != null ? bill.getInvoiceNumber() : "N/A";
+            String billingId = bill.getBillingId() != null ? bill.getBillingId() : "N/A";
             String customer = bill.getCustomerName() != null ? bill.getCustomerName() : "N/A";
             String tableNo = bill.getTableNumber() != null ? bill.getTableNumber() : "N/A";
             String status = bill.getStatus() != null ? bill.getStatus().toUpperCase() : "N/A";
+            String paymentId = bill.getCfPaymentId() != null ? bill.getCfPaymentId() : "N/A";
+            String orderId = bill.getCfOrderId() != null ? bill.getCfOrderId() : "N/A";
 
             String formattedDate = "N/A";
             if (bill.getCreatedAt() != null) {
@@ -84,19 +82,22 @@ public class InvoicePdfService {
                         .format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm"));
             }
 
-            document.add(new Paragraph("Invoice No: " + invoiceNo).setBold());
-            document.add(new Paragraph("Date: " + formattedDate));
-            document.add(new Paragraph("Customer Name: " + customer));
-            document.add(new Paragraph("Table Number : " + tableNo));
-            document.add(new Paragraph("Payment Status: " + status));
+            // ================= BILL INFO =================
+
+            document.add(new Paragraph("Invoice No : " + invoiceNo).setBold());
+            document.add(new Paragraph("Billing ID : " + billingId));
+            document.add(new Paragraph("Date       : " + formattedDate));
+            document.add(new Paragraph("Customer   : " + customer));
+            document.add(new Paragraph("Table No   : " + tableNo));
+            document.add(new Paragraph("Status     : " + status));
 
             document.add(new Paragraph("\n"));
 
-            // ================= BARCODE =================
+            // ================= BARCODE (Billing ID) =================
 
-            if (!invoiceNo.equals("N/A")) {
+            if (!billingId.equals("N/A")) {
                 Barcode128 barcode = new Barcode128(pdfDoc);
-                barcode.setCode(invoiceNo);
+                barcode.setCode(billingId);
 
                 Image barcodeImage = new Image(barcode.createFormXObject(pdfDoc));
                 barcodeImage.setWidth(200);
@@ -111,7 +112,6 @@ public class InvoicePdfService {
             Table table = new Table(UnitValue.createPercentArray(new float[]{4, 2, 2, 2}))
                     .useAllAvailableWidth();
 
-            // Header Styling
             table.addHeaderCell(createHeaderCell("Item"));
             table.addHeaderCell(createHeaderCell("Qty"));
             table.addHeaderCell(createHeaderCell("Price"));
@@ -147,6 +147,19 @@ public class InvoicePdfService {
                     .setBold()
                     .setFontSize(16)
                     .setTextAlignment(TextAlignment.RIGHT));
+
+            document.add(new Paragraph("\n"));
+
+            // ================= PAYMENT DETAILS =================
+
+            document.add(new Paragraph("Payment Details")
+                    .setBold()
+                    .setFontSize(14));
+
+            document.add(new LineSeparator(new com.itextpdf.kernel.pdf.canvas.draw.SolidLine()));
+
+            document.add(new Paragraph("Payment ID : " + paymentId));
+            document.add(new Paragraph("Order ID   : " + orderId));
 
             document.add(new Paragraph("\n\n"));
 
@@ -185,7 +198,12 @@ public class InvoicePdfService {
             PdfPage page = docEvent.getPage();
             Rectangle pageSize = page.getPageSize();
 
-            PdfCanvas pdfCanvas = new PdfCanvas(page.newContentStreamAfter(), page.getResources(), docEvent.getDocument());
+            PdfCanvas pdfCanvas = new PdfCanvas(
+                    page.newContentStreamAfter(),
+                    page.getResources(),
+                    docEvent.getDocument()
+            );
+
             Canvas canvas = new Canvas(pdfCanvas, pageSize);
 
             canvas.showTextAligned(
@@ -198,7 +216,7 @@ public class InvoicePdfService {
             );
 
             canvas.showTextAligned(
-                    new Paragraph("Developed by SAMARTH PAWAR WITH  ❤️")
+                    new Paragraph("Developed by SAMARTH PAWAR WITH ❤️")
                             .setFontSize(10)
                             .setFontColor(ColorConstants.GRAY),
                     pageSize.getWidth() / 2,

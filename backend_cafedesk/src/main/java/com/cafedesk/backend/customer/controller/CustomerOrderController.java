@@ -95,7 +95,7 @@ public class CustomerOrderController {
             @RequestParam String status) {
 
         try {
-            
+
             orderService.updateOrderStatus(orderId, status);
 
             return ResponseEntity.ok("✅ Status updated");

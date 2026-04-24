@@ -9,6 +9,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Optional;
+
 @RestController
 @RequestMapping("/api/customer")
 public class CustomerInvoiceController {
@@ -23,33 +25,55 @@ public class CustomerInvoiceController {
     }
 
     @GetMapping("/invoice/{id}")
-    public ResponseEntity<byte[]> downloadInvoice(@PathVariable Long id) {
+    public ResponseEntity<?> downloadInvoice(@PathVariable Long id) {
 
-        // ✅ Fetch Bill
-        Bill bill = billRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Bill not found with id: " + id));
+        try {
+            // ✅ Fetch Bill safely
+            Optional<Bill> optionalBill = billRepository.findById(id);
 
-        // ✅ Generate PDF
-        byte[] pdfBytes = invoicePdfService.generateInvoice(bill);
+            if (optionalBill.isEmpty()) {
+                return ResponseEntity
+                        .status(404)
+                        .body("❌ Bill not found with id: " + id);
+            }
 
-        // ✅ Safe filename handling
-        String fileName = (bill.getInvoiceNumber() != null && !bill.getInvoiceNumber().isEmpty())
-                ? bill.getInvoiceNumber()
-                : "invoice_" + bill.getId();
+            Bill bill = optionalBill.get();
 
-        // ✅ Headers
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_PDF);
-        headers.setContentDisposition(
-                ContentDisposition.attachment()
-                        .filename(fileName + ".pdf")
-                        .build()
-        );
+            // ✅ Generate PDF
+            byte[] pdfBytes = invoicePdfService.generateInvoice(bill);
 
-        // ✅ Return Response
-        return ResponseEntity
-                .ok()
-                .headers(headers)
-                .body(pdfBytes);
+            // ✅ Better filename (Billing ID > Invoice No > fallback)
+            String fileName;
+
+            if (bill.getBillingId() != null && !bill.getBillingId().isEmpty()) {
+                fileName = bill.getBillingId();
+            } else if (bill.getInvoiceNumber() != null && !bill.getInvoiceNumber().isEmpty()) {
+                fileName = bill.getInvoiceNumber();
+            } else {
+                fileName = "invoice_" + bill.getId();
+            }
+
+            // ✅ Headers
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDisposition(
+                    ContentDisposition.attachment()
+                            .filename(fileName + ".pdf")
+                            .build()
+            );
+
+            // ✅ Return Response
+            return ResponseEntity
+                    .ok()
+                    .headers(headers)
+                    .body(pdfBytes);
+
+        } catch (Exception e) {
+
+            // ✅ Proper error response
+            return ResponseEntity
+                    .status(500)
+                    .body("❌ Error generating invoice: " + e.getMessage());
+        }
     }
 }

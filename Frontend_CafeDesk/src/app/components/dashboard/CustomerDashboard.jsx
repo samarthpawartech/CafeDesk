@@ -50,42 +50,68 @@ export default function CustomerDashboard() {
     setTableNumber(table || "T01");
   }, []);
   /*=========== Download Invoice ========================== */
-  const downloadInvoice = async (bill) => {
-    // 🚫 Restrict download
-    if (bill.status?.toUpperCase() !== "PAID") {
-      return alert("Invoice available only after payment ✅");
-    }
+const downloadInvoice = async (bill) => {
 
-    try {
-      const response = await fetch(`${API_BASE}/customer/invoice/${bill.id}`, {
+  // 🚫 Restrict download
+  if (bill.status?.toUpperCase() !== "PAID") {
+    return alert("Invoice available only after payment ✅");
+  }
+
+  try {
+    const response = await fetch(
+      `${API_BASE}/customer/invoice/${bill.id}`,
+      {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: token ? `Bearer ${token}` : "",
         },
-      });
-
-      if (!response.ok) {
-        return alert("Failed to download invoice ❌");
       }
+    );
 
-      const blob = await response.blob();
-
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-
-      link.href = url;
-      link.download = `${bill.invoiceNumber || "invoice_" + bill.id}.pdf`;
-
-      document.body.appendChild(link);
-      link.click();
-
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error(error);
-      alert("Error downloading invoice ❌");
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || "Failed to download invoice ❌");
     }
-  };
+
+    // ✅ Convert to blob
+    const blob = await response.blob();
+
+    // ✅ Get filename from backend header (BEST WAY)
+    let fileName = "invoice.pdf";
+    const contentDisposition = response.headers.get("Content-Disposition");
+
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename="?(.+)"?/);
+      if (match && match[1]) {
+        fileName = match[1];
+      }
+    } else {
+      // fallback (Billing ID > Invoice No > default)
+      fileName =
+        bill.billingId ||
+        bill.invoiceNumber ||
+        `invoice_${bill.id}.pdf`;
+    }
+
+    // ✅ Download file
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = fileName;
+
+    document.body.appendChild(link);
+    link.click();
+
+    // cleanup
+    link.remove();
+    window.URL.revokeObjectURL(url);
+
+  } catch (error) {
+    console.error("Download Error:", error);
+    alert(error.message || "Error downloading invoice ❌");
+  }
+};
   /* ================= FETCH MENU ================= */
   useEffect(() => {
     fetch(`${API_BASE}/customer/menu`)
