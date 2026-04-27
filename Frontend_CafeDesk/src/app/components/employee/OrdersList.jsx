@@ -32,32 +32,26 @@ export const OrdersList = () => {
     completed: { label: "Completed", color: "bg-gray-500", icon: CheckCircle },
   };
 
-  // ✅ FETCH (FIXED)
+  // ✅ FETCH
   useEffect(() => {
-    fetch("http://localhost:8080/api/customer/orders/all") // ✅ CORRECT API
+    fetch("http://localhost:8080/api/customer/orders/all")
       .then((res) => {
         if (!res.ok) throw new Error("API failed");
         return res.json();
       })
       .then((data) => {
-        console.log("🔥 API RESPONSE:", data);
-
         const formatted = data.map((order) => ({
           id: order.id,
           tableNumber: order.tableNumber || "-",
           customerName: order.customerName || "Guest",
           timestamp: order.createdAt || new Date(),
-
-          // ✅ FIXED STATUS HANDLING
           status: statusMap[order.status?.toUpperCase()] || "pending",
-
           items:
             order.items?.map((item) => ({
               itemName: item.name,
               quantity: item.quantity,
               price: item.price,
             })) || [],
-
           total: order.amount || 0,
         }));
 
@@ -70,17 +64,16 @@ export const OrdersList = () => {
       });
   }, []);
 
-  // ✅ UPDATE STATUS (FIXED)
+  // ✅ UPDATE STATUS
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
       const backendStatus = reverseStatusMap[newStatus];
 
       await fetch(
-        `http://localhost:8080/api/customer/orders/${orderId}/status?status=${backendStatus}`, // ✅ CORRECT API
+        `http://localhost:8080/api/customer/orders/${orderId}/status?status=${backendStatus}`,
         { method: "PUT" },
       );
 
-      // update UI instantly
       setOrders((prev) =>
         prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o)),
       );
@@ -107,8 +100,12 @@ export const OrdersList = () => {
           return (
             <Card
               key={status}
-              className="p-6 cursor-pointer hover:shadow-lg border-[#E8D5BF]"
               onClick={() => setFilter(status)}
+              className={`p-6 cursor-pointer transition-all duration-200 border-[#E8D5BF] ${
+                filter === status
+                  ? "bg-[#F5E6D3] ring-2 ring-[#8B6F47]"
+                  : "hover:shadow-lg"
+              }`}
             >
               <div className="flex items-center gap-4">
                 <div
@@ -126,12 +123,29 @@ export const OrdersList = () => {
         })}
       </div>
 
-      {/* FILTER */}
-      <div className="flex gap-2 flex-wrap">
-        <Button onClick={() => setFilter("all")}>All Orders</Button>
+      {/* FILTER BUTTONS */}
+      <div className="flex justify-center gap-2 flex-wrap">
+        <Button
+          onClick={() => setFilter("all")}
+          className={`transition-all duration-200 ${
+            filter === "all"
+              ? "bg-[#8B6F47] text-white"
+              : "bg-white text-[#8B6F47] border border-[#8B6F47]"
+          }`}
+        >
+          All Orders
+        </Button>
 
         {Object.entries(statusConfig).map(([status, config]) => (
-          <Button key={status} onClick={() => setFilter(status)}>
+          <Button
+            key={status}
+            onClick={() => setFilter(status)}
+            className={`transition-all duration-200 ${
+              filter === status
+                ? "bg-[#8B6F47] text-white"
+                : "bg-white text-[#8B6F47] border border-[#8B6F47]"
+            }`}
+          >
             {config.label}
           </Button>
         ))}
