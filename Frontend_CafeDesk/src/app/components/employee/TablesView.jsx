@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Users, CheckCircle, Clock, Plus } from "lucide-react";
-import { tables as initialTables } from "@/app/utils/mockData";
 import { Card } from "@/app/components/ui/card";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 
+const API = "http://localhost:8080/api/employee/tables";
+
 export const TablesView = () => {
-  const [tables, setTables] = useState(initialTables);
+  const [tables, setTables] = useState([]);
   const [filter, setFilter] = useState("all");
   const [showForm, setShowForm] = useState(false);
   const [newTable, setNewTable] = useState({
@@ -16,18 +17,61 @@ export const TablesView = () => {
     capacity: "",
   });
 
+  // ✅ Keep UI lowercase (no UI change)
   const statusConfig = {
     available: { label: "Available", color: "bg-green-500" },
     occupied: { label: "Occupied", color: "bg-red-500" },
     reserved: { label: "Reserved", color: "bg-yellow-500" },
   };
 
-  const updateTableStatus = (tableNumber, newStatus) => {
-    setTables(
-      tables.map((table) =>
-        table.number === tableNumber ? { ...table, status: newStatus } : table,
-      ),
-    );
+  // ✅ FETCH TABLES FROM BACKEND (FIXED)
+  const fetchTables = async () => {
+    try {
+      const res = await fetch(API);
+
+      if (!res.ok) {
+        console.error("API ERROR:", res.status);
+        return;
+      }
+
+      const data = await res.json();
+      console.log("API DATA:", data);
+
+      if (!Array.isArray(data)) {
+        console.error("Invalid API response");
+        return;
+      }
+
+      // ✅ FIX: convert ENUM → lowercase
+      const formatted = data.map((t) => ({
+        number: t.tableCode?.replace("T", "") || "",
+        tableCode: t.tableCode,
+        capacity: t.capacity,
+        status: t.status ? t.status.toLowerCase() : "available",
+      }));
+
+      setTables(formatted);
+    } catch (err) {
+      console.error("FETCH ERROR:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchTables();
+  }, []);
+
+  // ✅ UPDATE STATUS (SEND UPPERCASE TO BACKEND)
+  const updateTableStatus = async (tableCode, newStatus) => {
+    try {
+      await fetch(
+        `${API}/${tableCode}/status?status=${newStatus.toUpperCase()}`,
+        { method: "PUT" },
+      );
+
+      fetchTables();
+    } catch (err) {
+      console.error("UPDATE ERROR:", err);
+    }
   };
 
   const getTableCount = (status) => {
@@ -37,18 +81,31 @@ export const TablesView = () => {
   const filteredTables =
     filter === "all" ? tables : tables.filter((t) => t.status === filter);
 
-  const handleAddTable = () => {
+  // ✅ ADD TABLE
+  const handleAddTable = async () => {
     if (!newTable.number || !newTable.capacity) return;
 
-    const newEntry = {
-      number: Number(newTable.number),
-      capacity: Number(newTable.capacity),
-      status: "available",
-    };
+    const tableCode = `T${String(newTable.number).padStart(2, "0")}`;
 
-    setTables([...tables, newEntry]);
-    setNewTable({ number: "", capacity: "" });
-    setShowForm(false);
+    try {
+      await fetch(API, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tableCode,
+          capacity: Number(newTable.capacity),
+          status: "AVAILABLE", // backend ENUM
+        }),
+      });
+
+      setNewTable({ number: "", capacity: "" });
+      setShowForm(false);
+      fetchTables();
+    } catch (err) {
+      console.error("ADD ERROR:", err);
+    }
   };
 
   return (
@@ -92,16 +149,15 @@ export const TablesView = () => {
         </Card>
       </div>
 
-      {/* ✅ FILTER + ADD (CENTERED & SAME SIZE) */}
+      {/* FILTER + ADD */}
       <div className="flex justify-center">
         <div className="flex flex-wrap items-center gap-3 bg-[#F5E6D3] p-3 rounded-xl border border-[#E8D5BF]">
           {["all", "available", "occupied", "reserved"].map((f) => (
             <Button
               key={f}
-              size="default"
               variant={filter === f ? "default" : "outline"}
               onClick={() => setFilter(f)}
-              className="capitalize min-w-[110px] h-10"
+              className="capitalize min-w-[110px]"
             >
               {f}
             </Button>
@@ -109,8 +165,7 @@ export const TablesView = () => {
 
           <Button
             onClick={() => setShowForm(true)}
-            size="default"
-            className="min-w-[130px] h-10 bg-[#2C1810] text-white"
+            className="min-w-[130px] bg-[#2C1810] text-white"
           >
             <Plus className="w-4 h-4 mr-1" />
             Add Table
@@ -118,15 +173,15 @@ export const TablesView = () => {
         </div>
       </div>
 
-      {/* ADD TABLE MODAL */}
+      {/* ADD MODAL */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
           <div className="bg-white p-6 rounded-lg w-80 space-y-4">
             <h2 className="text-lg font-semibold">Add Table</h2>
 
             <input
               type="number"
-              placeholder="Table Number"
+              placeholder="Table Number (1,2...)"
               value={newTable.number}
               onChange={(e) =>
                 setNewTable({ ...newTable, number: e.target.value })
@@ -158,10 +213,11 @@ export const TablesView = () => {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {filteredTables.map((table) => {
           const config = statusConfig[table.status];
+          if (!config) return null;
 
           return (
             <Card
-              key={table.number}
+              key={table.tableCode}
               className={`p-6 border-2 ${
                 table.status === "available"
                   ? "border-green-200"
@@ -178,75 +234,16 @@ export const TablesView = () => {
                 </div>
 
                 <div>
-                  <h3 className="font-semibold">Table {table.number}</h3>
-                  <p className="text-sm text-[#8B6F47] flex justify-center items-center gap-1">
+                  <h3 className="font-semibold">{table.tableCode}</h3>
+                  <p className="text-sm text-[#8B6F47] flex justify-center gap-1">
                     <Users className="w-3 h-3" />
                     {table.capacity} seats
                   </p>
                 </div>
 
-                <Badge
-                  className={`${config.color} text-white w-full justify-center`}
-                >
+                <Badge className={`${config.color} text-white w-full`}>
                   {config.label}
                 </Badge>
-
-                <div className="space-y-2">
-                  {table.status === "available" && (
-                    <>
-                      <Button
-                        onClick={() =>
-                          updateTableStatus(table.number, "occupied")
-                        }
-                        className="w-full bg-red-500 text-white"
-                      >
-                        Occupy
-                      </Button>
-                      <Button
-                        onClick={() =>
-                          updateTableStatus(table.number, "reserved")
-                        }
-                        variant="outline"
-                        className="w-full"
-                      >
-                        Reserve
-                      </Button>
-                    </>
-                  )}
-
-                  {table.status === "occupied" && (
-                    <Button
-                      onClick={() =>
-                        updateTableStatus(table.number, "available")
-                      }
-                      className="w-full bg-green-500 text-white"
-                    >
-                      Clear Table
-                    </Button>
-                  )}
-
-                  {table.status === "reserved" && (
-                    <>
-                      <Button
-                        onClick={() =>
-                          updateTableStatus(table.number, "occupied")
-                        }
-                        className="w-full bg-red-500 text-white"
-                      >
-                        Check In
-                      </Button>
-                      <Button
-                        onClick={() =>
-                          updateTableStatus(table.number, "available")
-                        }
-                        variant="outline"
-                        className="w-full"
-                      >
-                        Cancel
-                      </Button>
-                    </>
-                  )}
-                </div>
               </div>
             </Card>
           );

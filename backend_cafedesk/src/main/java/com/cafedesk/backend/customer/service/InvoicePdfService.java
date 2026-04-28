@@ -31,7 +31,7 @@ public class InvoicePdfService {
             PdfDocument pdfDoc = new PdfDocument(writer);
             Document document = new Document(pdfDoc);
 
-            // ✅ Footer
+            // Footer
             pdfDoc.addEventHandler(PdfDocumentEvent.END_PAGE, new FooterHandler());
 
             // ================= HEADER =================
@@ -82,18 +82,34 @@ public class InvoicePdfService {
                         .format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm"));
             }
 
-            // ================= BILL INFO =================
+            // ================= BILL INFO TABLE =================
 
-            document.add(new Paragraph("Invoice No : " + invoiceNo).setBold());
-            document.add(new Paragraph("Billing ID : " + billingId));
-            document.add(new Paragraph("Date       : " + formattedDate));
-            document.add(new Paragraph("Customer   : " + customer));
-            document.add(new Paragraph("Table No   : " + tableNo));
-            document.add(new Paragraph("Status     : " + status));
+            Table infoTable = new Table(UnitValue.createPercentArray(new float[]{1, 2}))
+                    .setWidth(UnitValue.createPercentValue(60))
+                    .setHorizontalAlignment(HorizontalAlignment.CENTER);
 
+            infoTable.addCell(createInfoCell("Invoice No"));
+            infoTable.addCell(createInfoValue(invoiceNo));
+
+            infoTable.addCell(createInfoCell("Billing ID"));
+            infoTable.addCell(createInfoValue(billingId));
+
+            infoTable.addCell(createInfoCell("Date"));
+            infoTable.addCell(createInfoValue(formattedDate));
+
+            infoTable.addCell(createInfoCell("Customer"));
+            infoTable.addCell(createInfoValue(customer));
+
+            infoTable.addCell(createInfoCell("Table No"));
+            infoTable.addCell(createInfoValue(tableNo));
+
+            infoTable.addCell(createInfoCell("Status"));
+            infoTable.addCell(createInfoValue(status));
+
+            document.add(infoTable);
             document.add(new Paragraph("\n"));
 
-            // ================= BARCODE (Billing ID) =================
+            // ================= BARCODE =================
 
             if (!billingId.equals("N/A")) {
                 Barcode128 barcode = new Barcode128(pdfDoc);
@@ -172,7 +188,6 @@ public class InvoicePdfService {
     }
 
     // ================= HEADER CELL =================
-
     private Cell createHeaderCell(String text) {
         return new Cell()
                 .add(new Paragraph(text))
@@ -181,14 +196,25 @@ public class InvoicePdfService {
                 .setTextAlignment(TextAlignment.CENTER);
     }
 
-    // ================= CURRENCY FORMAT =================
+    // ================= INFO CELLS =================
+    private Cell createInfoCell(String text) {
+        return new Cell()
+                .add(new Paragraph(text))
+                .setBold()
+                .setBackgroundColor(ColorConstants.LIGHT_GRAY);
+    }
 
+    private Cell createInfoValue(String text) {
+        return new Cell()
+                .add(new Paragraph(text));
+    }
+
+    // ================= CURRENCY =================
     private String formatCurrency(double value) {
         return String.format("₹%.2f", value);
     }
 
     // ================= FOOTER =================
-
     private static class FooterHandler implements IEventHandler {
 
         @Override
