@@ -13,6 +13,7 @@ import com.itextpdf.kernel.geom.Rectangle;
 import com.itextpdf.kernel.pdf.*;
 import com.itextpdf.kernel.pdf.canvas.PdfCanvas;
 import com.itextpdf.layout.*;
+import com.itextpdf.layout.borders.Border;
 import com.itextpdf.layout.element.*;
 import com.itextpdf.layout.properties.*;
 import org.springframework.stereotype.Service;
@@ -31,7 +32,6 @@ public class InvoicePdfService {
             PdfDocument pdfDoc = new PdfDocument(writer);
             Document document = new Document(pdfDoc);
 
-            // Footer
             pdfDoc.addEventHandler(PdfDocumentEvent.END_PAGE, new FooterHandler());
 
             // ================= HEADER =================
@@ -82,28 +82,29 @@ public class InvoicePdfService {
                         .format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm"));
             }
 
-            // ================= BILL INFO TABLE =================
+            // ================= BILL INFO TABLE (NO BORDERS + NO GREY) =================
 
             Table infoTable = new Table(UnitValue.createPercentArray(new float[]{1, 2}))
                     .setWidth(UnitValue.createPercentValue(60))
-                    .setHorizontalAlignment(HorizontalAlignment.CENTER);
+                    .setHorizontalAlignment(HorizontalAlignment.CENTER)
+                    .setBorder(Border.NO_BORDER);
 
-            infoTable.addCell(createInfoCell("Invoice No"));
+            infoTable.addCell(createInfoCell("Invoice No :"));
             infoTable.addCell(createInfoValue(invoiceNo));
 
-            infoTable.addCell(createInfoCell("Billing ID"));
+            infoTable.addCell(createInfoCell("Billing ID :"));
             infoTable.addCell(createInfoValue(billingId));
 
-            infoTable.addCell(createInfoCell("Date"));
+            infoTable.addCell(createInfoCell("Date :"));
             infoTable.addCell(createInfoValue(formattedDate));
 
-            infoTable.addCell(createInfoCell("Customer"));
+            infoTable.addCell(createInfoCell("Customer :"));
             infoTable.addCell(createInfoValue(customer));
 
-            infoTable.addCell(createInfoCell("Table No"));
+            infoTable.addCell(createInfoCell("Table No :"));
             infoTable.addCell(createInfoValue(tableNo));
 
-            infoTable.addCell(createInfoCell("Status"));
+            infoTable.addCell(createInfoCell("Status :"));
             infoTable.addCell(createInfoValue(status));
 
             document.add(infoTable);
@@ -196,20 +197,20 @@ public class InvoicePdfService {
                 .setTextAlignment(TextAlignment.CENTER);
     }
 
-    // ================= INFO CELLS =================
+    // ✅ FIXED HERE (NO GREY)
     private Cell createInfoCell(String text) {
         return new Cell()
                 .add(new Paragraph(text))
                 .setBold()
-                .setBackgroundColor(ColorConstants.LIGHT_GRAY);
+                .setBorder(Border.NO_BORDER);
     }
 
     private Cell createInfoValue(String text) {
         return new Cell()
-                .add(new Paragraph(text));
+                .add(new Paragraph(text))
+                .setBorder(Border.NO_BORDER);
     }
 
-    // ================= CURRENCY =================
     private String formatCurrency(double value) {
         return String.format("₹%.2f", value);
     }
@@ -242,7 +243,7 @@ public class InvoicePdfService {
             );
 
             canvas.showTextAligned(
-                    new Paragraph("Developed by SAMARTH PAWAR WITH ❤️")
+                    new Paragraph("Developed by SAMARTH PAWAR WITH Love")
                             .setFontSize(10)
                             .setFontColor(ColorConstants.GRAY),
                     pageSize.getWidth() / 2,

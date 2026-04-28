@@ -6,8 +6,6 @@ import com.cafedesk.backend.employee.Repository.TableRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-
 import java.util.Set;
 import java.util.stream.Collectors;
 
