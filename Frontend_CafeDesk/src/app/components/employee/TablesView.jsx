@@ -17,42 +17,36 @@ export const TablesView = () => {
     capacity: "",
   });
 
-  // ✅ Keep UI lowercase (no UI change)
   const statusConfig = {
     available: { label: "Available", color: "bg-green-500" },
     occupied: { label: "Occupied", color: "bg-red-500" },
     reserved: { label: "Reserved", color: "bg-yellow-500" },
   };
 
-  // ✅ FETCH TABLES FROM BACKEND (FIXED)
+  // ✅ FETCH + PROPER SORT
   const fetchTables = async () => {
     try {
       const res = await fetch(API);
-
-      if (!res.ok) {
-        console.error("API ERROR:", res.status);
-        return;
-      }
+      if (!res.ok) return;
 
       const data = await res.json();
-      console.log("API DATA:", data);
 
-      if (!Array.isArray(data)) {
-        console.error("Invalid API response");
-        return;
-      }
-
-      // ✅ FIX: convert ENUM → lowercase
-      const formatted = data.map((t) => ({
-        number: t.tableCode?.replace("T", "") || "",
-        tableCode: t.tableCode,
-        capacity: t.capacity,
-        status: t.status ? t.status.toLowerCase() : "available",
-      }));
+      const formatted = data
+        .map((t) => ({
+          number: t.tableCode?.replace("T", "") || "",
+          tableCode: t.tableCode,
+          capacity: t.capacity,
+          status: t.status ? t.status.toLowerCase() : "available",
+        }))
+        .sort((a, b) =>
+          a.tableCode.localeCompare(b.tableCode, undefined, {
+            numeric: true,
+          }),
+        ); // 🔥 FIXED SORT
 
       setTables(formatted);
     } catch (err) {
-      console.error("FETCH ERROR:", err);
+      console.error(err);
     }
   };
 
@@ -60,28 +54,32 @@ export const TablesView = () => {
     fetchTables();
   }, []);
 
-  // ✅ UPDATE STATUS (SEND UPPERCASE TO BACKEND)
+  // ✅ UPDATE WITHOUT REORDER
   const updateTableStatus = async (tableCode, newStatus) => {
     try {
-      await fetch(
+      const res = await fetch(
         `${API}/${tableCode}/status?status=${newStatus.toUpperCase()}`,
         { method: "PUT" },
       );
 
-      fetchTables();
+      if (!res.ok) return;
+
+      setTables((prev) =>
+        prev.map((t) =>
+          t.tableCode === tableCode ? { ...t, status: newStatus } : t,
+        ),
+      );
     } catch (err) {
-      console.error("UPDATE ERROR:", err);
+      console.error(err);
     }
   };
 
-  const getTableCount = (status) => {
-    return tables.filter((t) => t.status === status).length;
-  };
+  const getTableCount = (status) =>
+    tables.filter((t) => t.status === status).length;
 
   const filteredTables =
     filter === "all" ? tables : tables.filter((t) => t.status === filter);
 
-  // ✅ ADD TABLE
   const handleAddTable = async () => {
     if (!newTable.number || !newTable.capacity) return;
 
@@ -90,13 +88,11 @@ export const TablesView = () => {
     try {
       await fetch(API, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tableCode,
           capacity: Number(newTable.capacity),
-          status: "AVAILABLE", // backend ENUM
+          status: "AVAILABLE",
         }),
       });
 
@@ -104,7 +100,7 @@ export const TablesView = () => {
       setShowForm(false);
       fetchTables();
     } catch (err) {
-      console.error("ADD ERROR:", err);
+      console.error(err);
     }
   };
 
@@ -149,9 +145,9 @@ export const TablesView = () => {
         </Card>
       </div>
 
-      {/* FILTER + ADD */}
+      {/* FILTER */}
       <div className="flex justify-center">
-        <div className="flex flex-wrap items-center gap-3 bg-[#F5E6D3] p-3 rounded-xl border border-[#E8D5BF]">
+        <div className="flex flex-wrap gap-3 bg-[#F5E6D3] p-3 rounded-xl border border-[#E8D5BF]">
           {["all", "available", "occupied", "reserved"].map((f) => (
             <Button
               key={f}
@@ -173,42 +169,6 @@ export const TablesView = () => {
         </div>
       </div>
 
-      {/* ADD MODAL */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg w-80 space-y-4">
-            <h2 className="text-lg font-semibold">Add Table</h2>
-
-            <input
-              type="number"
-              placeholder="Table Number (1,2...)"
-              value={newTable.number}
-              onChange={(e) =>
-                setNewTable({ ...newTable, number: e.target.value })
-              }
-              className="w-full border p-2 rounded"
-            />
-
-            <input
-              type="number"
-              placeholder="Capacity"
-              value={newTable.capacity}
-              onChange={(e) =>
-                setNewTable({ ...newTable, capacity: e.target.value })
-              }
-              className="w-full border p-2 rounded"
-            />
-
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowForm(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleAddTable}>Add</Button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* TABLE GRID */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {filteredTables.map((table) => {
@@ -216,16 +176,7 @@ export const TablesView = () => {
           if (!config) return null;
 
           return (
-            <Card
-              key={table.tableCode}
-              className={`p-6 border-2 ${
-                table.status === "available"
-                  ? "border-green-200"
-                  : table.status === "occupied"
-                    ? "border-red-200"
-                    : "border-yellow-200"
-              }`}
-            >
+            <Card key={table.tableCode} className="p-6 border-2">
               <div className="text-center space-y-4">
                 <div
                   className={`w-16 h-16 mx-auto ${config.color} rounded-full flex items-center justify-center text-white text-xl font-bold`}
@@ -233,17 +184,48 @@ export const TablesView = () => {
                   {table.number}
                 </div>
 
-                <div>
-                  <h3 className="font-semibold">{table.tableCode}</h3>
-                  <p className="text-sm text-[#8B6F47] flex justify-center gap-1">
-                    <Users className="w-3 h-3" />
-                    {table.capacity} seats
-                  </p>
-                </div>
+                <h3 className="font-semibold">{table.tableCode}</h3>
+
+                <p className="text-sm text-[#8B6F47] flex justify-center gap-1">
+                  <Users className="w-3 h-3" />
+                  {table.capacity} seats
+                </p>
 
                 <Badge className={`${config.color} text-white w-full`}>
                   {config.label}
                 </Badge>
+
+                <div className="grid grid-cols-3 gap-2 mt-3">
+                  <Button
+                    size="sm"
+                    className="w-full bg-white text-black border"
+                    onClick={() =>
+                      updateTableStatus(table.tableCode, "available")
+                    }
+                  >
+                    Free
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    className="w-full bg-white text-black border"
+                    onClick={() =>
+                      updateTableStatus(table.tableCode, "occupied")
+                    }
+                  >
+                    Occupy
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    className="w-full bg-white text-black border"
+                    onClick={() =>
+                      updateTableStatus(table.tableCode, "reserved")
+                    }
+                  >
+                    Reserve
+                  </Button>
+                </div>
               </div>
             </Card>
           );
