@@ -27,7 +27,6 @@ public class OrderService {
 
         double total = 0;
 
-        // 🔥 IMPORTANT: USE addItem() instead of setItems()
         for (OrderItemDTO dto : request.getItems()) {
 
             OrderItem item = new OrderItem();
@@ -35,7 +34,7 @@ public class OrderService {
             item.setPrice(dto.getPrice());
             item.setQuantity(dto.getQuantity());
 
-            order.addItem(item); // ✅ FIXED
+            order.addItem(item);
 
             total += dto.getPrice() * dto.getQuantity();
         }
@@ -72,5 +71,10 @@ public class OrderService {
         order.setStatus(newStatus);
 
         orderRepository.save(order);
+    }
+
+    // ================= ✅ NEW METHOD (IMPORTANT) =================
+    public List<CurrentOrder> getOrdersByTable(String tableCode) {
+        return orderRepository.findByTableNumber(tableCode);
     }
 }
