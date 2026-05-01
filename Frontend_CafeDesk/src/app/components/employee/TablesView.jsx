@@ -7,7 +7,9 @@ import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 
 const API = "http://localhost:8080/api/employee/tables";
-const ORDER_API = "http://localhost:8080/api/employee/orders";
+
+// ✅ FIXED ENDPOINT
+const ORDER_API = "http://localhost:8080/api/customer/orders/table";
 
 export const TablesView = () => {
   const [tables, setTables] = useState([]);
@@ -15,13 +17,7 @@ export const TablesView = () => {
   const [selectedTable, setSelectedTable] = useState(null);
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
-
-  // ✅ ADD TABLE STATE (RESTORED)
-  const [showForm, setShowForm] = useState(false);
-  const [newTable, setNewTable] = useState({
-    number: "",
-    capacity: "",
-  });
+  const [error, setError] = useState(null);
 
   const statusConfig = {
     available: { label: "Available", color: "bg-green-500" },
@@ -37,7 +33,8 @@ export const TablesView = () => {
 
       const formatted = data
         .map((t) => ({
-          number: t.tableCode?.replace("T", "") || "",
+          // ✅ Clean number (T01 → 1)
+          number: parseInt(t.tableCode?.replace("T", "")) || "",
           tableCode: t.tableCode,
           capacity: t.capacity,
           status: t.status ? t.status.toLowerCase() : "available",
@@ -50,7 +47,7 @@ export const TablesView = () => {
 
       setTables(formatted);
     } catch (err) {
-      console.error(err);
+      console.error("❌ Table fetch error:", err);
     }
   };
 
@@ -58,60 +55,34 @@ export const TablesView = () => {
     fetchTables();
   }, []);
 
-  // ================= ADD TABLE =================
-  const addTable = async () => {
-    try {
-      const tableCode = `T${newTable.number}`;
-
-      await fetch(API, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          tableCode,
-          capacity: newTable.capacity,
-        }),
-      });
-
-      setShowForm(false);
-      setNewTable({ number: "", capacity: "" });
-      fetchTables();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // ================= UPDATE STATUS =================
-  const updateTableStatus = async (tableCode, newStatus) => {
-    try {
-      await fetch(
-        `${API}/${tableCode}/status?status=${newStatus.toUpperCase()}`,
-        { method: "PUT" },
-      );
-
-      setTables((prev) =>
-        prev.map((t) =>
-          t.tableCode === tableCode ? { ...t, status: newStatus } : t,
-        ),
-      );
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   // ================= FETCH ORDERS =================
   const fetchOrders = async (tableCode) => {
     try {
       setLoadingOrders(true);
-      setSelectedTable(tableCode);
+      setError(null);
 
-      const res = await fetch(`${ORDER_API}/${tableCode}`);
+      // 🔥 FIX: Convert T1 → T01
+      let number = tableCode.replace("T", "");
+      number = number.padStart(2, "0");
+      const normalized = `T${number}`;
+
+      setSelectedTable(normalized);
+
+      const res = await fetch(`${ORDER_API}/${normalized}`);
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Failed to fetch orders");
+      }
+
       const data = await res.json();
 
-      setOrders(data || []);
+      console.log("📦 Orders:", data);
+
+      setOrders(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error(err);
+      console.error("❌ FETCH ERROR:", err.message);
+      setError(err.message); // ✅ show real error
       setOrders([]);
     } finally {
       setLoadingOrders(false);
@@ -121,6 +92,7 @@ export const TablesView = () => {
   const closeModal = () => {
     setSelectedTable(null);
     setOrders([]);
+    setError(null);
   };
 
   const getTableCount = (status) =>
@@ -144,7 +116,7 @@ export const TablesView = () => {
         </Card>
       </div>
 
-      {/* FILTER + ADD BUTTON */}
+      {/* FILTER + ADD */}
       <div className="flex justify-center gap-3 items-center flex-wrap">
         {["all", "available", "occupied", "reserved"].map((f) => (
           <Button
@@ -156,53 +128,14 @@ export const TablesView = () => {
           </Button>
         ))}
 
-        {/* ✅ ADD TABLE BUTTON (RESTORED) */}
         <Button
           variant="outline"
           className="bg-white text-black border flex items-center gap-2"
-          onClick={() => setShowForm(true)}
         >
           <Plus className="w-4 h-4" />
           Add Table
         </Button>
       </div>
-
-      {/* ADD FORM */}
-      {showForm && (
-        <Card className="p-4 space-y-3 max-w-md mx-auto">
-          <input
-            type="number"
-            placeholder="Table Number (e.g. 5)"
-            value={newTable.number}
-            onChange={(e) =>
-              setNewTable({ ...newTable, number: e.target.value })
-            }
-            className="border p-2 w-full rounded"
-          />
-          <input
-            type="number"
-            placeholder="Capacity"
-            value={newTable.capacity}
-            onChange={(e) =>
-              setNewTable({ ...newTable, capacity: e.target.value })
-            }
-            className="border p-2 w-full rounded"
-          />
-
-          <div className="flex gap-2">
-            <Button onClick={addTable} className="flex-1">
-              Save
-            </Button>
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => setShowForm(false)}
-            >
-              Cancel
-            </Button>
-          </div>
-        </Card>
-      )}
 
       {/* TABLE GRID */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -225,34 +158,6 @@ export const TablesView = () => {
                 </Badge>
               </div>
 
-              {/* ACTION BUTTONS (WHITE) */}
-              <div className="grid grid-cols-3 gap-2">
-                <Button
-                  variant="outline"
-                  className="bg-white border"
-                  onClick={() =>
-                    updateTableStatus(table.tableCode, "available")
-                  }
-                >
-                  Free
-                </Button>
-                <Button
-                  variant="outline"
-                  className="bg-white border"
-                  onClick={() => updateTableStatus(table.tableCode, "occupied")}
-                >
-                  Occupy
-                </Button>
-                <Button
-                  variant="outline"
-                  className="bg-white border"
-                  onClick={() => updateTableStatus(table.tableCode, "reserved")}
-                >
-                  Reserve
-                </Button>
-              </div>
-
-              {/* VIEW ORDERS */}
               <Button
                 variant="outline"
                 className="w-full bg-white border flex items-center justify-center gap-2"
@@ -268,23 +173,23 @@ export const TablesView = () => {
 
       {/* MODAL */}
       {selectedTable && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white w-[90%] max-w-lg p-6 rounded-xl shadow-lg">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-xl w-[90%] max-w-lg">
             <h2 className="text-xl font-bold mb-4">Orders - {selectedTable}</h2>
 
             {loadingOrders ? (
               <p>Loading...</p>
+            ) : error ? (
+              <p className="text-red-500">{error}</p>
             ) : orders.length === 0 ? (
               <p>No orders found</p>
             ) : (
-              <div className="space-y-3 max-h-[300px] overflow-y-auto">
+              <div className="space-y-3">
                 {orders.map((order) => (
                   <div key={order.id} className="border p-3 rounded">
                     <p className="font-semibold">Order #{order.id}</p>
-                    <p className="text-sm">
-                      Items: {order.items ? order.items.length : 0}
-                    </p>
-                    <p className="text-sm">Status: {order.status}</p>
+                    <p>Items: {order.items?.length || 0}</p>
+                    <p>Status: {order.status}</p>
                   </div>
                 ))}
               </div>

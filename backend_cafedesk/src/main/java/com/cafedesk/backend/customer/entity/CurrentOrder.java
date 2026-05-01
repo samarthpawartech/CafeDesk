@@ -1,5 +1,6 @@
 package com.cafedesk.backend.customer.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -15,7 +16,10 @@ public class CurrentOrder {
     private Long id;
 
     private String customerName;
+
+    @Column(name = "table_number")
     private String tableNumber;
+
     private double amount;
 
     @Enumerated(EnumType.STRING)
@@ -24,16 +28,16 @@ public class CurrentOrder {
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    // ✅ FIXED: removed JsonManagedReference
+    // ✅🔥 ADD THIS (CRITICAL FIX)
+    @JsonManagedReference
     @OneToMany(
             mappedBy = "order",
             cascade = CascadeType.ALL,
             orphanRemoval = true,
-            fetch = FetchType.EAGER   // 🔥 ensures items are fetched
+            fetch = FetchType.EAGER
     )
     private List<OrderItem> items = new ArrayList<>();
 
-    // ✅ HELPER METHOD
     public void addItem(OrderItem item) {
         item.setOrder(this);
         this.items.add(item);
@@ -44,59 +48,26 @@ public class CurrentOrder {
         this.items.remove(item);
     }
 
-    // ================= GETTERS =================
+    // GETTERS
+    public Long getId() { return id; }
+    public String getCustomerName() { return customerName; }
+    public String getTableNumber() { return tableNumber; }
+    public double getAmount() { return amount; }
+    public OrderStatus getStatus() { return status; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public List<OrderItem> getItems() { return items; }
 
-    public Long getId() {
-        return id;
-    }
-
-    public String getCustomerName() {
-        return customerName;
-    }
-
-    public String getTableNumber() {
-        return tableNumber;
-    }
-
-    public double getAmount() {
-        return amount;
-    }
-
-    public OrderStatus getStatus() {
-        return status;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public List<OrderItem> getItems() {
-        return items;
-    }
-
-    // ================= SETTERS =================
-
-    public void setCustomerName(String customerName) {
-        this.customerName = customerName;
-    }
-
-    public void setTableNumber(String tableNumber) {
-        this.tableNumber = tableNumber;
-    }
-
-    public void setAmount(double amount) {
-        this.amount = amount;
-    }
-
-    public void setStatus(OrderStatus status) {
-        this.status = status;
-    }
+    // SETTERS
+    public void setCustomerName(String customerName) { this.customerName = customerName; }
+    public void setTableNumber(String tableNumber) { this.tableNumber = tableNumber; }
+    public void setAmount(double amount) { this.amount = amount; }
+    public void setStatus(OrderStatus status) { this.status = status; }
 
     public void setItems(List<OrderItem> items) {
         this.items.clear();
         if (items != null) {
             for (OrderItem item : items) {
-                addItem(item); // ensures FK is set
+                addItem(item);
             }
         }
     }

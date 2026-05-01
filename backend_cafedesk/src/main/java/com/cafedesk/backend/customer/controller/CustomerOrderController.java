@@ -28,12 +28,10 @@ public class CustomerOrderController {
 
         try {
             CurrentOrder order = orderService.placeOrder(request);
-
             return ResponseEntity.status(HttpStatus.CREATED).body(order);
 
         } catch (Exception e) {
             e.printStackTrace();
-
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("❌ Order failed: " + e.getMessage());
         }
@@ -45,7 +43,6 @@ public class CustomerOrderController {
 
         try {
             List<CurrentOrder> orders = orderService.getCustomerBills(username);
-
             return ResponseEntity.ok(orders != null ? orders : List.of());
 
         } catch (Exception e) {
@@ -60,9 +57,7 @@ public class CustomerOrderController {
     public ResponseEntity<List<CurrentOrder>> getCustomerBills(@PathVariable String username) {
 
         try {
-
             List<CurrentOrder> orders = orderService.getCustomerBills(username);
-
             return ResponseEntity.ok(orders != null ? orders : List.of());
 
         } catch (Exception e) {
@@ -78,7 +73,6 @@ public class CustomerOrderController {
 
         try {
             List<CurrentOrder> orders = orderService.getAllOrders();
-
             return ResponseEntity.ok(orders != null ? orders : List.of());
 
         } catch (Exception e) {
@@ -88,16 +82,29 @@ public class CustomerOrderController {
         }
     }
 
-    // ================= 🔥 UPDATE ORDER STATUS (NEW FIX) =================
+    // ================= 🔥 NEW: ORDERS BY TABLE (FIX) =================
+    @GetMapping("/table/{tableCode}")
+    public ResponseEntity<List<CurrentOrder>> getOrdersByTable(@PathVariable String tableCode) {
+
+        try {
+            List<CurrentOrder> orders = orderService.getOrdersByTable(tableCode);
+            return ResponseEntity.ok(orders != null ? orders : List.of());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(List.of());
+        }
+    }
+
+    // ================= UPDATE ORDER STATUS =================
     @PutMapping("/{orderId}/status")
     public ResponseEntity<?> updateOrderStatus(
             @PathVariable Long orderId,
             @RequestParam String status) {
 
         try {
-
             orderService.updateOrderStatus(orderId, status);
-
             return ResponseEntity.ok("✅ Status updated");
 
         } catch (Exception e) {

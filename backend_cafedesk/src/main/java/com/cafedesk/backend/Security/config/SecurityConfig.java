@@ -66,8 +66,11 @@ public class SecurityConfig {
                                 "/api/admin/login"
                         ).permitAll()
 
-                        // ✅ 🔥 MAIN FIX (ALLOW TABLES API)
+                        // ✅ ALLOW TABLES API
                         .requestMatchers("/api/employee/tables/**").permitAll()
+
+                        // ✅🔥 FIX: ALLOW ORDERS API
+                        .requestMatchers("/api/employee/orders/**").permitAll()
 
                         .requestMatchers(HttpMethod.GET, "/api/customer/menu").permitAll()
                         .requestMatchers("/menu/**").permitAll()
