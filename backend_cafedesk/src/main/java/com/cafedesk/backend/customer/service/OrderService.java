@@ -8,6 +8,7 @@ import com.cafedesk.backend.customer.entity.OrderStatus;
 import com.cafedesk.backend.customer.repository.OrderRepository;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +29,6 @@ public class OrderService {
 
         order.setCustomerName(request.getCustomerName());
 
-        // ✅ Normalize table code properly
         String tableCode = request.getTableNumber().toUpperCase().trim();
         order.setTableNumber(tableCode);
 
@@ -44,7 +44,7 @@ public class OrderService {
                 item.setPrice(dto.getPrice());
                 item.setQuantity(dto.getQuantity());
 
-                item.setOrder(order); // ✅ IMPORTANT (bi-directional mapping fix)
+                item.setOrder(order);
 
                 itemList.add(item);
 
@@ -52,16 +52,11 @@ public class OrderService {
             }
         }
 
-        order.setItems(itemList); // ✅ set full list
-
+        order.setItems(itemList);
         order.setAmount(total);
         order.setStatus(OrderStatus.PENDING);
 
-        CurrentOrder saved = orderRepository.save(order);
-
-        System.out.println("✅ ORDER SAVED: ID=" + saved.getId() + " TABLE=" + tableCode);
-
-        return saved;
+        return orderRepository.save(order);
     }
 
     // ================= GET CUSTOMER ORDERS =================
@@ -71,11 +66,7 @@ public class OrderService {
 
     // ================= GET ALL ORDERS =================
     public List<CurrentOrder> getAllOrders() {
-
         List<CurrentOrder> orders = orderRepository.findAll();
-
-        System.out.println("🔥 TOTAL ORDERS IN DB: " + orders.size());
-
         return orders != null ? orders : List.of();
     }
 
@@ -95,29 +86,27 @@ public class OrderService {
     // ================= GET ORDERS BY TABLE =================
     public List<CurrentOrder> getOrdersByTable(String tableCode) {
 
-        // ✅ Normalize input
         String normalized = tableCode.toUpperCase().trim();
-
-        System.out.println("🔍 Fetching orders for table: " + normalized);
 
         List<CurrentOrder> orders = orderRepository.findByTableNumber(normalized);
 
         if (orders == null || orders.isEmpty()) {
-            System.out.println("⚠️ No orders found for table: " + normalized);
             return List.of();
         }
 
-        System.out.println("📦 Orders found: " + orders.size());
-
-        // ✅ FIX Lazy loading (VERY IMPORTANT)
+        // Force load items
         orders.forEach(order -> {
             if (order.getItems() != null) {
-                order.getItems().forEach(item -> {
-                    item.getName(); // force load
-                });
+                order.getItems().forEach(item -> item.getName());
             }
         });
 
         return orders;
+    }
+
+    // ================= CLEAR ALL ORDERS (RESET ID) =================
+    @Transactional
+    public void clearAllOrders() {
+        orderRepository.truncateOrders();
     }
 }

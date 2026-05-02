@@ -7,8 +7,6 @@ import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 
 const API = "http://localhost:8080/api/employee/tables";
-
-// ✅ FIXED ENDPOINT
 const ORDER_API = "http://localhost:8080/api/customer/orders/table";
 
 export const TablesView = () => {
@@ -33,7 +31,6 @@ export const TablesView = () => {
 
       const formatted = data
         .map((t) => ({
-          // ✅ Clean number (T01 → 1)
           number: parseInt(t.tableCode?.replace("T", "")) || "",
           tableCode: t.tableCode,
           capacity: t.capacity,
@@ -55,13 +52,31 @@ export const TablesView = () => {
     fetchTables();
   }, []);
 
+  // ================= UPDATE STATUS =================
+  const updateTableStatus = async (tableCode, newStatus) => {
+    try {
+      await fetch(
+        `${API}/${tableCode}/status?status=${newStatus.toUpperCase()}`,
+        { method: "PUT" },
+      );
+
+      // update UI instantly
+      setTables((prev) =>
+        prev.map((t) =>
+          t.tableCode === tableCode ? { ...t, status: newStatus } : t,
+        ),
+      );
+    } catch (err) {
+      console.error("❌ Status update error:", err);
+    }
+  };
+
   // ================= FETCH ORDERS =================
   const fetchOrders = async (tableCode) => {
     try {
       setLoadingOrders(true);
       setError(null);
 
-      // 🔥 FIX: Convert T1 → T01
       let number = tableCode.replace("T", "");
       number = number.padStart(2, "0");
       const normalized = `T${number}`;
@@ -77,12 +92,10 @@ export const TablesView = () => {
 
       const data = await res.json();
 
-      console.log("📦 Orders:", data);
-
       setOrders(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("❌ FETCH ERROR:", err.message);
-      setError(err.message); // ✅ show real error
+      setError(err.message);
       setOrders([]);
     } finally {
       setLoadingOrders(false);
@@ -116,8 +129,8 @@ export const TablesView = () => {
         </Card>
       </div>
 
-      {/* FILTER + ADD */}
-      <div className="flex justify-center gap-3 items-center flex-wrap">
+      {/* FILTER */}
+      <div className="flex justify-center gap-3 flex-wrap">
         {["all", "available", "occupied", "reserved"].map((f) => (
           <Button
             key={f}
@@ -127,14 +140,6 @@ export const TablesView = () => {
             {f}
           </Button>
         ))}
-
-        <Button
-          variant="outline"
-          className="bg-white text-black border flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Add Table
-        </Button>
       </div>
 
       {/* TABLE GRID */}
@@ -150,6 +155,7 @@ export const TablesView = () => {
                 >
                   {table.number}
                 </div>
+
                 <h3 className="font-semibold mt-2">{table.tableCode}</h3>
                 <p className="text-sm">{table.capacity} seats</p>
 
@@ -158,6 +164,36 @@ export const TablesView = () => {
                 </Badge>
               </div>
 
+              {/* ✅ STATUS BUTTONS (FIXED) */}
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  variant="outline"
+                  className="bg-white border"
+                  onClick={() =>
+                    updateTableStatus(table.tableCode, "available")
+                  }
+                >
+                  Free
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="bg-white border"
+                  onClick={() => updateTableStatus(table.tableCode, "occupied")}
+                >
+                  Occupy
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="bg-white border"
+                  onClick={() => updateTableStatus(table.tableCode, "reserved")}
+                >
+                  Reserve
+                </Button>
+              </div>
+
+              {/* VIEW ORDERS */}
               <Button
                 variant="outline"
                 className="w-full bg-white border flex items-center justify-center gap-2"
