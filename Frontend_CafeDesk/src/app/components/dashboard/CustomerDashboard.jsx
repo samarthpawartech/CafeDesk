@@ -50,68 +50,42 @@ export default function CustomerDashboard() {
     setTableNumber(table || "T01");
   }, []);
   /*=========== Download Invoice ========================== */
-const downloadInvoice = async (bill) => {
+  const downloadInvoice = async (bill) => {
+    // 🚫 Restrict download
+    if (bill.status?.toUpperCase() !== "PAID") {
+      return alert("Invoice available only after payment ✅");
+    }
 
-  // 🚫 Restrict download
-  if (bill.status?.toUpperCase() !== "PAID") {
-    return alert("Invoice available only after payment ✅");
-  }
-
-  try {
-    const response = await fetch(
-      `${API_BASE}/customer/invoice/${bill.id}`,
-      {
+    try {
+      const response = await fetch(`${API_BASE}/customer/invoice/${bill.id}`, {
         method: "GET",
         headers: {
-          Authorization: token ? `Bearer ${token}` : "",
+          Authorization: `Bearer ${token}`,
         },
+      });
+
+      if (!response.ok) {
+        return alert("Failed to download invoice ❌");
       }
-    );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || "Failed to download invoice ❌");
+      const blob = await response.blob();
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = `${bill.invoiceNumber || "invoice_" + bill.id}.pdf`;
+
+      document.body.appendChild(link);
+      link.click();
+
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error(error);
+      alert("Error downloading invoice ❌");
     }
-
-    // ✅ Convert to blob
-    const blob = await response.blob();
-
-    // ✅ Get filename from backend header (BEST WAY)
-    let fileName = "invoice.pdf";
-    const contentDisposition = response.headers.get("Content-Disposition");
-
-    if (contentDisposition) {
-      const match = contentDisposition.match(/filename="?(.+)"?/);
-      if (match && match[1]) {
-        fileName = match[1];
-      }
-    } else {
-      // fallback (Billing ID > Invoice No > default)
-      fileName =
-        bill.billingId ||
-        bill.invoiceNumber ||
-        `invoice_${bill.id}.pdf`;
-    }
-
-    // ✅ Download file
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-
-    link.href = url;
-    link.download = fileName;
-
-    document.body.appendChild(link);
-    link.click();
-
-    // cleanup
-    link.remove();
-    window.URL.revokeObjectURL(url);
-
-  } catch (error) {
-    console.error("Download Error:", error);
-    alert(error.message || "Error downloading invoice ❌");
-  }
-};
+  };
   /* ================= FETCH MENU ================= */
   useEffect(() => {
     fetch(`${API_BASE}/customer/menu`)
@@ -233,6 +207,7 @@ const downloadInvoice = async (bill) => {
     }
 
     try {
+      // 🔥 FIX: Ensure correct numeric values
       const orderItems = currentOrder.map((item) => {
         const price = Number(item.price);
         const quantity = Number(item.quantity ?? 1);
@@ -243,21 +218,33 @@ const downloadInvoice = async (bill) => {
 
         return {
           name: item.name,
-          price,
-          quantity: quantity > 0 ? quantity : 1,
+          price: price,
+          quantity: quantity > 0 ? quantity : 1, // 🔥 force min 1
         };
       });
+
+      // 🔥 FIX: calculate total safely
+      const totalAmount = orderItems.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0,
+      );
+
+      if (totalAmount <= 0) {
+        alert("Total amount cannot be zero ❌");
+        return;
+      }
 
       const orderPayload = {
         customerName: user.username,
         tableNumber: tableNumber || "T01",
+        amount: totalAmount, // 🔥 use calculated total
         items: orderItems,
       };
 
-      console.log("🚀 FINAL PAYLOAD 👉", orderPayload);
+      // 🔥 DEBUG (VERY IMPORTANT)
+      console.log("🚀 FINAL ORDER PAYLOAD 👉", orderPayload);
 
-      // ✅ FIXED URL (removed extra /api)
-      const orderResponse = await fetch(`${API_BASE}/customer/orders`, {
+      const response = await fetch(`${API_BASE}/customer/orders`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -266,39 +253,25 @@ const downloadInvoice = async (bill) => {
         body: JSON.stringify(orderPayload),
       });
 
-      if (!orderResponse.ok) {
-        const errorText = await orderResponse.text();
-        alert("❌ Order failed: " + errorText);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("❌ Backend Error:", errorText);
+        alert("❌ Failed: " + errorText);
         return;
       }
 
-      const orderData = await orderResponse.json();
-      console.log("✅ Order Saved:", orderData);
+      const data = await response.json();
+      console.log("✅ Order Saved:", data);
 
-      // ✅ FIXED URL (removed extra /api)
-      const billResponse = await fetch(`${API_BASE}/bills/place-order`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(orderPayload),
-      });
-
-      if (!billResponse.ok) {
-        const errorText = await billResponse.text();
-        alert("❌ Bill failed: " + errorText);
-        return;
-      }
-
-      const billData = await billResponse.json();
-      console.log("✅ Bill Saved:", billData);
-
+      // ✅ CLEAR CART
       clearOrder();
+
+      // 🔥 REFRESH
       await fetchCurrentOrders();
       await fetchBills();
 
-      alert("✅ Order + Bill placed successfully!");
+      alert("✅ Order placed successfully!");
+
       setActiveTab("bills");
     } catch (error) {
       console.error("❌ Frontend Error:", error);
@@ -553,11 +526,17 @@ const downloadInvoice = async (bill) => {
           )}
           {activeTab === "order" && (
             <>
-              {/* CURRENT CART */}
+              {/* ================= 🛒 CURRENT CART ================= */}
+              <h3 className="text-lg font-semibold text-[#6B4423] mb-3">
+                Cart
+              </h3>
+
               {currentOrder.length === 0 ? (
-                <p className="text-center text-gray-500">No items added yet.</p>
+                <p className="text-center text-gray-500 mb-6">
+                  No items added yet.
+                </p>
               ) : (
-                <>
+                <div className="mb-6 border rounded p-4 bg-gray-50">
                   {currentOrder.map((item, i) => (
                     <div
                       key={item.id || i}
@@ -574,7 +553,7 @@ const downloadInvoice = async (bill) => {
                           <Minus className="w-4 h-4" />
                         </button>
 
-                        {/* 🔢 QUANTITY FIX */}
+                        {/* 🔢 QUANTITY */}
                         <span className="min-w-[20px] text-center">
                           {item.quantity || 1}
                         </span>
@@ -600,46 +579,100 @@ const downloadInvoice = async (bill) => {
                   <Button className="w-full mt-4" onClick={handlePlaceOrder}>
                     Place Order
                   </Button>
-                </>
+                </div>
               )}
 
-              {/* CURRENT ORDERS FROM DATABASE */}
-              <div className="mt-8">
-                <h3 className="text-lg font-semibold text-[#6B4423] mb-3">
-                  Your Current Orders
-                </h3>
+              {/* ================= 📋 TABLE VIEW ================= */}
+              <h3 className="text-lg font-semibold text-[#6B4423] mb-4">
+                Your Current Orders
+              </h3>
 
-                {myOrders.length === 0 ? (
-                  <p className="text-gray-500 text-sm">No orders found.</p>
-                ) : (
-                  myOrders.map((order) => (
-                    <Card key={order.id} className="p-4 mb-3 border">
-                      <div className="flex justify-between">
-                        <span className="font-medium">Order #{order.id}</span>
-                        <span className="text-orange-600 font-semibold">
-                          ₹{order.amount}
-                        </span>
-                      </div>
+              {myOrders.length === 0 ? (
+                <p className="text-gray-500 text-sm">No orders found.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full border rounded-lg overflow-hidden text-sm">
+                    <thead className="bg-[#6B4423] text-white">
+                      <tr>
+                        <th className="p-3 text-left">Table + Order</th>
+                        <th className="p-3 text-left">Items</th>
+                        <th className="p-3 text-left">Price</th>
+                        <th className="p-3 text-left">Created At</th>
+                        <th className="p-3 text-left">Status</th>
+                      </tr>
+                    </thead>
 
-                      <div className="text-sm text-gray-500 mt-1">
-                        Table: {order.tableNumber}
-                      </div>
+                    <tbody>
+                      {myOrders
+                        .filter(
+                          (order) =>
+                            order.status?.toUpperCase() !== "COMPLETED",
+                        )
+                        .map((order) => (
+                          <tr
+                            key={order.id}
+                            className="border-b hover:bg-gray-50"
+                          >
+                            {/* 1️⃣ Table + Order ID */}
+                            <td className="p-3">
+                              <div className="font-medium">
+                                {order.tableNumber}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                Order #{order.id}
+                              </div>
+                            </td>
 
-                      <div className="mt-2">
-                        {order.items?.map((item, index) => (
-                          <div key={index} className="text-sm">
-                            {item.name} x{item.quantity}
-                          </div>
+                            {/* 2️⃣ Items */}
+                            <td className="p-3">
+                              {order.items?.map((item, index) => (
+                                <div key={index}>
+                                  {item.name} x{item.quantity}
+                                </div>
+                              ))}
+                            </td>
+
+                            {/* 3️⃣ Price */}
+                            <td className="p-3 font-semibold text-orange-600">
+                              ₹{order.amount}
+                            </td>
+
+                            {/* 4️⃣ Created At */}
+                            <td className="p-3 text-gray-500 text-xs">
+                              {order.createdAt
+                                ? new Date(order.createdAt).toLocaleString()
+                                : "-"}
+                            </td>
+
+                            {/* 5️⃣ Status */}
+                            <td className="p-3">
+                              <span
+                                className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                  order.status?.toUpperCase() === "COMPLETED"
+                                    ? "bg-green-100 text-green-700"
+                                    : order.status?.toUpperCase() ===
+                                        "IN_PROGRESS"
+                                      ? "bg-blue-100 text-blue-700"
+                                      : "bg-yellow-100 text-yellow-700"
+                                }`}
+                              >
+                                {order.status || "PENDING"}
+                              </span>
+
+                              {/* ⏳ Loader */}
+                              {order.status?.toUpperCase() !== "COMPLETED" && (
+                                <div className="flex items-center gap-1 text-gray-400 text-xs mt-1">
+                                  <div className="w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+                                  Under Preparation...
+                                </div>
+                              )}
+                            </td>
+                          </tr>
                         ))}
-                      </div>
-
-                      <div className="text-xs text-gray-400 mt-2">
-                        {new Date(order.createdAt).toLocaleString()}
-                      </div>
-                    </Card>
-                  ))
-                )}
-              </div>
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </>
           )}
 

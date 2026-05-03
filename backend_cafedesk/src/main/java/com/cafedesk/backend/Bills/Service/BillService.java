@@ -4,6 +4,11 @@ import com.cafedesk.backend.Bills.DTO.*;
 import com.cafedesk.backend.Bills.entity.Bill;
 import com.cafedesk.backend.Bills.entity.BillItem;
 import com.cafedesk.backend.Bills.Repository.BillRepository;
+
+import com.cafedesk.backend.customer.entity.CurrentOrder;
+import com.cafedesk.backend.customer.entity.OrderStatus;
+import com.cafedesk.backend.customer.repository.OrderRepository;
+
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
@@ -15,9 +20,12 @@ import java.util.stream.Collectors;
 public class BillService {
 
     private final BillRepository billRepository;
+    private final OrderRepository orderRepository;
 
-    public BillService(BillRepository billRepository) {
+    public BillService(BillRepository billRepository,
+                       OrderRepository orderRepository) {
         this.billRepository = billRepository;
+        this.orderRepository = orderRepository;
     }
 
     // ================= FETCH ALL =================
@@ -43,7 +51,22 @@ public class BillService {
         Bill bill = billRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Bill not found"));
 
+        // ✅ Update bill status
         bill.setStatus("APPROVED");
+
+        // 🔥 FETCH ACTIVE ORDER (NOT COMPLETED)
+        CurrentOrder order = orderRepository
+                .findTopByCustomerNameAndTableNumberAndStatusNotOrderByCreatedAtDesc(
+                        bill.getCustomerName(),
+                        bill.getTableNumber(),
+                        OrderStatus.COMPLETED
+                );
+
+        // ✅ UPDATE ORDER STATUS → COMPLETED
+        if (order != null) {
+            order.setStatus(OrderStatus.COMPLETED);
+            orderRepository.save(order);
+        }
 
         Bill updated = billRepository.save(bill);
 
@@ -63,7 +86,6 @@ public class BillService {
         bill.setTableNumber(request.getTableNumber());
         bill.setStatus("PENDING");
 
-        // Invoice generation
         Long count = billRepository.countBy();
         String invoiceNumber = String.format("INV-%04d", count + 1);
         bill.setInvoiceNumber(invoiceNumber);
