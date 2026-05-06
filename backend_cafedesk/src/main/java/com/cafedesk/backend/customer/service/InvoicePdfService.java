@@ -72,7 +72,7 @@ public class InvoicePdfService {
             String billingId = bill.getBillingId() != null ? bill.getBillingId() : "N/A";
             String customer = bill.getCustomerName() != null ? bill.getCustomerName() : "N/A";
             String tableNo = bill.getTableNumber() != null ? bill.getTableNumber() : "N/A";
-            String status = bill.getStatus() != null ? bill.getStatus().toUpperCase() : "N/A";
+            String status = formatStatus(bill.getStatus()); // ✅ FIXED HERE
             String paymentId = bill.getCfPaymentId() != null ? bill.getCfPaymentId() : "N/A";
             String orderId = bill.getCfOrderId() != null ? bill.getCfOrderId() : "N/A";
 
@@ -82,7 +82,7 @@ public class InvoicePdfService {
                         .format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm"));
             }
 
-            // ================= BILL INFO TABLE (NO BORDERS + NO GREY) =================
+            // ================= BILL INFO TABLE =================
 
             Table infoTable = new Table(UnitValue.createPercentArray(new float[]{1, 2}))
                     .setWidth(UnitValue.createPercentValue(60))
@@ -188,6 +188,20 @@ public class InvoicePdfService {
         }
     }
 
+    // ================= STATUS FORMAT =================
+    private String formatStatus(String status) {
+        if (status == null) return "N/A";
+
+        switch (status.toUpperCase()) {
+            case "APPROVED":
+                return "PAID";
+            case "PENDING":
+                return "UNPAID";
+            default:
+                return status.toUpperCase();
+        }
+    }
+
     // ================= HEADER CELL =================
     private Cell createHeaderCell(String text) {
         return new Cell()
@@ -197,7 +211,6 @@ public class InvoicePdfService {
                 .setTextAlignment(TextAlignment.CENTER);
     }
 
-    // ✅ FIXED HERE (NO GREY)
     private Cell createInfoCell(String text) {
         return new Cell()
                 .add(new Paragraph(text))

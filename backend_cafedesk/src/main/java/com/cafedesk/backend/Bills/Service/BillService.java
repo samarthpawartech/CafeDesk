@@ -52,7 +52,7 @@ public class BillService {
                 .orElseThrow(() -> new RuntimeException("Bill not found"));
 
         // ✅ Update bill status
-        bill.setStatus("APPROVED");
+        bill.setStatus("PAID");
 
         // 🔥 FETCH ACTIVE ORDER (NOT COMPLETED)
         CurrentOrder order = orderRepository

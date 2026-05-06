@@ -17,7 +17,6 @@ import { useAuth } from "@/app/context/AuthContext";
 import { Button } from "@/app/components/ui/button";
 import { Card } from "@/app/components/ui/card";
 import { Textarea } from "@/app/components/ui/textarea";
-
 const API_BASE = "http://localhost:8080/api";
 const IMAGE_BASE = "http://localhost:8080";
 
@@ -120,7 +119,7 @@ export default function CustomerDashboard() {
 
     try {
       const res = await fetch(
-        `${API_BASE}/customer/orders/bills/${user.username}`,
+        `${API_BASE}/bills/${user.username}`, // ✅ correct endpoint
         {
           method: "GET",
           headers: {
@@ -137,29 +136,42 @@ export default function CustomerDashboard() {
 
       const data = await res.json();
 
-      console.log("🧾 RAW BILLS 👉", data);
+      console.log("🧾 FETCHED BILLS 👉", data); // 🔥 DEBUG
 
-      // ✅ FIX: store ALL bills
       setBills(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("❌ Error fetching bills:", err);
     }
   };
 
-  useEffect(() => {
-    fetchBills();
-  }, []);
   // ================= NORMALIZE BILLS =================
   const userBills = Array.isArray(bills) ? bills : [];
 
-  // ================= FILTER =================
-  const pendingBills = userBills.filter(
-    (b) => (b.status || "").toUpperCase() === "PENDING",
-  );
+  // ================= ✅ FIXED FILTER =================
 
-  const orderHistory = userBills.filter((b) =>
-    ["APPROVED", "PAID"].includes((b.status || "").toUpperCase()),
-  );
+  // 👉 Show ALL bills except PAID in Pending
+  const pendingBills = userBills.filter((b) => {
+    const status = (b.status || "").toLowerCase();
+    return status !== "paid"; // 🔥 KEY FIX
+  });
+
+  // 👉 Show only PAID in History
+  const orderHistory = userBills.filter((b) => {
+    const status = (b.status || "").toLowerCase();
+    return status === "paid";
+  });
+
+  // ================= ORDER FILTERS =================
+
+  const currentOrders = myOrders.filter((o) => {
+    const status = (o.status || "").toLowerCase();
+    return status !== "completed" && status !== "done";
+  });
+
+  const completedOrders = myOrders.filter((o) => {
+    const status = (o.status || "").toLowerCase();
+    return status === "completed" || status === "done";
+  });
   /* ================= FETCH FEEDBACK ================= */
   const fetchFeedback = async () => {
     if (!token) return;
@@ -207,7 +219,6 @@ export default function CustomerDashboard() {
     }
 
     try {
-      // 🔥 FIX: Ensure correct numeric values
       const orderItems = currentOrder.map((item) => {
         const price = Number(item.price);
         const quantity = Number(item.quantity ?? 1);
@@ -218,33 +229,21 @@ export default function CustomerDashboard() {
 
         return {
           name: item.name,
-          price: price,
-          quantity: quantity > 0 ? quantity : 1, // 🔥 force min 1
+          price,
+          quantity: quantity > 0 ? quantity : 1,
         };
       });
-
-      // 🔥 FIX: calculate total safely
-      const totalAmount = orderItems.reduce(
-        (sum, item) => sum + item.price * item.quantity,
-        0,
-      );
-
-      if (totalAmount <= 0) {
-        alert("Total amount cannot be zero ❌");
-        return;
-      }
 
       const orderPayload = {
         customerName: user.username,
         tableNumber: tableNumber || "T01",
-        amount: totalAmount, // 🔥 use calculated total
         items: orderItems,
       };
 
-      // 🔥 DEBUG (VERY IMPORTANT)
-      console.log("🚀 FINAL ORDER PAYLOAD 👉", orderPayload);
+      console.log("🚀 FINAL PAYLOAD 👉", orderPayload);
 
-      const response = await fetch(`${API_BASE}/customer/orders`, {
+      // ✅ FIXED URL (removed extra /api)
+      const orderResponse = await fetch(`${API_BASE}/customer/orders`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -253,25 +252,39 @@ export default function CustomerDashboard() {
         body: JSON.stringify(orderPayload),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("❌ Backend Error:", errorText);
-        alert("❌ Failed: " + errorText);
+      if (!orderResponse.ok) {
+        const errorText = await orderResponse.text();
+        alert("❌ Order failed: " + errorText);
         return;
       }
 
-      const data = await response.json();
-      console.log("✅ Order Saved:", data);
+      const orderData = await orderResponse.json();
+      console.log("✅ Order Saved:", orderData);
 
-      // ✅ CLEAR CART
+      // ✅ FIXED URL (removed extra /api)
+      const billResponse = await fetch(`${API_BASE}/bills/place-order`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(orderPayload),
+      });
+
+      if (!billResponse.ok) {
+        const errorText = await billResponse.text();
+        alert("❌ Bill failed: " + errorText);
+        return;
+      }
+
+      const billData = await billResponse.json();
+      console.log("✅ Bill Saved:", billData);
+
       clearOrder();
-
-      // 🔥 REFRESH
       await fetchCurrentOrders();
       await fetchBills();
 
-      alert("✅ Order placed successfully!");
-
+      alert("✅ Order + Bill placed successfully!");
       setActiveTab("bills");
     } catch (error) {
       console.error("❌ Frontend Error:", error);
@@ -281,27 +294,49 @@ export default function CustomerDashboard() {
   // ================= 💳 PAY NOW =================
   const handlePayNow = async (billId) => {
     try {
-      const res = await fetch(`${API_BASE}/bills/pay/${billId}`, {
-        method: "PUT",
+      const res = await fetch(`${API_BASE}/payment/create-order/${billId}`, {
+        method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
       if (!res.ok) {
-        alert("Payment failed ❌");
+        alert("Failed to create order ❌");
         return;
       }
 
-      alert("✅ Payment successful");
+      const data = await res.json();
 
-      fetchBills(); // 🔄 refresh list
+      console.log("💳 Cashfree Response:", data);
+
+      const paymentSessionId = data.payment_session_id;
+
+      if (!paymentSessionId) {
+        alert("No session ID ❌");
+        return;
+      }
+
+      // ✅ Ensure SDK loaded
+      if (!window.Cashfree) {
+        alert("Cashfree SDK not loaded ❌");
+        return;
+      }
+
+      const cashfree = window.Cashfree({
+        mode: "sandbox", // 🔥 change to "production" later
+      });
+
+      // ✅ REDIRECT PAYMENT
+      await cashfree.checkout({
+        paymentSessionId: paymentSessionId,
+        redirectTarget: "_self",
+      });
     } catch (err) {
       console.error(err);
-      alert("Error while paying ❌");
+      alert("Payment failed ❌");
     }
   };
-
   /* ================= FETCH CURRENT ORDERS FROM DB ================= */
   const fetchCurrentOrders = async () => {
     if (!user?.username || !token) return;
@@ -526,17 +561,13 @@ export default function CustomerDashboard() {
           )}
           {activeTab === "order" && (
             <>
-              {/* ================= 🛒 CURRENT CART ================= */}
-              <h3 className="text-lg font-semibold text-[#6B4423] mb-3">
-                Cart
-              </h3>
-
+              {/* CURRENT CART */}
               {currentOrder.length === 0 ? (
-                <p className="text-center text-gray-500 mb-6">
+                <p className="text-center text-gray-500 py-6">
                   No items added yet.
                 </p>
               ) : (
-                <div className="mb-6 border rounded p-4 bg-gray-50">
+                <>
                   {currentOrder.map((item, i) => (
                     <div
                       key={item.id || i}
@@ -545,7 +576,6 @@ export default function CustomerDashboard() {
                       <span>{item.name}</span>
 
                       <div className="flex items-center gap-3">
-                        {/* ➖ REMOVE */}
                         <button
                           onClick={() => removeFromOrder(item)}
                           className="bg-gray-200 px-2 rounded"
@@ -553,12 +583,10 @@ export default function CustomerDashboard() {
                           <Minus className="w-4 h-4" />
                         </button>
 
-                        {/* 🔢 QUANTITY */}
                         <span className="min-w-[20px] text-center">
                           {item.quantity || 1}
                         </span>
 
-                        {/* ➕ ADD */}
                         <button
                           onClick={() => addToOrder(item)}
                           className="bg-gray-200 px-2 rounded"
@@ -569,113 +597,98 @@ export default function CustomerDashboard() {
                     </div>
                   ))}
 
-                  {/* 💰 TOTAL */}
                   <div className="flex justify-between font-bold mt-4">
                     <span>Total</span>
                     <span>₹{getTotalAmount()}</span>
                   </div>
 
-                  {/* 🚀 PLACE ORDER */}
                   <Button className="w-full mt-4" onClick={handlePlaceOrder}>
                     Place Order
                   </Button>
-                </div>
+                </>
               )}
 
-              {/* ================= 📋 TABLE VIEW ================= */}
-              <h3 className="text-lg font-semibold text-[#6B4423] mb-4">
-                Your Current Orders
-              </h3>
+              {/* CURRENT ORDERS */}
+              <div className="mt-8">
+                <h3 className="text-lg font-semibold text-[#6B4423] mb-3">
+                  Your Current Orders
+                </h3>
 
-              {myOrders.length === 0 ? (
-                <p className="text-gray-500 text-sm">No orders found.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full border rounded-lg overflow-hidden text-sm">
-                    <thead className="bg-[#6B4423] text-white">
-                      <tr>
-                        <th className="p-3 text-left">Table + Order</th>
-                        <th className="p-3 text-left">Items</th>
-                        <th className="p-3 text-left">Price</th>
-                        <th className="p-3 text-left">Created At</th>
-                        <th className="p-3 text-left">Status</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {myOrders
-                        .filter(
-                          (order) =>
-                            order.status?.toUpperCase() !== "COMPLETED",
-                        )
-                        .map((order) => (
-                          <tr
-                            key={order.id}
-                            className="border-b hover:bg-gray-50"
+                {currentOrders.length === 0 ? (
+                  <p className="text-gray-500 text-sm">No orders found.</p>
+                ) : (
+                  currentOrders
+                    // ✅ FINAL SAFETY FILTER (IMPORTANT)
+                    .filter(
+                      (order) =>
+                        (order.status || "").toLowerCase() !== "completed",
+                    )
+                    .map((order) => (
+                      <Card
+                        key={order.id}
+                        className="relative p-4 mb-3 border overflow-hidden"
+                      >
+                        {/* STATUS CENTER */}
+                        <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                          <span
+                            className={`px-4 py-1 text-xs rounded-full font-semibold shadow
+                  ${
+                    order.status === "pending"
+                      ? "bg-yellow-100 text-yellow-700"
+                      : order.status === "preparing"
+                        ? "bg-blue-100 text-blue-700"
+                        : order.status === "ready"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-gray-200 text-gray-700"
+                  }`}
                           >
-                            {/* 1️⃣ Table + Order ID */}
-                            <td className="p-3">
-                              <div className="font-medium">
-                                {order.tableNumber}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                Order #{order.id}
-                              </div>
-                            </td>
+                            {order.status || "pending"}
+                          </span>
+                        </div>
 
-                            {/* 2️⃣ Items */}
-                            <td className="p-3">
-                              {order.items?.map((item, index) => (
-                                <div key={index}>
-                                  {item.name} x{item.quantity}
-                                </div>
-                              ))}
-                            </td>
+                        {/* HEADER */}
+                        <div className="flex justify-between mt-2">
+                          <span className="font-medium">Order #{order.id}</span>
+                          <span className="text-orange-600 font-semibold">
+                            ₹{order.amount}
+                          </span>
+                        </div>
 
-                            {/* 3️⃣ Price */}
-                            <td className="p-3 font-semibold text-orange-600">
-                              ₹{order.amount}
-                            </td>
+                        {/* TABLE */}
+                        <div className="text-sm text-gray-500 mt-1">
+                          Table: {order.tableNumber}
+                        </div>
 
-                            {/* 4️⃣ Created At */}
-                            <td className="p-3 text-gray-500 text-xs">
-                              {order.createdAt
-                                ? new Date(order.createdAt).toLocaleString()
-                                : "-"}
-                            </td>
+                        {/* LOADER */}
+                        {(order.status === "pending" ||
+                          order.status === "preparing") && (
+                          <div className="flex flex-col items-center justify-center mt-4 text-blue-600">
+                            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                            <span className="text-sm mt-1">
+                              Preparing your order...
+                            </span>
+                          </div>
+                        )}
 
-                            {/* 5️⃣ Status */}
-                            <td className="p-3">
-                              <span
-                                className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                                  order.status?.toUpperCase() === "COMPLETED"
-                                    ? "bg-green-100 text-green-700"
-                                    : order.status?.toUpperCase() ===
-                                        "IN_PROGRESS"
-                                      ? "bg-blue-100 text-blue-700"
-                                      : "bg-yellow-100 text-yellow-700"
-                                }`}
-                              >
-                                {order.status || "PENDING"}
-                              </span>
+                        {/* ITEMS */}
+                        <div className="mt-3">
+                          {order.items?.map((item, index) => (
+                            <div key={index} className="text-sm">
+                              {item.name} x{item.quantity}
+                            </div>
+                          ))}
+                        </div>
 
-                              {/* ⏳ Loader */}
-                              {order.status?.toUpperCase() !== "COMPLETED" && (
-                                <div className="flex items-center gap-1 text-gray-400 text-xs mt-1">
-                                  <div className="w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
-                                  Under Preparation...
-                                </div>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                        {/* DATE */}
+                        <div className="text-xs text-gray-400 mt-2">
+                          {new Date(order.createdAt).toLocaleString()}
+                        </div>
+                      </Card>
+                    ))
+                )}
+              </div>
             </>
           )}
-
           {/* BILLS */}
           {activeTab === "bills" &&
             (pendingBills.length === 0 ? (
@@ -748,77 +761,99 @@ export default function CustomerDashboard() {
               ))
             ))}
           {/* HISTORY */}
-          {activeTab === "history" &&
-            (orderHistory.length === 0 ? (
-              <p className="text-center text-gray-500">
-                No previous orders yet ☕
-              </p>
-            ) : (
-              orderHistory.map((bill) => {
-                const status = bill.status?.toUpperCase();
+          {activeTab === "history" && (
+            <>
+              {completedOrders.length === 0 && orderHistory.length === 0 ? (
+                <p className="text-center text-gray-500">
+                  No previous orders yet ☕
+                </p>
+              ) : (
+                <>
+                  {/* ✅ COMPLETED ORDERS */}
+                  {completedOrders.length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold text-[#6B4423] mb-3">
+                        Completed Orders
+                      </h3>
 
-                return (
-                  <div
-                    key={bill.id}
-                    className="flex justify-between items-center py-3 border-b"
-                  >
-                    {/* LEFT SIDE */}
-                    <div>
-                      <span className="font-medium">INV-{bill.id}</span>
+                      {completedOrders.map((order) => (
+                        <div
+                          key={order.id}
+                          className="flex justify-between items-center py-3 border-b"
+                        >
+                          <div>
+                            <span className="font-medium">
+                              Order #{order.id}
+                            </span>
 
-                      {/* STATUS */}
-                      <span
-                        className={`ml-2 text-xs px-2 py-1 rounded-full ${
-                          ["PAID", "APPROVED"].includes(status)
-                            ? "bg-green-100 text-green-700"
-                            : "bg-yellow-100 text-yellow-700"
-                        }`}
-                      >
-                        {status === "APPROVED" ? "PAID" : status}
-                      </span>
+                            <span className="ml-2 text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">
+                              COMPLETED
+                            </span>
 
-                      {/* 🧾 ITEMS (NEW FIX) */}
-                      <div className="text-sm text-gray-600 mt-1">
-                        {(bill.items || []).map((item, index) => (
-                          <div key={index}>
-                            {item.name} x{item.quantity}
+                            <div className="text-sm text-gray-600 mt-1">
+                              {(order.items || []).map((item, index) => (
+                                <div key={index}>
+                                  {item.name} x{item.quantity}
+                                </div>
+                              ))}
+                            </div>
+
+                            <p className="text-sm text-gray-500 mt-1">
+                              ₹{order.amount ?? 0}
+                            </p>
+
+                            <p className="text-xs text-gray-400">
+                              {new Date(order.createdAt).toLocaleString()}
+                            </p>
                           </div>
-                        ))}
-                      </div>
-
-                      {/* 💰 AMOUNT (FIXED) */}
-                      <p className="text-sm text-gray-500 mt-1">
-                        ₹{bill.amount ?? 0}
-                      </p>
-
-                      {/* DATE */}
-                      <p className="text-xs text-gray-400">
-                        {bill.createdAt
-                          ? new Date(bill.createdAt).toLocaleString()
-                          : ""}
-                      </p>
+                        </div>
+                      ))}
                     </div>
+                  )}
 
-                    {/* RIGHT SIDE */}
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        disabled={!["PAID", "APPROVED"].includes(status)}
-                        className={
-                          !["PAID", "APPROVED"].includes(status)
-                            ? "opacity-50 cursor-not-allowed"
-                            : "bg-gray-800 hover:bg-gray-900 text-white"
-                        }
-                        onClick={() => downloadInvoice(bill)}
-                      >
-                        <Download className="w-4 h-4 mr-1" />
-                        Invoice
-                      </Button>
+                  {/* ✅ PAID BILLS */}
+                  {orderHistory.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-[#6B4423] mb-3">
+                        Paid Bills
+                      </h3>
+
+                      {orderHistory.map((bill) => {
+                        const status = bill.status?.toUpperCase();
+
+                        return (
+                          <div
+                            key={bill.id}
+                            className="flex justify-between items-center py-3 border-b"
+                          >
+                            <div>
+                              <span className="font-medium">INV-{bill.id}</span>
+
+                              <span className="ml-2 text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">
+                                PAID
+                              </span>
+
+                              <div className="text-sm text-gray-600 mt-1">
+                                {(bill.items || []).map((item, index) => (
+                                  <div key={index}>
+                                    {item.name} x{item.quantity}
+                                  </div>
+                                ))}
+                              </div>
+
+                              <p className="text-sm text-gray-500 mt-1">
+                                ₹{bill.amount ?? 0}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  </div>
-                );
-              })
-            ))}
+                  )}
+                </>
+              )}
+            </>
+          )}
           {/* FEEDBACK */}
           {activeTab === "feedback" && (
             <div className="max-w-md mx-auto space-y-4">

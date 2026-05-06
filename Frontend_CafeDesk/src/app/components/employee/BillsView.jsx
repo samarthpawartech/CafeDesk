@@ -37,7 +37,6 @@ export const BillsView = () => {
     fetchAllBills();
   }, []);
 
-  // ✅ FETCH
   const fetchAllBills = async () => {
     try {
       setLoading(true);
@@ -59,16 +58,12 @@ export const BillsView = () => {
     }
   };
 
-  // ✅ HELPERS
   const getStatus = (status) => status?.toUpperCase();
 
-  const isPaidOrApproved = (status) =>
-    ["PAID", "APPROVED"].includes(getStatus(status));
+  const isPaid = (status) => ["PAID", "APPROVED"].includes(getStatus(status));
 
-  const getStatusLabel = (status) =>
-    getStatus(status) === "APPROVED" ? "Paid" : getStatus(status) || "Pending";
+  const getStatusLabel = (status) => (isPaid(status) ? "Paid" : "Pending");
 
-  // ✅ FIXED APPROVE
   const approveBill = async (bill) => {
     try {
       const res = await fetch(`${API_BASE}/approve/${bill.id}`, {
@@ -78,50 +73,12 @@ export const BillsView = () => {
 
       if (!res.ok) throw new Error("Approve failed");
 
-      // 🔥 ALWAYS REFRESH FROM DB
       await fetchAllBills();
-
-      downloadInvoice(bill.id);
     } catch (err) {
       alert(err.message);
     }
   };
 
-  // ✅ FIXED PAY
-  const payBill = async (bill) => {
-    try {
-      const res = await fetch(
-        `http://localhost:8080/api/payment/create-order/${bill.id}`,
-        {
-          method: "POST",
-          headers: getAuthHeaders(),
-        },
-      );
-
-      const data = await res.json();
-
-      if (!window.Cashfree) {
-        alert("Cashfree SDK not loaded ❌");
-        return;
-      }
-
-      const cashfree = new window.Cashfree({ mode: "sandbox" });
-
-      cashfree.checkout({
-        paymentSessionId: data.payment_session_id,
-        redirectTarget: "_modal",
-      });
-
-      // 🔥 AUTO REFRESH AFTER PAYMENT (simple approach)
-      setTimeout(() => {
-        fetchAllBills();
-      }, 4000);
-    } catch (err) {
-      alert("Payment Error ❌ " + err.message);
-    }
-  };
-
-  // ✅ DOWNLOAD
   const downloadInvoice = async (billId) => {
     try {
       const res = await fetch(`${INVOICE_API}/${billId}`, {
@@ -140,7 +97,6 @@ export const BillsView = () => {
     }
   };
 
-  // ✅ CALCULATIONS
   const totalAmount = bills.reduce((sum, b) => sum + (b.totalAmount ?? 0), 0);
 
   const pendingAmount = bills
@@ -148,7 +104,7 @@ export const BillsView = () => {
     .reduce((sum, b) => sum + (b.totalAmount ?? 0), 0);
 
   const paidAmount = bills
-    .filter((b) => isPaidOrApproved(b.status))
+    .filter((b) => isPaid(b.status))
     .reduce((sum, b) => sum + (b.totalAmount ?? 0), 0);
 
   if (loading) {
@@ -166,7 +122,6 @@ export const BillsView = () => {
 
   return (
     <div className="space-y-6">
-      {/* SUMMARY */}
       <div className="grid grid-cols-3 gap-4">
         <Card className="p-6">
           <DollarSign />
@@ -184,7 +139,6 @@ export const BillsView = () => {
         </Card>
       </div>
 
-      {/* TABLE */}
       <Card>
         <div className="p-6 border-b flex gap-2 items-center">
           <FileText /> Employee Bill Approval
@@ -210,7 +164,14 @@ export const BillsView = () => {
               return (
                 <TableRow key={bill.id}>
                   <TableCell>{bill.id}</TableCell>
-                  <TableCell>{bill.invoiceNumber}</TableCell>
+
+                  <TableCell
+                    className="text-blue-600 cursor-pointer underline"
+                    onClick={() => downloadInvoice(bill.id)}
+                  >
+                    {bill.invoiceNumber}
+                  </TableCell>
+
                   <TableCell>{bill.customerName}</TableCell>
                   <TableCell>{bill.tableNumber}</TableCell>
                   <TableCell>₹{bill.totalAmount?.toFixed(2)}</TableCell>
@@ -218,7 +179,7 @@ export const BillsView = () => {
                   <TableCell>
                     <Badge
                       className={
-                        isPaidOrApproved(status)
+                        isPaid(status)
                           ? "bg-green-600 text-white"
                           : "bg-yellow-500 text-white"
                       }
@@ -243,16 +204,6 @@ export const BillsView = () => {
                         onClick={() => approveBill(bill)}
                       >
                         Approve
-                      </Button>
-                    )}
-
-                    {status === "APPROVED" && (
-                      <Button
-                        size="sm"
-                        className="bg-blue-500 text-white"
-                        onClick={() => payBill(bill)}
-                      >
-                        Pay
                       </Button>
                     )}
                   </TableCell>

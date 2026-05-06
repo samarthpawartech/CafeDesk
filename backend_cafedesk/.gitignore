@@ -31,3 +31,11 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### 🔐 SECURITY (IMPORTANT) ###
+# Ignore sensitive config file
+backend_cafedesk/src/main/resources/application.properties
+
+# Optional: ignore env files
+.env
+.env.*

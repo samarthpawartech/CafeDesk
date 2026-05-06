@@ -5,6 +5,9 @@ import com.cafedesk.backend.Bills.Repository.BillRepository;
 import com.cafedesk.backend.customer.entity.Customer;
 import com.cafedesk.backend.customer.repository.CustomerRepository;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
@@ -19,9 +22,12 @@ public class PaymentController {
     private final BillRepository billRepository;
     private final CustomerRepository customerRepository;
 
-    // 🔑 ADD YOUR KEYS
-    private static final String APP_ID = "YOUR_APP_ID";
-    private static final String SECRET_KEY = "YOUR_SECRET_KEY";
+    // ✅ Load from application.properties
+    @Value("${cashfree.appId}")
+    private String APP_ID;
+
+    @Value("${cashfree.secretKey}")
+    private String SECRET_KEY;
 
     public PaymentController(BillRepository billRepository,
                              CustomerRepository customerRepository) {
@@ -34,7 +40,7 @@ public class PaymentController {
     public ResponseEntity<?> createOrder(@PathVariable Long billId) {
 
         try {
-            // 🔥 Get Bill
+            // 🔥 Fetch Bill
             Bill bill = billRepository.findById(billId)
                     .orElseThrow(() -> new RuntimeException("Bill not found"));
 
@@ -43,26 +49,25 @@ public class PaymentController {
                 return ResponseEntity.badRequest().body("Bill already paid");
             }
 
-            // 🔥 Get Customer from DB
+            // 🔥 Fetch Customer
             Customer customerData = customerRepository
                     .findByUsername(bill.getCustomerName())
                     .orElseThrow(() -> new RuntimeException("Customer not found"));
 
             String orderId = "order_" + UUID.randomUUID();
 
-            // 🔥 Cashfree API URL
             String url = "https://sandbox.cashfree.com/pg/orders";
 
             RestTemplate restTemplate = new RestTemplate();
 
-            // 🔥 Headers
+            // 🔥 HEADERS
             HttpHeaders headers = new HttpHeaders();
             headers.set("x-client-id", APP_ID);
             headers.set("x-client-secret", SECRET_KEY);
             headers.set("x-api-version", "2022-09-01");
             headers.setContentType(MediaType.APPLICATION_JSON);
 
-            // 🔥 Request Body
+            // 🔥 BODY
             Map<String, Object> body = new HashMap<>();
             body.put("order_id", orderId);
             body.put("order_amount", bill.getTotalAmount());
@@ -79,18 +84,36 @@ public class PaymentController {
             HttpEntity<Map<String, Object>> request =
                     new HttpEntity<>(body, headers);
 
-            // 🔥 Call Cashfree API
+            // 🔥 CALL CASHFREE API
             ResponseEntity<String> response =
                     restTemplate.postForEntity(url, request, String.class);
 
-            // ✅ Save Order ID in DB
-            bill.setCfOrderId(orderId);
+            // ✅ Convert String → JSON Map
+            ObjectMapper mapper = new ObjectMapper();
+            @SuppressWarnings("unchecked")
+            Map<String, Object> responseMap =
+                    mapper.readValue(response.getBody(), Map.class);
+
+            // ✅ Extract important fields
+            String cfOrderId = (String) responseMap.get("cf_order_id");
+            String paymentSessionId = (String) responseMap.get("payment_session_id");
+
+            // 🔥 Save in DB
+            bill.setCfOrderId(cfOrderId);
+            bill.setStatus("PENDING");
             billRepository.save(bill);
 
-            return ResponseEntity.ok(response.getBody());
+            // ✅ Return ONLY required data to frontend
+            Map<String, Object> finalResponse = new HashMap<>();
+            finalResponse.put("payment_session_id", paymentSessionId);
+            finalResponse.put("cf_order_id", cfOrderId);
+
+            return ResponseEntity.ok(finalResponse);
 
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(e.getMessage());
+            e.printStackTrace(); // 🔥 IMPORTANT FOR DEBUG
+            return ResponseEntity.internalServerError()
+                    .body("Payment error: " + e.getMessage());
         }
     }
 }

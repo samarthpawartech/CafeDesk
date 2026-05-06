@@ -1,26 +1,76 @@
-import { useState } from 'react';
-import { Package, AlertTriangle, CheckCircle, Plus, Edit } from 'lucide-react';
-import { inventory as initialInventory } from '@/app/utils/mockData';
-import { Card } from '@/app/components/ui/card';
-import { Button } from '@/app/components/ui/button';
-import { Badge } from '@/app/components/ui/badge';
-import { Input } from '@/app/components/ui/input';
-import { Label } from '@/app/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/app/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/table';
+import { useState } from "react";
+import {
+  Package,
+  AlertTriangle,
+  CheckCircle,
+  Plus,
+  Edit,
+  Tag,
+  Boxes,
+  Scale,
+  Layers,
+} from "lucide-react";
+
+import { inventory as initialInventory } from "@/app/utils/mockData";
+import { Card } from "@/app/components/ui/card";
+import { Button } from "@/app/components/ui/button";
+import { Badge } from "@/app/components/ui/badge";
+import { Input } from "@/app/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/app/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/app/components/ui/table";
 
 export const InventoryManagement = () => {
   const [inventory, setInventory] = useState(initialInventory);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  
+
   const [formData, setFormData] = useState({
-    name: '',
-    category: '',
-    quantity: '',
-    unit: '',
-    minStock: '',
+    name: "",
+    category: "",
+    quantity: "",
+    unit: "",
+    minStock: "",
   });
+
+  const categories = [
+    "Dairy",
+    "Beverages",
+    "Vegetables",
+    "Fruits",
+    "Grains",
+    "Bakery",
+    "Meat",
+    "Seafood",
+    "Spices",
+    "Snacks",
+    "Frozen Items",
+    "Food",
+  ];
+
+  const openAddDialog = () => {
+    setEditingItem(null);
+    setFormData({
+      name: "",
+      category: "",
+      quantity: "",
+      unit: "",
+      minStock: "",
+    });
+    setIsDialogOpen(true);
+  };
 
   const openEditDialog = (item) => {
     setEditingItem(item);
@@ -34,147 +84,104 @@ export const InventoryManagement = () => {
     setIsDialogOpen(true);
   };
 
+  const getStatus = (quantity, minStock) => {
+    if (quantity === 0) return "critical";
+    if (quantity < minStock * 0.5) return "critical";
+    if (quantity < minStock) return "low-stock";
+    return "in-stock";
+  };
+
   const handleSave = () => {
-    const updatedItem = {
-      ...editingItem,
+    const newItem = {
+      id: editingItem ? editingItem.id : Date.now(),
       ...formData,
       quantity: parseFloat(formData.quantity),
       minStock: parseFloat(formData.minStock),
-      status: getStatus(parseFloat(formData.quantity), parseFloat(formData.minStock)),
+      status: getStatus(
+        parseFloat(formData.quantity),
+        parseFloat(formData.minStock),
+      ),
     };
-    
-    setInventory(inventory.map(item => 
-      item.id === editingItem.id ? updatedItem : item
-    ));
+
+    if (editingItem) {
+      setInventory(
+        inventory.map((item) => (item.id === editingItem.id ? newItem : item)),
+      );
+    } else {
+      setInventory([...inventory, newItem]);
+    }
+
     setIsDialogOpen(false);
   };
 
-  const getStatus = (quantity, minStock) => {
-    if (quantity === 0) return 'critical';
-    if (quantity < minStock * 0.5) return 'critical';
-    if (quantity < minStock) return 'low-stock';
-    return 'in-stock';
-  };
-
   const statusConfig = {
-    'in-stock': { label: 'In Stock', color: 'bg-green-500', icon: CheckCircle },
-    'low-stock': { label: 'Low Stock', color: 'bg-yellow-500', icon: AlertTriangle },
-    'critical': { label: 'Critical', color: 'bg-red-500', icon: AlertTriangle },
-  };
-
-  const stockSummary = {
-    inStock: inventory.filter(i => i.status === 'in-stock').length,
-    lowStock: inventory.filter(i => i.status === 'low-stock').length,
-    critical: inventory.filter(i => i.status === 'critical').length,
+    "in-stock": { label: "In Stock", color: "bg-green-500", icon: CheckCircle },
+    "low-stock": {
+      label: "Low Stock",
+      color: "bg-yellow-500",
+      icon: AlertTriangle,
+    },
+    critical: { label: "Critical", color: "bg-red-500", icon: AlertTriangle },
   };
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-6 border-[#E8D5BF]">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
-              <CheckCircle className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <p className="text-sm text-[#8B6F47]">In Stock</p>
-              <p className="text-2xl font-bold text-[#2C1810]">{stockSummary.inStock}</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-6 border-[#E8D5BF]">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-yellow-500 rounded-lg flex items-center justify-center">
-              <AlertTriangle className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <p className="text-sm text-[#8B6F47]">Low Stock</p>
-              <p className="text-2xl font-bold text-[#2C1810]">{stockSummary.lowStock}</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-6 border-[#E8D5BF]">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-red-500 rounded-lg flex items-center justify-center">
-              <AlertTriangle className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <p className="text-sm text-[#8B6F47]">Critical</p>
-              <p className="text-2xl font-bold text-[#2C1810]">{stockSummary.critical}</p>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Inventory Table */}
+      {/* HEADER */}
       <Card className="border-[#E8D5BF]">
-        <div className="p-6 border-b border-[#E8D5BF] flex justify-between items-center">
+        <div className="p-6 flex justify-between items-center">
           <h3 className="font-semibold text-[#2C1810] flex items-center gap-2">
             <Package className="w-5 h-5" />
             Inventory Items
           </h3>
-          <Button className="bg-[#6B4423] hover:bg-[#4A2C1A] text-white">
-            <Plus className="w-4 h-4 mr-2" />
+
+          <Button
+            onClick={openAddDialog}
+            className="bg-[#6B4423] hover:bg-[#4A2C1A] text-white flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
             Add Item
           </Button>
         </div>
+      </Card>
 
+      {/* TABLE */}
+      <Card className="border-[#E8D5BF]">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-[#F5E6D3] hover:bg-[#F5E6D3]">
-                <TableHead className="text-[#2C1810]">Item Name</TableHead>
-                <TableHead className="text-[#2C1810]">Category</TableHead>
-                <TableHead className="text-[#2C1810]">Current Stock</TableHead>
-                <TableHead className="text-[#2C1810]">Unit</TableHead>
-                <TableHead className="text-[#2C1810]">Min Stock</TableHead>
-                <TableHead className="text-[#2C1810]">Status</TableHead>
-                <TableHead className="text-[#2C1810]">Actions</TableHead>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Stock</TableHead>
+                <TableHead>Unit</TableHead>
+                <TableHead>Min</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead></TableHead>
               </TableRow>
             </TableHeader>
+
             <TableBody>
-              {inventory.map(item => {
+              {inventory.map((item) => {
                 const config = statusConfig[item.status];
-                const StatusIcon = config.icon;
-                const percentage = (item.quantity / item.minStock) * 100;
-                
+                const Icon = config.icon;
+
                 return (
-                  <TableRow key={item.id} className="hover:bg-[#FBF8F3]">
-                    <TableCell className="font-medium text-[#2C1810]">{item.name}</TableCell>
-                    <TableCell className="text-[#8B6F47]">{item.category}</TableCell>
-                    <TableCell>
-                      <div>
-                        <span className="font-semibold text-[#2C1810]">{item.quantity}</span>
-                        <div className="w-full bg-[#E8D5BF] rounded-full h-2 mt-1">
-                          <div
-                            className={`h-2 rounded-full ${
-                              percentage >= 100 ? 'bg-green-500' :
-                              percentage >= 50 ? 'bg-yellow-500' :
-                              'bg-red-500'
-                            }`}
-                            style={{ width: `${Math.min(percentage, 100)}%` }}
-                          />
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-[#8B6F47]">{item.unit}</TableCell>
-                    <TableCell className="text-[#8B6F47]">{item.minStock}</TableCell>
+                  <TableRow key={item.id}>
+                    <TableCell>{item.name}</TableCell>
+                    <TableCell>{item.category}</TableCell>
+                    <TableCell>{item.quantity}</TableCell>
+                    <TableCell>{item.unit}</TableCell>
+                    <TableCell>{item.minStock}</TableCell>
+
                     <TableCell>
                       <Badge className={`${config.color} text-white`}>
-                        <StatusIcon className="w-3 h-3 mr-1" />
+                        <Icon className="w-3 h-3 mr-1" />
                         {config.label}
                       </Badge>
                     </TableCell>
+
                     <TableCell>
-                      <Button
-                        onClick={() => openEditDialog(item)}
-                        size="sm"
-                        variant="outline"
-                        className="border-[#E8D5BF] text-[#6B4423] hover:bg-[#F5E6D3]"
-                      >
+                      <Button onClick={() => openEditDialog(item)} size="sm">
                         <Edit className="w-4 h-4 mr-1" />
                         Update
                       </Button>
@@ -187,68 +194,111 @@ export const InventoryManagement = () => {
         </div>
       </Card>
 
-      {/* Edit Dialog */}
+      {/* DIALOG */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Update Inventory Item</DialogTitle>
+            <DialogTitle>
+              {editingItem ? "Update Item" : "Add Item"}
+            </DialogTitle>
           </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Item Name</Label>
+
+          {/* FORM */}
+          <div className="grid grid-cols-2 gap-4 py-4">
+            {/* NAME */}
+            <div className="relative">
+              <Tag className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
               <Input
+                className="pl-10"
+                placeholder="Item Name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Enter item name"
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>Category</Label>
-              <Input
+            {/* CATEGORY */}
+            <div className="relative">
+              <Boxes className="absolute left-3 top-3 w-4 h-4 text-gray-400 z-10" />
+              <select
                 value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                placeholder="Enter category"
-              />
+                onChange={(e) =>
+                  setFormData({ ...formData, category: e.target.value })
+                }
+                className="w-full h-10 pl-10 pr-3 border rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B4423]"
+              >
+                <option value="">Select Category</option>
+                {categories.map((cat, index) => (
+                  <option key={index} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Current Quantity</Label>
-                <Input
-                  type="number"
-                  value={formData.quantity}
-                  onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                  placeholder="0"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Unit</Label>
-                <Input
-                  value={formData.unit}
-                  onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                  placeholder="kg, liters, etc."
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Minimum Stock Level</Label>
+            {/* QUANTITY */}
+            <div className="relative">
+              <Layers className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
               <Input
                 type="number"
+                className="pl-10"
+                placeholder="Quantity"
+                value={formData.quantity}
+                onChange={(e) =>
+                  setFormData({ ...formData, quantity: e.target.value })
+                }
+              />
+            </div>
+
+            {/* UNIT */}
+            <div className="relative">
+              <Scale className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+              <Input
+                className="pl-10"
+                placeholder="Unit"
+                value={formData.unit}
+                onChange={(e) =>
+                  setFormData({ ...formData, unit: e.target.value })
+                }
+              />
+            </div>
+
+            {/* MIN STOCK */}
+            <div className="relative col-span-2">
+              <AlertTriangle className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+              <Input
+                type="number"
+                className="pl-10"
+                placeholder="Minimum Stock"
                 value={formData.minStock}
-                onChange={(e) => setFormData({ ...formData, minStock: e.target.value })}
-                placeholder="0"
+                onChange={(e) =>
+                  setFormData({ ...formData, minStock: e.target.value })
+                }
               />
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} className="bg-[#6B4423] hover:bg-[#4A2C1A] text-white">
-              Update Item
+          {/* ✅ CENTERED BUTTONS */}
+          <DialogFooter className="flex justify-center items-center gap-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsDialogOpen(false)}
+              className="min-w-[120px]"
+            >
+              Cancel
+            </Button>
+
+            <Button
+              onClick={handleSave}
+              className="bg-[#6B4423] hover:bg-[#4A2C1A] text-white flex items-center justify-center gap-2 min-w-[120px]"
+            >
+              {editingItem ? (
+                <Edit className="w-4 h-4" />
+              ) : (
+                <Plus className="w-4 h-4" />
+              )}
+              {editingItem ? "Update" : "Add"}
             </Button>
           </DialogFooter>
         </DialogContent>
