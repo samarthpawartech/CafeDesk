@@ -2,15 +2,21 @@ package com.cafedesk.backend.Security.config;
 
 import com.cafedesk.backend.Security.jwt.JwtAuthenticationFilter;
 import jakarta.servlet.http.HttpServletResponse;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
 import org.springframework.http.HttpMethod;
+
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -26,38 +32,74 @@ public class SecurityConfig {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
+    // ================= PASSWORD ENCODER =================
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+    // ================= CORS =================
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowCredentials(true);
-        config.setAllowedOriginPatterns(List.of("*")); // dev only
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+
+        config.setAllowedOriginPatterns(List.of("*"));
+
+        config.setAllowedMethods(
+                List.of(
+                        "GET",
+                        "POST",
+                        "PUT",
+                        "DELETE",
+                        "OPTIONS"
+                )
+        );
+
         config.setAllowedHeaders(List.of("*"));
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        config.setExposedHeaders(List.of("*"));
+
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
         source.registerCorsConfiguration("/**", config);
+
         return source;
     }
 
+    // ================= SECURITY FILTER =================
+
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http)
+            throws Exception {
 
         http
+
+                // Disable CSRF
                 .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+
+                // Enable CORS
+                .cors(cors ->
+                        cors.configurationSource(corsConfigurationSource())
                 )
+
+                // Stateless JWT
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
+                        )
+                )
+
+                // ================= AUTH =================
 
                 .authorizeHttpRequests(auth -> auth
 
-                        /* ================= PUBLIC ================= */
+                        // ===== PUBLIC ROUTES =====
 
                         .requestMatchers(
                                 "/api/customer/login",
@@ -66,39 +108,79 @@ public class SecurityConfig {
                                 "/api/admin/login"
                         ).permitAll()
 
-                        // ✅ ALLOW TABLES API
-                        .requestMatchers("/api/employee/tables/**").permitAll()
+                        // ===== MENU =====
 
-                        // ✅🔥 FIX: ALLOW ORDERS API
-                        .requestMatchers("/api/employee/orders/**").permitAll()
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/customer/menu"
+                        ).permitAll()
 
-                        .requestMatchers(HttpMethod.GET, "/api/customer/menu").permitAll()
                         .requestMatchers("/menu/**").permitAll()
-                        .requestMatchers("/api/customer/place-order").permitAll()
+
+                        // ===== CUSTOMER =====
+
+                        .requestMatchers(
+                                "/api/customer/place-order",
+                                "/api/customer/feedback/**",
+                                "/api/customer/orders/**"
+                        ).permitAll()
+
+                        // ===== PAYMENT =====
+
                         .requestMatchers("/api/payment/**").permitAll()
-                        .requestMatchers("/api/customer/feedback/**").permitAll()
+
+                        // ===== BILLS =====
+
                         .requestMatchers("/api/bills/**").permitAll()
-                        .requestMatchers("/api/customer/orders/**").permitAll()
 
-                        // Preflight
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // ===== EMPLOYEE =====
 
-                        /* ================= PROTECTED ================= */
+                        .requestMatchers(
+                                "/api/employee/tables/**",
+                                "/api/employee/orders/**"
+                        ).permitAll()
+
+                        // ================= INVENTORY FIX =================
+
+                        .requestMatchers("/api/inventory/**").permitAll()
+
+                        // ================= OPTIONS =================
+
+                        .requestMatchers(
+                                HttpMethod.OPTIONS,
+                                "/**"
+                        ).permitAll()
+
+                        // ===== PROTECTED =====
 
                         .requestMatchers("/api/admin/**").authenticated()
+
                         .requestMatchers("/api/employee/**").authenticated()
+
                         .requestMatchers("/api/customer/**").authenticated()
+
+                        // ===== ANY =====
 
                         .anyRequest().authenticated()
                 )
 
+                // ================= ERROR HANDLER =================
+
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((req, res, ex2) ->
-                                res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")
+                                res.sendError(
+                                        HttpServletResponse.SC_UNAUTHORIZED,
+                                        "Unauthorized"
+                                )
                         )
                 )
 
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                // ================= JWT FILTER =================
+
+                .addFilterBefore(
+                        jwtAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                );
 
         return http.build();
     }

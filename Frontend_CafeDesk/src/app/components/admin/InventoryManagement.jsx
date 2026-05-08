@@ -1,21 +1,22 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Package,
   AlertTriangle,
   CheckCircle,
   Plus,
   Edit,
+  Trash2,
   Tag,
   Boxes,
   Scale,
   Layers,
 } from "lucide-react";
 
-import { inventory as initialInventory } from "@/app/utils/mockData";
 import { Card } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
 import { Input } from "@/app/components/ui/input";
+
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/app/components/ui/dialog";
+
 import {
   Table,
   TableBody,
@@ -32,9 +34,16 @@ import {
   TableRow,
 } from "@/app/components/ui/table";
 
+// ================= API =================
+
+const API = "http://localhost:8080/api/inventory";
+
 export const InventoryManagement = () => {
-  const [inventory, setInventory] = useState(initialInventory);
+  const [inventory, setInventory] = useState([]);
+  const [loading, setLoading] = useState(false);
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
   const [editingItem, setEditingItem] = useState(null);
 
   const [formData, setFormData] = useState({
@@ -44,6 +53,8 @@ export const InventoryManagement = () => {
     unit: "",
     minStock: "",
   });
+
+  // ================= CATEGORIES =================
 
   const categories = [
     "Dairy",
@@ -60,8 +71,35 @@ export const InventoryManagement = () => {
     "Food",
   ];
 
+  // ================= FETCH INVENTORY =================
+
+  const fetchInventory = async () => {
+    try {
+      setLoading(true);
+
+      const response = await fetch(API);
+
+      const data = await response.json();
+
+      setInventory(data);
+    } catch (error) {
+      console.error("Error fetching inventory:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ================= LOAD ON START =================
+
+  useEffect(() => {
+    fetchInventory();
+  }, []);
+
+  // ================= OPEN ADD =================
+
   const openAddDialog = () => {
     setEditingItem(null);
+
     setFormData({
       name: "",
       category: "",
@@ -69,11 +107,15 @@ export const InventoryManagement = () => {
       unit: "",
       minStock: "",
     });
+
     setIsDialogOpen(true);
   };
 
+  // ================= OPEN EDIT =================
+
   const openEditDialog = (item) => {
     setEditingItem(item);
+
     setFormData({
       name: item.name,
       category: item.category,
@@ -81,52 +123,97 @@ export const InventoryManagement = () => {
       unit: item.unit,
       minStock: item.minStock.toString(),
     });
+
     setIsDialogOpen(true);
   };
 
-  const getStatus = (quantity, minStock) => {
-    if (quantity === 0) return "critical";
-    if (quantity < minStock * 0.5) return "critical";
-    if (quantity < minStock) return "low-stock";
-    return "in-stock";
-  };
+  // ================= SAVE =================
 
-  const handleSave = () => {
-    const newItem = {
-      id: editingItem ? editingItem.id : Date.now(),
-      ...formData,
-      quantity: parseFloat(formData.quantity),
-      minStock: parseFloat(formData.minStock),
-      status: getStatus(
-        parseFloat(formData.quantity),
-        parseFloat(formData.minStock),
-      ),
-    };
+  const handleSave = async () => {
+    try {
+      const method = editingItem ? "PUT" : "POST";
 
-    if (editingItem) {
-      setInventory(
-        inventory.map((item) => (item.id === editingItem.id ? newItem : item)),
-      );
-    } else {
-      setInventory([...inventory, newItem]);
+      const url = editingItem ? `${API}/${editingItem.id}` : API;
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+          name: formData.name,
+          category: formData.category,
+          quantity: parseFloat(formData.quantity),
+          unit: formData.unit,
+          minStock: parseFloat(formData.minStock),
+        }),
+      });
+
+      if (!response.ok) {
+        alert("Failed to save inventory item");
+        return;
+      }
+
+      await fetchInventory();
+
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error("Save error:", error);
     }
-
-    setIsDialogOpen(false);
   };
+
+  // ================= DELETE =================
+
+  const handleDelete = async (id) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this item?",
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      const response = await fetch(`${API}/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        alert("Delete failed");
+        return;
+      }
+
+      fetchInventory();
+    } catch (error) {
+      console.error("Delete error:", error);
+    }
+  };
+
+  // ================= STATUS =================
 
   const statusConfig = {
-    "in-stock": { label: "In Stock", color: "bg-green-500", icon: CheckCircle },
+    "in-stock": {
+      label: "In Stock",
+      color: "bg-green-500",
+      icon: CheckCircle,
+    },
+
     "low-stock": {
       label: "Low Stock",
       color: "bg-yellow-500",
       icon: AlertTriangle,
     },
-    critical: { label: "Critical", color: "bg-red-500", icon: AlertTriangle },
+
+    critical: {
+      label: "Critical",
+      color: "bg-red-500",
+      icon: AlertTriangle,
+    },
   };
 
   return (
     <div className="space-y-6">
       {/* HEADER */}
+
       <Card className="border-[#E8D5BF]">
         <div className="p-6 flex justify-between items-center">
           <h3 className="font-semibold text-[#2C1810] flex items-center gap-2">
@@ -145,6 +232,7 @@ export const InventoryManagement = () => {
       </Card>
 
       {/* TABLE */}
+
       <Card className="border-[#E8D5BF]">
         <div className="overflow-x-auto">
           <Table>
@@ -154,47 +242,82 @@ export const InventoryManagement = () => {
                 <TableHead>Category</TableHead>
                 <TableHead>Stock</TableHead>
                 <TableHead>Unit</TableHead>
-                <TableHead>Min</TableHead>
+                <TableHead>Min Stock</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead></TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
 
             <TableBody>
-              {inventory.map((item) => {
-                const config = statusConfig[item.status];
-                const Icon = config.icon;
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8">
+                    Loading inventory...
+                  </TableCell>
+                </TableRow>
+              ) : inventory.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8">
+                    No inventory items found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                inventory.map((item) => {
+                  const config =
+                    statusConfig[item.status] || statusConfig["in-stock"];
 
-                return (
-                  <TableRow key={item.id}>
-                    <TableCell>{item.name}</TableCell>
-                    <TableCell>{item.category}</TableCell>
-                    <TableCell>{item.quantity}</TableCell>
-                    <TableCell>{item.unit}</TableCell>
-                    <TableCell>{item.minStock}</TableCell>
+                  const Icon = config.icon;
 
-                    <TableCell>
-                      <Badge className={`${config.color} text-white`}>
-                        <Icon className="w-3 h-3 mr-1" />
-                        {config.label}
-                      </Badge>
-                    </TableCell>
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell>{item.name}</TableCell>
 
-                    <TableCell>
-                      <Button onClick={() => openEditDialog(item)} size="sm">
-                        <Edit className="w-4 h-4 mr-1" />
-                        Update
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+                      <TableCell>{item.category}</TableCell>
+
+                      <TableCell>{item.quantity}</TableCell>
+
+                      <TableCell>{item.unit}</TableCell>
+
+                      <TableCell>{item.minStock}</TableCell>
+
+                      <TableCell>
+                        <Badge className={`${config.color} text-white`}>
+                          <Icon className="w-3 h-3 mr-1" />
+                          {config.label}
+                        </Badge>
+                      </TableCell>
+
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => openEditDialog(item)}
+                            size="sm"
+                          >
+                            <Edit className="w-4 h-4 mr-1" />
+                            Update
+                          </Button>
+
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDelete(item.id)}
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Delete
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
             </TableBody>
           </Table>
         </div>
       </Card>
 
       {/* DIALOG */}
+
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -204,31 +327,43 @@ export const InventoryManagement = () => {
           </DialogHeader>
 
           {/* FORM */}
+
           <div className="grid grid-cols-2 gap-4 py-4">
             {/* NAME */}
+
             <div className="relative">
               <Tag className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+
               <Input
                 className="pl-10"
                 placeholder="Item Name"
                 value={formData.name}
                 onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
+                  setFormData({
+                    ...formData,
+                    name: e.target.value,
+                  })
                 }
               />
             </div>
 
             {/* CATEGORY */}
+
             <div className="relative">
               <Boxes className="absolute left-3 top-3 w-4 h-4 text-gray-400 z-10" />
+
               <select
                 value={formData.category}
                 onChange={(e) =>
-                  setFormData({ ...formData, category: e.target.value })
+                  setFormData({
+                    ...formData,
+                    category: e.target.value,
+                  })
                 }
                 className="w-full h-10 pl-10 pr-3 border rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B4423]"
               >
                 <option value="">Select Category</option>
+
                 {categories.map((cat, index) => (
                   <option key={index} value={cat}>
                     {cat}
@@ -238,48 +373,64 @@ export const InventoryManagement = () => {
             </div>
 
             {/* QUANTITY */}
+
             <div className="relative">
               <Layers className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+
               <Input
                 type="number"
                 className="pl-10"
                 placeholder="Quantity"
                 value={formData.quantity}
                 onChange={(e) =>
-                  setFormData({ ...formData, quantity: e.target.value })
+                  setFormData({
+                    ...formData,
+                    quantity: e.target.value,
+                  })
                 }
               />
             </div>
 
             {/* UNIT */}
+
             <div className="relative">
               <Scale className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+
               <Input
                 className="pl-10"
                 placeholder="Unit"
                 value={formData.unit}
                 onChange={(e) =>
-                  setFormData({ ...formData, unit: e.target.value })
+                  setFormData({
+                    ...formData,
+                    unit: e.target.value,
+                  })
                 }
               />
             </div>
 
             {/* MIN STOCK */}
+
             <div className="relative col-span-2">
               <AlertTriangle className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+
               <Input
                 type="number"
                 className="pl-10"
                 placeholder="Minimum Stock"
                 value={formData.minStock}
                 onChange={(e) =>
-                  setFormData({ ...formData, minStock: e.target.value })
+                  setFormData({
+                    ...formData,
+                    minStock: e.target.value,
+                  })
                 }
               />
             </div>
           </div>
 
-          {/* ✅ CENTERED BUTTONS */}
+          {/* FOOTER */}
+
           <DialogFooter className="flex justify-center items-center gap-4">
             <Button
               variant="outline"
@@ -298,6 +449,7 @@ export const InventoryManagement = () => {
               ) : (
                 <Plus className="w-4 h-4" />
               )}
+
               {editingItem ? "Update" : "Add"}
             </Button>
           </DialogFooter>
