@@ -50,12 +50,15 @@ export default function CustomerDashboard() {
   }, []);
   /*=========== Download Invoice ========================== */
   const downloadInvoice = async (bill) => {
-    // 🚫 Restrict download
-    if (bill.status?.toUpperCase() !== "PAID") {
-      return alert("Invoice available only after payment ✅");
-    }
-
     try {
+      // ✅ Allow PAID + APPROVED
+      const status = bill.status?.toUpperCase();
+
+      if (!["PAID", "APPROVED"].includes(status)) {
+        return alert("Invoice available only after payment ✅");
+      }
+
+      // ✅ API CALL
       const response = await fetch(`${API_BASE}/customer/invoice/${bill.id}`, {
         method: "GET",
         headers: {
@@ -63,25 +66,41 @@ export default function CustomerDashboard() {
         },
       });
 
+      // ✅ HANDLE ERROR
       if (!response.ok) {
-        return alert("Failed to download invoice ❌");
+        const errorText = await response.text();
+
+        return alert(errorText || "Failed to download invoice ❌");
       }
 
+      // ✅ GET PDF
       const blob = await response.blob();
 
+      // ✅ CREATE URL
       const url = window.URL.createObjectURL(blob);
+
+      // ✅ CREATE LINK
       const link = document.createElement("a");
 
       link.href = url;
-      link.download = `${bill.invoiceNumber || "invoice_" + bill.id}.pdf`;
+
+      // ✅ FILE NAME
+      link.download = `${
+        bill.billingId || bill.invoiceNumber || "invoice_" + bill.id
+      }.pdf`;
 
       document.body.appendChild(link);
+
+      // ✅ DOWNLOAD
       link.click();
 
+      // ✅ CLEANUP
       link.remove();
+
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error(error);
+      console.error("Invoice Download Error:", error);
+
       alert("Error downloading invoice ❌");
     }
   };
@@ -118,16 +137,13 @@ export default function CustomerDashboard() {
     if (!user?.username || !token) return;
 
     try {
-      const res = await fetch(
-        `${API_BASE}/bills/${user.username}`, // ✅ correct endpoint
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+      const res = await fetch(`${API_BASE}/bills/${user.username}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-      );
+      });
 
       if (!res.ok) {
         console.error("❌ Failed to fetch bills");
@@ -136,40 +152,56 @@ export default function CustomerDashboard() {
 
       const data = await res.json();
 
-      console.log("🧾 FETCHED BILLS 👉", data); // 🔥 DEBUG
+      console.log("🧾 BILL RESPONSE 👉", data);
 
-      setBills(Array.isArray(data) ? data : []);
+      // ✅ HANDLE BOTH ARRAY + OBJECT RESPONSE
+      if (Array.isArray(data)) {
+        setBills(data);
+      } else if (Array.isArray(data.data)) {
+        setBills(data.data);
+      } else {
+        setBills([]);
+      }
     } catch (err) {
       console.error("❌ Error fetching bills:", err);
+      setBills([]);
     }
   };
+
+  /* ================= AUTO FETCH BILLS ================= */
+  useEffect(() => {
+    if (token && user?.username) {
+      fetchBills();
+    }
+  }, [token, user?.username]);
 
   // ================= NORMALIZE BILLS =================
   const userBills = Array.isArray(bills) ? bills : [];
 
-  // ================= ✅ FIXED FILTER =================
+  // ================= ✅ FIXED BILL FILTERS =================
 
-  // 👉 Show ALL bills except PAID in Pending
-  const pendingBills = userBills.filter((b) => {
-    const status = (b.status || "").toLowerCase();
-    return status !== "paid"; // 🔥 KEY FIX
-  });
+  // ✅ Pending Tab → show ALL bills
+  const pendingBills = userBills;
 
-  // 👉 Show only PAID in History
-  const orderHistory = userBills.filter((b) => {
-    const status = (b.status || "").toLowerCase();
-    return status === "paid";
-  });
+  // ✅ History Tab → ALSO show ALL bills
+  // (remove auto hiding/removing logic)
+  const orderHistory = userBills;
 
   // ================= ORDER FILTERS =================
 
+  // ✅ Active Orders
   const currentOrders = myOrders.filter((o) => {
     const status = (o.status || "").toLowerCase();
-    return status !== "completed" && status !== "done";
+
+    return (
+      status !== "completed" && status !== "done" && status !== "cancelled"
+    );
   });
 
+  // ✅ Completed Orders
   const completedOrders = myOrders.filter((o) => {
     const status = (o.status || "").toLowerCase();
+
     return status === "completed" || status === "done";
   });
   /* ================= FETCH FEEDBACK ================= */
@@ -211,6 +243,13 @@ export default function CustomerDashboard() {
       fetchFeedback();
     }
   }, [activeTab, token]);
+
+  /* ================= REFRESH BILLS TAB ================= */
+  useEffect(() => {
+    if (activeTab === "bills") {
+      fetchBills();
+    }
+  }, [activeTab]);
   /* ================= PLACE ORDER ================= */
   const handlePlaceOrder = async () => {
     if (!currentOrder || currentOrder.length === 0) {
@@ -689,168 +728,186 @@ export default function CustomerDashboard() {
               </div>
             </>
           )}
-          {/* BILLS */}
-          {activeTab === "bills" &&
-            (pendingBills.length === 0 ? (
-              <p className="text-center text-gray-500">No pending bills 🎉</p>
-            ) : (
-              pendingBills.map((bill) => (
-                <div
-                  key={bill.id}
-                  className="flex justify-between items-center py-3 border-b"
-                >
-                  {/* LEFT SIDE */}
-                  <div>
-                    <span className="font-medium">INV-{bill.id}</span>
+          {activeTab === "bills" && (
+            <div className="space-y-4">
+              {Array.isArray(userBills) && userBills.length > 0 ? (
+                userBills.map((bill) => (
+                  <div
+                    key={bill.id}
+                    className="flex justify-between items-center py-3 border-b"
+                  >
+                    {/* LEFT SIDE */}
+                    <div>
+                      {/* INVOICE NUMBER */}
+                      <span className="font-medium">
+                        INV-{bill.invoiceNumber || bill.id}
+                      </span>
 
-                    {/* STATUS */}
-                    <span
-                      className={`ml-2 text-xs px-2 py-1 rounded-full ${
-                        bill.status?.toUpperCase() === "PAID"
-                          ? "bg-green-100 text-green-700"
-                          : bill.status?.toUpperCase() === "APPROVED"
-                            ? "bg-blue-100 text-blue-700"
-                            : "bg-yellow-100 text-yellow-700"
-                      }`}
-                    >
-                      {bill.status || "PENDING"}
-                    </span>
+                      {/* STATUS */}
+                      <span
+                        className={`ml-2 text-xs px-2 py-1 rounded-full ${
+                          bill.status?.toUpperCase() === "PAID"
+                            ? "bg-green-100 text-green-700"
+                            : bill.status?.toUpperCase() === "APPROVED"
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-yellow-100 text-yellow-700"
+                        }`}
+                      >
+                        {bill.status?.toUpperCase() || "PENDING"}
+                      </span>
 
-                    {/* 🧾 ITEMS (NEW FIX) */}
-                    <div className="text-sm text-gray-600 mt-1">
-                      {(bill.items || []).map((item, index) => (
-                        <div key={index}>
-                          {item.name} x{item.quantity}
-                        </div>
-                      ))}
+                      {/* ITEMS */}
+                      <div className="text-sm text-gray-600 mt-1">
+                        {Array.isArray(bill.items) && bill.items.length > 0 ? (
+                          bill.items.map((item, index) => (
+                            <div key={index}>
+                              {item.name} × {item.quantity}
+                            </div>
+                          ))
+                        ) : (
+                          <div>No items</div>
+                        )}
+                      </div>
+
+                      {/* AMOUNT */}
+                      <p className="text-sm text-gray-500 mt-1">
+                        ₹{bill.amount || bill.totalAmount || bill.total || 0}
+                      </p>
+
+                      {/* DATE */}
+                      <p className="text-xs text-gray-400 mt-1">
+                        {bill.createdAt
+                          ? new Date(bill.createdAt).toLocaleString()
+                          : ""}
+                      </p>
                     </div>
 
-                    {/* 💰 AMOUNT (FIXED) */}
-                    <p className="text-sm text-gray-500 mt-1">
-                      ₹{bill.amount ?? 0}
-                    </p>
-                  </div>
+                    {/* RIGHT SIDE BUTTONS */}
+                    <div className="flex gap-2 items-center">
+                      {/* PAY BUTTON */}
+                      {bill.status?.toUpperCase() !== "PAID" && (
+                        <Button
+                          size="sm"
+                          onClick={() => handlePayNow(bill.id)}
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          💳 Pay Now
+                        </Button>
+                      )}
 
-                  {/* RIGHT SIDE BUTTONS */}
-                  <div className="flex gap-2 items-center">
-                    {bill.status?.toUpperCase() !== "PAID" && (
+                      {/* DOWNLOAD INVOICE */}
                       <Button
                         size="sm"
-                        onClick={() => handlePayNow(bill.id)}
-                        className="bg-green-600 hover:bg-green-700 text-white"
+                        disabled={bill.status?.toUpperCase() !== "PAID"}
+                        className={
+                          bill.status?.toUpperCase() !== "PAID"
+                            ? "opacity-50 cursor-not-allowed"
+                            : "bg-gray-800 hover:bg-gray-900 text-white"
+                        }
+                        onClick={() => downloadInvoice(bill)}
                       >
-                        💳 Pay Now
+                        <Download className="w-4 h-4 mr-1" />
+                        Invoice
                       </Button>
-                    )}
-
-                    <Button
-                      size="sm"
-                      disabled={bill.status?.toUpperCase() !== "PAID"}
-                      className={
-                        bill.status?.toUpperCase() !== "PAID"
-                          ? "opacity-50 cursor-not-allowed"
-                          : "bg-gray-800 hover:bg-gray-900 text-white"
-                      }
-                      onClick={() => downloadInvoice(bill)}
-                    >
-                      <Download className="w-4 h-4 mr-1" />
-                      Invoice
-                    </Button>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="text-center text-gray-500 py-10">
+                  No bills found 📄
                 </div>
-              ))
-            ))}
+              )}
+            </div>
+          )}
           {/* HISTORY */}
           {activeTab === "history" && (
             <>
-              {completedOrders.length === 0 && orderHistory.length === 0 ? (
+              {orderHistory.filter((bill) =>
+                ["PAID", "APPROVED"].includes(bill.status?.toUpperCase()),
+              ).length === 0 ? (
                 <p className="text-center text-gray-500">
                   No previous orders yet ☕
                 </p>
               ) : (
-                <>
-                  {/* ✅ COMPLETED ORDERS */}
-                  {completedOrders.length > 0 && (
-                    <div className="mb-6">
-                      <h3 className="text-lg font-semibold text-[#6B4423] mb-3">
-                        Completed Orders
-                      </h3>
+                <div>
+                  <h3 className="text-lg font-semibold text-[#6B4423] mb-4">
+                    Order History
+                  </h3>
 
-                      {completedOrders.map((order) => (
-                        <div
-                          key={order.id}
-                          className="flex justify-between items-center py-3 border-b"
-                        >
-                          <div>
+                  {orderHistory
+                    .filter((bill) =>
+                      ["PAID", "APPROVED"].includes(bill.status?.toUpperCase()),
+                    )
+                    .map((bill) => (
+                      <div
+                        key={bill.id}
+                        className="flex justify-between items-center py-4 border-b gap-4"
+                      >
+                        {/* LEFT */}
+                        <div className="flex-1">
+                          {/* HEADER */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {/* ORDER */}
                             <span className="font-medium">
-                              Order #{order.id}
+                              Order #{bill.orderId || bill.id}
                             </span>
 
-                            <span className="ml-2 text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">
+                            {/* INVOICE */}
+                            <span className="text-gray-500 text-sm">
+                              •{" "}
+                              {bill.billingId ||
+                                bill.invoiceNumber ||
+                                `INV-${bill.id}`}
+                            </span>
+
+                            {/* ORDER STATUS */}
+                            <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">
                               COMPLETED
                             </span>
 
-                            <div className="text-sm text-gray-600 mt-1">
-                              {(order.items || []).map((item, index) => (
-                                <div key={index}>
-                                  {item.name} x{item.quantity}
-                                </div>
-                              ))}
-                            </div>
-
-                            <p className="text-sm text-gray-500 mt-1">
-                              ₹{order.amount ?? 0}
-                            </p>
-
-                            <p className="text-xs text-gray-400">
-                              {new Date(order.createdAt).toLocaleString()}
-                            </p>
+                            {/* BILL STATUS */}
+                            <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">
+                              PAID
+                            </span>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
 
-                  {/* ✅ PAID BILLS */}
-                  {orderHistory.length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-semibold text-[#6B4423] mb-3">
-                        Paid Bills
-                      </h3>
-
-                      {orderHistory.map((bill) => {
-                        const status = bill.status?.toUpperCase();
-
-                        return (
-                          <div
-                            key={bill.id}
-                            className="flex justify-between items-center py-3 border-b"
-                          >
-                            <div>
-                              <span className="font-medium">INV-{bill.id}</span>
-
-                              <span className="ml-2 text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">
-                                PAID
-                              </span>
-
-                              <div className="text-sm text-gray-600 mt-1">
-                                {(bill.items || []).map((item, index) => (
-                                  <div key={index}>
-                                    {item.name} x{item.quantity}
-                                  </div>
-                                ))}
+                          {/* ITEMS */}
+                          <div className="text-sm text-gray-600 mt-2">
+                            {(bill.items || []).map((item, index) => (
+                              <div key={index}>
+                                {item.name} × {item.quantity}
                               </div>
-
-                              <p className="text-sm text-gray-500 mt-1">
-                                ₹{bill.amount ?? 0}
-                              </p>
-                            </div>
+                            ))}
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </>
+
+                          {/* TOTAL */}
+                          <p className="text-sm font-semibold text-orange-600 mt-2">
+                            Total: ₹
+                            {bill.amount || bill.totalAmount || bill.total || 0}
+                          </p>
+
+                          {/* DATE */}
+                          <p className="text-xs text-gray-400 mt-1">
+                            {bill.createdAt
+                              ? new Date(bill.createdAt).toLocaleString()
+                              : ""}
+                          </p>
+                        </div>
+
+                        {/* RIGHT SIDE */}
+                        <div className="flex items-center justify-center">
+                          <Button
+                            size="sm"
+                            className="bg-gray-800 hover:bg-gray-900 text-white"
+                            onClick={() => downloadInvoice(bill)}
+                          >
+                            <Download className="w-4 h-4 mr-1" />
+                            Download Invoice
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
               )}
             </>
           )}

@@ -1,10 +1,9 @@
 package com.cafedesk.backend.Payment;
 
-import com.cafedesk.backend.Bills.entity.Bill;
 import com.cafedesk.backend.Bills.Repository.BillRepository;
+import com.cafedesk.backend.Bills.entity.Bill;
 import com.cafedesk.backend.customer.entity.Customer;
 import com.cafedesk.backend.customer.repository.CustomerRepository;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -12,7 +11,9 @@ import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/payment")
@@ -22,15 +23,17 @@ public class PaymentController {
     private final BillRepository billRepository;
     private final CustomerRepository customerRepository;
 
-    // ✅ Load from application.properties
-    @Value("${cashfree.appId}")
+    // ✅ FIXED PROPERTY NAME
+    @Value("${cashfree.api.id}")
     private String APP_ID;
 
     @Value("${cashfree.secretKey}")
     private String SECRET_KEY;
 
-    public PaymentController(BillRepository billRepository,
-                             CustomerRepository customerRepository) {
+    public PaymentController(
+            BillRepository billRepository,
+            CustomerRepository customerRepository
+    ) {
         this.billRepository = billRepository;
         this.customerRepository = customerRepository;
     }
@@ -40,35 +43,43 @@ public class PaymentController {
     public ResponseEntity<?> createOrder(@PathVariable Long billId) {
 
         try {
-            // 🔥 Fetch Bill
-            Bill bill = billRepository.findById(billId)
-                    .orElseThrow(() -> new RuntimeException("Bill not found"));
 
-            // ❌ Prevent duplicate payment
+            // ✅ Fetch Bill
+            Bill bill = billRepository.findById(billId)
+                    .orElseThrow(() ->
+                            new RuntimeException("Bill not found"));
+
+            // ✅ Prevent duplicate payment
             if ("PAID".equalsIgnoreCase(bill.getStatus())) {
-                return ResponseEntity.badRequest().body("Bill already paid");
+                return ResponseEntity
+                        .badRequest()
+                        .body("Bill already paid");
             }
 
-            // 🔥 Fetch Customer
+            // ✅ Fetch Customer
             Customer customerData = customerRepository
                     .findByUsername(bill.getCustomerName())
-                    .orElseThrow(() -> new RuntimeException("Customer not found"));
+                    .orElseThrow(() ->
+                            new RuntimeException("Customer not found"));
 
+            // ✅ Generate unique order ID
             String orderId = "order_" + UUID.randomUUID();
 
+            // ✅ Cashfree Sandbox URL
             String url = "https://sandbox.cashfree.com/pg/orders";
 
             RestTemplate restTemplate = new RestTemplate();
 
-            // 🔥 HEADERS
+            // ✅ Headers
             HttpHeaders headers = new HttpHeaders();
             headers.set("x-client-id", APP_ID);
             headers.set("x-client-secret", SECRET_KEY);
             headers.set("x-api-version", "2022-09-01");
             headers.setContentType(MediaType.APPLICATION_JSON);
 
-            // 🔥 BODY
+            // ✅ Request Body
             Map<String, Object> body = new HashMap<>();
+
             body.put("order_id", orderId);
             body.put("order_amount", bill.getTotalAmount());
             body.put("order_currency", "INR");
@@ -84,35 +95,55 @@ public class PaymentController {
             HttpEntity<Map<String, Object>> request =
                     new HttpEntity<>(body, headers);
 
-            // 🔥 CALL CASHFREE API
+            // ✅ Call Cashfree API
             ResponseEntity<String> response =
-                    restTemplate.postForEntity(url, request, String.class);
+                    restTemplate.postForEntity(
+                            url,
+                            request,
+                            String.class
+                    );
 
-            // ✅ Convert String → JSON Map
+            // ✅ Convert JSON Response
             ObjectMapper mapper = new ObjectMapper();
+
             @SuppressWarnings("unchecked")
             Map<String, Object> responseMap =
                     mapper.readValue(response.getBody(), Map.class);
 
-            // ✅ Extract important fields
-            String cfOrderId = (String) responseMap.get("cf_order_id");
-            String paymentSessionId = (String) responseMap.get("payment_session_id");
+            // ✅ Extract Response Data
+            String cfOrderId =
+                    String.valueOf(responseMap.get("cf_order_id"));
 
-            // 🔥 Save in DB
+            String paymentSessionId =
+                    String.valueOf(responseMap.get("payment_session_id"));
+
+            // ✅ Save in Database
             bill.setCfOrderId(cfOrderId);
             bill.setStatus("PENDING");
+
             billRepository.save(bill);
 
-            // ✅ Return ONLY required data to frontend
+            // ✅ Send to Frontend
             Map<String, Object> finalResponse = new HashMap<>();
-            finalResponse.put("payment_session_id", paymentSessionId);
-            finalResponse.put("cf_order_id", cfOrderId);
+
+            finalResponse.put(
+                    "payment_session_id",
+                    paymentSessionId
+            );
+
+            finalResponse.put(
+                    "cf_order_id",
+                    cfOrderId
+            );
 
             return ResponseEntity.ok(finalResponse);
 
         } catch (Exception e) {
-            e.printStackTrace(); // 🔥 IMPORTANT FOR DEBUG
-            return ResponseEntity.internalServerError()
+
+            e.printStackTrace();
+
+            return ResponseEntity
+                    .internalServerError()
                     .body("Payment error: " + e.getMessage());
         }
     }
