@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Package,
   AlertTriangle,
@@ -10,6 +10,9 @@ import {
   Boxes,
   Scale,
   Layers,
+  XCircle,
+  Search,
+  Filter,
 } from "lucide-react";
 
 import { Card } from "@/app/components/ui/card";
@@ -45,6 +48,12 @@ export const InventoryManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const [editingItem, setEditingItem] = useState(null);
+
+  // ================= FILTER STATES =================
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
 
   const [formData, setFormData] = useState({
     name: "",
@@ -95,6 +104,24 @@ export const InventoryManagement = () => {
     fetchInventory();
   }, []);
 
+  // ================= FILTERED INVENTORY =================
+
+  const filteredInventory = useMemo(() => {
+    return inventory.filter((item) => {
+      const matchesSearch =
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.category.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesStatus =
+        statusFilter === "all" || item.status === statusFilter;
+
+      const matchesCategory =
+        categoryFilter === "all" || item.category === categoryFilter;
+
+      return matchesSearch && matchesStatus && matchesCategory;
+    });
+  }, [inventory, searchTerm, statusFilter, categoryFilter]);
+
   // ================= OPEN ADD =================
 
   const openAddDialog = () => {
@@ -135,6 +162,17 @@ export const InventoryManagement = () => {
 
       const url = editingItem ? `${API}/${editingItem.id}` : API;
 
+      let status = "in-stock";
+
+      const qty = parseFloat(formData.quantity);
+      const min = parseFloat(formData.minStock);
+
+      if (qty === 0) {
+        status = "out-of-stock";
+      } else if (qty <= min) {
+        status = "low-stock";
+      }
+
       const response = await fetch(url, {
         method,
         headers: {
@@ -144,9 +182,10 @@ export const InventoryManagement = () => {
         body: JSON.stringify({
           name: formData.name,
           category: formData.category,
-          quantity: parseFloat(formData.quantity),
+          quantity: qty,
           unit: formData.unit,
-          minStock: parseFloat(formData.minStock),
+          minStock: min,
+          status,
         }),
       });
 
@@ -203,20 +242,90 @@ export const InventoryManagement = () => {
       icon: AlertTriangle,
     },
 
-    critical: {
-      label: "Critical",
+    "out-of-stock": {
+      label: "Out Of Stock",
       color: "bg-red-500",
-      icon: AlertTriangle,
+      icon: XCircle,
     },
   };
 
   return (
     <div className="space-y-6">
+      {/* FILTER SECTION */}
+
+      <div className="flex justify-center items-center w-full">
+        <div className="flex flex-wrap items-center justify-center gap-4 bg-white px-6 py-4 rounded-2xl shadow-sm border border-[#E8D5BF]">
+          {/* SEARCH */}
+
+          <div className="relative">
+            <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+
+            <Input
+              placeholder="Search item or category..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 w-[280px] bg-white"
+            />
+          </div>
+
+          {/* STATUS FILTER */}
+
+          <div className="relative">
+            <Filter className="absolute left-3 top-3 w-4 h-4 text-gray-400 z-10" />
+
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="h-10 pl-10 pr-3 border rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B4423] min-w-[180px]"
+            >
+              <option value="all">All Status</option>
+              <option value="in-stock">In Stock</option>
+              <option value="low-stock">Low Stock</option>
+              <option value="out-of-stock">Out Of Stock</option>
+            </select>
+          </div>
+
+          {/* CATEGORY FILTER */}
+
+          <div className="relative">
+            <Boxes className="absolute left-3 top-3 w-4 h-4 text-gray-400 z-10" />
+
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="h-10 pl-10 pr-3 border rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#6B4423] min-w-[180px]"
+            >
+              <option value="all">All Categories</option>
+
+              {categories.map((cat, index) => (
+                <option key={index} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* RESET BUTTON */}
+
+          <Button
+            variant="outline"
+            onClick={() => {
+              setSearchTerm("");
+              setStatusFilter("all");
+              setCategoryFilter("all");
+            }}
+            className="min-w-[120px] bg-white"
+          >
+            Reset
+          </Button>
+        </div>
+      </div>
+
       {/* HEADER */}
 
-      <Card className="border-[#E8D5BF]">
-        <div className="p-6 flex justify-between items-center">
-          <h3 className="font-semibold text-[#2C1810] flex items-center gap-2">
+      <Card className="border-[#E8D5BF] shadow-sm">
+        <div className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h3 className="font-semibold text-[#2C1810] flex items-center gap-2 text-lg">
             <Package className="w-5 h-5" />
             Inventory Items
           </h3>
@@ -233,7 +342,7 @@ export const InventoryManagement = () => {
 
       {/* TABLE */}
 
-      <Card className="border-[#E8D5BF]">
+      <Card className="border-[#E8D5BF] shadow-sm">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -244,7 +353,7 @@ export const InventoryManagement = () => {
                 <TableHead>Unit</TableHead>
                 <TableHead>Min Stock</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead className="text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
 
@@ -255,14 +364,14 @@ export const InventoryManagement = () => {
                     Loading inventory...
                   </TableCell>
                 </TableRow>
-              ) : inventory.length === 0 ? (
+              ) : filteredInventory.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8">
                     No inventory items found
                   </TableCell>
                 </TableRow>
               ) : (
-                inventory.map((item) => {
+                filteredInventory.map((item) => {
                   const config =
                     statusConfig[item.status] || statusConfig["in-stock"];
 
@@ -270,7 +379,7 @@ export const InventoryManagement = () => {
 
                   return (
                     <TableRow key={item.id}>
-                      <TableCell>{item.name}</TableCell>
+                      <TableCell className="font-medium">{item.name}</TableCell>
 
                       <TableCell>{item.category}</TableCell>
 
@@ -281,19 +390,22 @@ export const InventoryManagement = () => {
                       <TableCell>{item.minStock}</TableCell>
 
                       <TableCell>
-                        <Badge className={`${config.color} text-white`}>
+                        <Badge
+                          className={`${config.color} text-white px-3 py-1`}
+                        >
                           <Icon className="w-3 h-3 mr-1" />
                           {config.label}
                         </Badge>
                       </TableCell>
 
                       <TableCell>
-                        <div className="flex gap-2">
+                        <div className="flex items-center justify-center gap-3">
                           <Button
                             onClick={() => openEditDialog(item)}
                             size="sm"
+                            className="min-w-[100px] flex items-center justify-center gap-2"
                           >
-                            <Edit className="w-4 h-4 mr-1" />
+                            <Edit className="w-4 h-4" />
                             Update
                           </Button>
 
@@ -301,8 +413,9 @@ export const InventoryManagement = () => {
                             size="sm"
                             variant="destructive"
                             onClick={() => handleDelete(item.id)}
+                            className="min-w-[100px] flex items-center justify-center gap-2"
                           >
-                            <Trash2 className="w-4 h-4 mr-1" />
+                            <Trash2 className="w-4 h-4" />
                             Delete
                           </Button>
                         </div>
@@ -321,14 +434,14 @@ export const InventoryManagement = () => {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-xl">
               {editingItem ? "Update Item" : "Add Item"}
             </DialogTitle>
           </DialogHeader>
 
           {/* FORM */}
 
-          <div className="grid grid-cols-2 gap-4 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
             {/* NAME */}
 
             <div className="relative">
@@ -411,7 +524,7 @@ export const InventoryManagement = () => {
 
             {/* MIN STOCK */}
 
-            <div className="relative col-span-2">
+            <div className="relative md:col-span-2">
               <AlertTriangle className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
 
               <Input
@@ -431,7 +544,7 @@ export const InventoryManagement = () => {
 
           {/* FOOTER */}
 
-          <DialogFooter className="flex justify-center items-center gap-4">
+          <DialogFooter className="flex flex-row justify-center items-center gap-4 pt-4">
             <Button
               variant="outline"
               onClick={() => setIsDialogOpen(false)}
